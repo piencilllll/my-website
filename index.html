@@ -3,413 +3,542 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aegis Submarine Simulator</title>
+  <title>Sanctuary - Retro Dark Fantasy Mixer</title>
   <style>
     :root {
-      --hud-cyan: #00f3ff;
-      --hud-green: #00ffaa;
-      --hud-red: #ff3366;
-      --hud-amber: #ffb700;
-      --hud-bg: rgba(2, 10, 22, 0.85);
-      --hud-border: rgba(0, 243, 255, 0.35);
+      --bg-dark: #07080c;
+      --panel-bg: rgba(15, 17, 26, 0.85);
+      --border-color: #3b334d;
+      --border-glow: #7a52aa;
+      --accent-gold: #e2b041;
+      --accent-purple: #9d65c9;
+      --accent-cyan: #4fe0b0;
+      --text-muted: #8c829e;
+      --text-bright: #f0e6ff;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
 
     body, html {
       width: 100%; height: 100%;
-      overflow: hidden; background: #000;
-      font-family: monospace, system-ui, sans-serif;
-      color: #e2e8f0; user-select: none;
+      background-color: var(--bg-dark);
+      color: var(--text-bright);
+      font-family: 'Courier New', Courier, monospace;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
 
-    #render-canvas {
-      position: absolute; top: 0; left: 0;
-      width: 100%; height: 100%; z-index: 1;
+    /* Ambient Ember Canvas */
+    #ember-canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 1;
+      pointer-events: none;
     }
 
-    .viewport-overlay {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      z-index: 5; pointer-events: none;
-      background: radial-gradient(circle at center, transparent 55%, rgba(0, 5, 12, 0.65) 100%);
-      box-shadow: inset 0 0 120px rgba(0, 243, 255, 0.08);
+    /* Retro CRT Grain Overlay */
+    .grain-overlay {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 2;
+      pointer-events: none;
+      background: radial-gradient(circle at center, transparent 40%, rgba(3, 4, 7, 0.85) 100%),
+                  repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0px, rgba(0,0,0,0.15) 1px, transparent 1px, transparent 2px);
     }
 
-    .hud-layer {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      z-index: 10; pointer-events: none; padding: 24px;
-      display: flex; flex-direction: column; justify-content: space-between;
+    /* Main Container */
+    .mixer-container {
+      position: relative;
+      z-index: 10;
+      width: 90%;
+      max-width: 680px;
+      background: var(--panel-bg);
+      border: 2px solid var(--border-color);
+      box-shadow: 0 0 25px rgba(122, 82, 170, 0.25), inset 0 0 15px rgba(0,0,0,0.8);
+      border-radius: 8px;
+      padding: 24px;
+      backdrop-filter: blur(8px);
     }
 
-    header { display: flex; justify-content: space-between; align-items: flex-start; }
-
-    .vessel-card {
-      background: var(--hud-bg); border: 1px solid var(--hud-border);
-      padding: 12px 20px; border-radius: 8px; backdrop-filter: blur(8px);
+    /* Header */
+    header {
+      text-align: center;
+      border-bottom: 2px dashed var(--border-color);
+      padding-bottom: 16px;
+      margin-bottom: 20px;
     }
 
-    .badge {
-      font-size: 0.7rem; color: var(--hud-cyan); border: 1px solid var(--hud-cyan);
-      padding: 2px 8px; border-radius: 4px; font-weight: bold; background: rgba(0, 243, 255, 0.1);
+    header h1 {
+      font-size: 1.4rem;
+      letter-spacing: 3px;
+      color: var(--accent-gold);
+      text-transform: uppercase;
+      text-shadow: 0 0 8px rgba(226, 176, 65, 0.4);
     }
 
-    h1 { font-size: 1.1rem; margin-top: 6px; color: #fff; letter-spacing: 1.5px; }
-
-    .radar-box {
-      width: 130px; height: 130px; background: var(--hud-bg);
-      border: 1px solid var(--hud-border); border-radius: 50%;
-      position: relative; overflow: hidden; backdrop-filter: blur(8px);
+    header p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 6px;
     }
 
-    .radar-sweep {
-      position: absolute; width: 100%; height: 100%; border-radius: 50%;
-      background: conic-gradient(from 0deg, rgba(0, 255, 170, 0.5) 0deg, transparent 60deg);
-      animation: sweep 2.5s linear infinite;
+    /* Master Controls */
+    .master-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 12px 16px;
+      border-radius: 6px;
+      border: 1px solid rgba(122, 82, 170, 0.3);
+      margin-bottom: 20px;
     }
 
-    .radar-grid {
-      position: absolute; top: 15%; left: 15%; width: 70%; height: 70%;
-      border: 1px dashed rgba(0, 255, 170, 0.3); border-radius: 50%;
+    .btn-main {
+      background: var(--accent-purple);
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      font-family: inherit;
+      font-weight: bold;
+      font-size: 0.85rem;
+      border-radius: 4px;
+      cursor: pointer;
+      box-shadow: 0 4px 0 #5c387d;
+      transition: all 0.1s ease;
     }
 
-    .radar-center {
-      position: absolute; top: 50%; left: 50%; width: 6px; height: 6px;
-      background: var(--hud-green); border-radius: 50%; transform: translate(-50%, -50%);
+    .btn-main:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #5c387d;
     }
 
-    .radar-contact {
-      position: absolute; width: 6px; height: 6px; background: var(--hud-red);
-      border-radius: 50%; box-shadow: 0 0 8px var(--hud-red);
+    .btn-main.active {
+      background: var(--accent-gold);
+      color: #111;
+      box-shadow: 0 4px 0 #9c731e;
     }
 
-    @keyframes sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
-    .footer-hud { display: flex; justify-content: space-between; align-items: flex-end; }
-
-    .telemetry-card {
-      background: var(--hud-bg); border: 1px solid var(--hud-border);
-      padding: 12px 18px; border-radius: 8px; backdrop-filter: blur(8px); min-width: 160px;
+    /* Mixer Channels Grid */
+    .channels-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
     }
 
-    .label { font-size: 0.65rem; color: #64748b; text-transform: uppercase; }
-    .val { font-size: 1.2rem; font-weight: bold; color: var(--hud-cyan); margin-top: 2px; }
-    .zone { font-size: 0.75rem; color: var(--hud-amber); font-weight: 600; }
-
-    .controls-card {
-      background: var(--hud-bg); border: 1px solid var(--hud-border);
-      padding: 12px 20px; border-radius: 8px; backdrop-filter: blur(8px);
-      font-size: 0.8rem; line-height: 1.5; color: #cbd5e1;
+    @media (max-width: 580px) {
+      .channels-grid { grid-template-columns: 1fr; }
     }
 
-    .controls-card span { color: #fff; font-weight: bold; }
+    .channel-card {
+      background: rgba(8, 10, 16, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .channel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .channel-title {
+      font-size: 0.85rem;
+      color: var(--text-bright);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .channel-title span { font-size: 1.1rem; }
+
+    .toggle-btn {
+      background: transparent;
+      border: 1px solid var(--text-muted);
+      color: var(--text-muted);
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    .toggle-btn.active {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+      background: rgba(79, 224, 176, 0.1);
+    }
+
+    /* Custom Slider */
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      background: #1a1824;
+      border-radius: 3px;
+      outline: none;
+      border: 1px solid #2a2538;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 2px;
+      background: var(--accent-gold);
+      cursor: pointer;
+      box-shadow: 0 0 6px var(--accent-gold);
+    }
+
+    .trigger-btn {
+      background: rgba(157, 101, 201, 0.2);
+      border: 1px solid var(--accent-purple);
+      color: var(--text-bright);
+      padding: 6px 12px;
+      font-family: inherit;
+      font-size: 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 4px;
+    }
+
+    .trigger-btn:hover {
+      background: rgba(157, 101, 201, 0.4);
+    }
   </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-  <canvas id="render-canvas"></canvas>
-  <div class="viewport-overlay"></div>
+  <canvas id="ember-canvas"></canvas>
+  <div class="grain-overlay"></div>
 
-  <div class="hud-layer">
+  <div class="mixer-container">
     <header>
-      <div class="vessel-card">
-        <span class="badge">SYSTEM READY</span>
-        <h1>AEGIS DEEP-SEA UNIT</h1>
-      </div>
-      <div class="radar-box">
-        <div class="radar-grid"></div>
-        <div class="radar-sweep"></div>
-        <div class="radar-center"></div>
-        <div class="radar-contact" id="contact-1" style="top: 30%; left: 65%;"></div>
-      </div>
+      <h1>Sanctuary Ambience</h1>
+      <p>Retro Dark Fantasy Soundscape Generator</p>
     </header>
 
-    <div class="footer-hud">
-      <div class="telemetry-card">
-        <div class="label">CURRENT DEPTH</div>
-        <div class="val" id="depth-readout">0 M</div>
-        <div class="zone" id="zone-readout">SURFACE ZONE</div>
+    <div class="master-bar">
+      <button class="btn-main" id="power-btn">▶ INITIALIZE SOUND</button>
+      <div style="font-size: 0.75rem; color: var(--text-muted);" id="status-readout">SYSTEM IDLE</div>
+    </div>
+
+    <div class="channels-grid">
+
+      <!-- Heavy Rain -->
+      <div class="channel-card">
+        <div class="channel-header">
+          <div class="channel-title"><span>🌧️</span> Rainstorm</div>
+          <button class="toggle-btn active" id="rain-toggle">ON</button>
+        </div>
+        <div class="slider-container">
+          <input type="range" id="rain-vol" min="0" max="1" step="0.01" value="0.5">
+        </div>
       </div>
 
-      <div class="controls-card">
-        ⌨️ <span>W/S</span>: Engine Throttle | <span>A/D</span>: Yaw Steer<br>
-        ⬆️ <span>SPACE</span>: Ascent | ⬇️ <span>SHIFT</span>: Descent<br>
-        🖱️ <span>Mouse Drag</span>: 360° Cockpit Camera Look
+      <!-- Campfire Crackle -->
+      <div class="channel-card">
+        <div class="channel-header">
+          <div class="channel-title"><span>🔥</span> Hearth Fire</div>
+          <button class="toggle-btn active" id="fire-toggle">ON</button>
+        </div>
+        <div class="slider-container">
+          <input type="range" id="fire-vol" min="0" max="1" step="0.01" value="0.4">
+        </div>
       </div>
 
-      <div class="telemetry-card" style="text-align: right;">
-        <div class="label">PROPULSION SPEED</div>
-        <div class="val" id="speed-readout">0.0 KTS</div>
+      <!-- Night Wind -->
+      <div class="channel-card">
+        <div class="channel-header">
+          <div class="channel-title"><span>🌬️</span> Howling Wind</div>
+          <button class="toggle-btn active" id="wind-toggle">ON</button>
+        </div>
+        <div class="slider-container">
+          <input type="range" id="wind-vol" min="0" max="1" step="0.01" value="0.3">
+        </div>
       </div>
+
+      <!-- Abyssal Drone -->
+      <div class="channel-card">
+        <div class="channel-header">
+          <div class="channel-title"><span>🔮</span> Arcane Drone</div>
+          <button class="toggle-btn active" id="drone-toggle">ON</button>
+        </div>
+        <div class="slider-container">
+          <input type="range" id="drone-vol" min="0" max="1" step="0.01" value="0.35">
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Thunder Trigger -->
+    <div style="margin-top: 16px;">
+      <button class="trigger-btn" id="thunder-btn">⚡ TRIGGER DISTANT THUNDER</button>
     </div>
   </div>
 
   <script>
-    // --- 3D Scene Setup ---
-    const canvas = document.getElementById('render-canvas');
-    const scene = new THREE.Scene();
-    
-    // Softer fog so you can see far ahead
-    const depthFogColor = new THREE.Color(0x021a38);
-    scene.background = depthFogColor;
-    scene.fog = new THREE.FogExp2(depthFogColor, 0.006);
-
-    // Global Underwater Ambient Lighting
-    const ambientLight = new THREE.AmbientLight(0x1a4575, 2.5);
-    scene.add(ambientLight);
-
-    const sunLight = new THREE.DirectionalLight(0x00d2ff, 1.8);
-    sunLight.position.set(0, 100, 0);
-    scene.add(sunLight);
-
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-    // --- Submarine Rig & Cockpit Structure ---
-    const submarine = new THREE.Group();
-    scene.add(submarine);
-
-    const cameraPivot = new THREE.Group();
-    cameraPivot.position.set(0, 0.2, 0);
-    submarine.add(cameraPivot);
-    cameraPivot.add(camera);
-
-    function buildRealisticCockpit() {
-      const cockpit = new THREE.Group();
-
-      const hullGeo = new THREE.CylinderGeometry(2.8, 2.8, 7, 32, 1, true);
-      hullGeo.rotateX(Math.PI / 2);
-      const hullMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8, side: THREE.BackSide });
-      const hull = new THREE.Mesh(hullGeo, hullMat);
-      cockpit.add(hull);
-
-      const bezelGeo = new THREE.TorusGeometry(2.0, 0.15, 16, 48);
-      const bezelMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9, roughness: 0.2 });
-      const bezel = new THREE.Mesh(bezelGeo, bezelMat);
-      bezel.position.set(0, 0, -3.2);
-      cockpit.add(bezel);
-
-      const glassGeo = new THREE.CircleGeometry(1.95, 32);
-      const glassMat = new THREE.MeshPhysicalMaterial({
-        color: 0x00f3ff, transparent: true, opacity: 0.12, transmission: 0.9, roughness: 0.1
-      });
-      const glass = new THREE.Mesh(glassGeo, glassMat);
-      glass.position.set(0, 0, -3.15);
-      cockpit.add(glass);
-
-      const dashGeo = new THREE.BoxGeometry(4.2, 1.0, 1.4);
-      const dashMat = new THREE.MeshStandardMaterial({ color: 0x020617, roughness: 0.6 });
-      const dash = new THREE.Mesh(dashGeo, dashMat);
-      dash.position.set(0, -1.1, -2.4);
-      dash.rotation.x = 0.25;
-      cockpit.add(dash);
-
-      const colors = [0x00f3ff, 0x00ffaa, 0xff3366, 0xffb700];
-      for(let i = 0; i < 16; i++) {
-        const btnGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.08, 12);
-        const btnMat = new THREE.MeshBasicMaterial({ color: colors[i % 4] });
-        const btn = new THREE.Mesh(btnGeo, btnMat);
-        btn.position.set(-1.6 + (i % 8) * 0.45, -0.85 + Math.floor(i / 8) * 0.25, -2.1);
-        btn.rotation.x = 0.25;
-        cockpit.add(btn);
-      }
-
-      const cabinLight = new THREE.PointLight(0x00f3ff, 2.0, 6);
-      cabinLight.position.set(0, 1.5, -0.8);
-      cockpit.add(cabinLight);
-
-      // Kinetically Unified Matter Bottle
-      const flaskGeo = new THREE.CylinderGeometry(0.1, 0.14, 0.5, 16);
-      const flaskMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.9, opacity: 0.9 });
-      const flask = new THREE.Mesh(flaskGeo, flaskMat);
-      flask.position.set(1.8, -0.55, -1.8);
-      
-      const liquidGeo = new THREE.CylinderGeometry(0.08, 0.12, 0.38, 16);
-      const liquidMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-      const liquid = new THREE.Mesh(liquidGeo, liquidMat);
-      liquid.position.set(1.8, -0.6, -1.8);
-
-      const liquidGlow = new THREE.PointLight(0xffffff, 2.0, 3);
-      liquidGlow.position.set(1.8, -0.55, -1.8);
-
-      cockpit.add(flask); cockpit.add(liquid); cockpit.add(liquidGlow);
-      submarine.add(cockpit);
-    }
-
-    buildRealisticCockpit();
-
-    // High-Power Headlight
-    const headlight = new THREE.SpotLight(0x00f3ff, 40, 200, Math.PI / 3, 0.5, 1);
-    headlight.position.set(0, 0, -3.2);
-    headlight.target.position.set(0, 0, -80);
-    submarine.add(headlight); submarine.add(headlight.target);
-
-    // Dynamic Underwater Particles ("Marine Snow" for Motion Feedback)
-    const particleCount = 1500;
-    const particleGeo = new THREE.BufferGeometry();
-    const particlePositions = new Float32Array(particleCount * 3);
-
-    for (let i = 0; i < particleCount * 3; i += 3) {
-      particlePositions[i] = (Math.random() - 0.5) * 160;
-      particlePositions[i + 1] = (Math.random() - 0.5) * 160;
-      particlePositions[i + 2] = (Math.random() - 0.5) * 160;
-    }
-
-    particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
-    const particleMat = new THREE.PointsMaterial({
-      color: 0x00ffff, size: 0.35, transparent: true, opacity: 0.6
-    });
-    const particleSystem = new THREE.Points(particleGeo, particleMat);
-    scene.add(particleSystem);
-
-    // --- Ocean Environment ---
-    const skyGeo = new THREE.SphereGeometry(800, 32, 32);
-    const skyMat = new THREE.MeshBasicMaterial({ color: 0x01040a, side: THREE.BackSide });
-    const sky = new THREE.Mesh(skyGeo, skyMat);
-    scene.add(sky);
-
-    const moonGeo = new THREE.SphereGeometry(14, 32, 32);
-    const moonMat = new THREE.MeshBasicMaterial({ color: 0xfffaed });
-    const moon = new THREE.Mesh(moonGeo, moonMat);
-    moon.position.set(150, 220, -400);
-    scene.add(moon);
-
-    const waterGeo = new THREE.PlaneGeometry(1000, 1000, 100, 100);
-    waterGeo.rotateX(-Math.PI / 2);
-    const waterMat = new THREE.MeshStandardMaterial({
-      color: 0x004477, roughness: 0.1, metalness: 0.9, transparent: true, opacity: 0.85
-    });
-    const water = new THREE.Mesh(waterGeo, waterMat);
-    water.position.y = 2;
-    scene.add(water);
-
-    // Seabed Terrain Generation
-    const seabedGeo = new THREE.PlaneGeometry(1200, 1200, 120, 120);
-    seabedGeo.rotateX(-Math.PI / 2);
-    const pos = seabedGeo.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i); const z = pos.getZ(i);
-      const h = Math.sin(x * 0.01) * Math.cos(z * 0.01) * 30 + Math.sin(x * 0.03) * 6;
-      pos.setY(i, h - 80);
-    }
-    seabedGeo.computeVertexNormals();
-    const seabedMat = new THREE.MeshStandardMaterial({ color: 0x0f2f52, roughness: 0.8 });
-    const seabed = new THREE.Mesh(seabedGeo, seabedMat);
-    scene.add(seabed);
-
-    // Bioluminescent Rocks
-    const rockGroup = new THREE.Group();
-    const rockGeo = new THREE.DodecahedronGeometry(2.5, 1);
-    const rockMat = new THREE.MeshStandardMaterial({ color: 0x1a3d61, roughness: 0.8 });
-    for (let i = 0; i < 80; i++) {
-      const rock = new THREE.Mesh(rockGeo, rockMat);
-      const rx = (Math.random() - 0.5) * 600;
-      const rz = (Math.random() - 0.5) * 600;
-      rock.position.set(rx, -75 + Math.random() * 4, rz);
-      rock.scale.set(1 + Math.random() * 2, 1 + Math.random() * 3, 1 + Math.random() * 2);
-      rockGroup.add(rock);
-    }
-    scene.add(rockGroup);
-
-    // Glowing Fish Schools
-    const fishCount = 180;
-    const fishGroup = new THREE.InstancedMesh(
-      new THREE.ConeGeometry(0.4, 1.4, 8).rotateX(Math.PI / 2),
-      new THREE.MeshStandardMaterial({ color: 0x00ffcc, emissive: 0x005544, roughness: 0.2 }),
-      fishCount
-    );
-    const dummy = new THREE.Object3D();
-    const fishData = Array.from({ length: fishCount }, () => ({
-      pos: new THREE.Vector3((Math.random() - 0.5) * 400, -10 - Math.random() * 50, (Math.random() - 0.5) * 400),
-      vel: new THREE.Vector3((Math.random() - 0.5) * 0.4, 0, (Math.random() - 0.5) * 0.4)
-    }));
-    scene.add(fishGroup);
-
-    // --- Interaction & Controls ---
-    let isMouseDown = false, targetYaw = 0, targetPitch = 0;
-    window.addEventListener('mousedown', (e) => { if (e.target.tagName === 'CANVAS') isMouseDown = true; });
-    window.addEventListener('mouseup', () => isMouseDown = false);
-    window.addEventListener('mousemove', (e) => {
-      if (!isMouseDown) return;
-      targetYaw -= e.movementX * 0.003;
-      targetPitch -= e.movementY * 0.003;
-      targetPitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, targetPitch));
-    });
-
-    const keys = {};
-    window.addEventListener('keydown', (e) => keys[e.code] = true);
-    window.addEventListener('keyup', (e) => keys[e.code] = false);
-
-    // --- Main Loop ---
-    const clock = new THREE.Clock();
-    let velocity = new THREE.Vector3(), yaw = 0;
-
-    function animate() {
-      requestAnimationFrame(animate);
-      const delta = clock.getDelta();
-      const time = clock.getElapsedTime();
-
-      // Camera Smooth Interpolation
-      cameraPivot.rotation.y = THREE.MathUtils.lerp(cameraPivot.rotation.y, targetYaw, 0.08);
-      cameraPivot.rotation.x = THREE.MathUtils.lerp(cameraPivot.rotation.x, targetPitch, 0.08);
-
-      // Submarine Movement
-      const fwdSpeed = 30.0 * delta;
-      if (keys['KeyW']) velocity.z = THREE.MathUtils.lerp(velocity.z, -fwdSpeed, 0.05);
-      else if (keys['KeyS']) velocity.z = THREE.MathUtils.lerp(velocity.z, fwdSpeed * 0.5, 0.05);
-      else velocity.z = THREE.MathUtils.lerp(velocity.z, 0, 0.04);
-
-      if (keys['KeyA']) yaw += 1.2 * delta;
-      if (keys['KeyD']) yaw -= 1.2 * delta;
-
-      if (keys['Space']) velocity.y = THREE.MathUtils.lerp(velocity.y, fwdSpeed * 0.5, 0.05);
-      else if (keys['ShiftLeft'] || keys['ShiftRight']) velocity.y = THREE.MathUtils.lerp(velocity.y, -fwdSpeed * 0.5, 0.05);
-      else velocity.y = THREE.MathUtils.lerp(velocity.y, 0, 0.04);
-
-      submarine.rotation.y = yaw;
-      submarine.translateZ(velocity.z);
-      submarine.position.y = Math.max(-70, Math.min(2.5, submarine.position.y + velocity.y));
-
-      // Keep particles relative to submarine position for continuous drift
-      particleSystem.position.copy(submarine.position);
-
-      // Wave Motion
-      const wPos = waterGeo.attributes.position;
-      for (let i = 0; i < wPos.count; i++) {
-        const u = wPos.getX(i); const v = wPos.getY(i);
-        wPos.setZ(i, Math.sin(u * 0.04 + time * 1.5) * 0.6 + Math.cos(v * 0.04 + time * 1.5) * 0.6);
-      }
-      waterGeo.attributes.position.needsUpdate = true;
-
-      // Fish Simulation
-      fishData.forEach((f, i) => {
-        f.pos.add(f.vel);
-        if(Math.abs(f.pos.x) > 250) f.vel.x *= -1;
-        if(Math.abs(f.pos.z) > 250) f.vel.z *= -1;
-        dummy.position.copy(f.pos);
-        dummy.rotation.y = Math.atan2(f.vel.x, f.vel.z);
-        dummy.updateMatrix();
-        fishGroup.setMatrixAt(i, dummy.matrix);
-      });
-      fishGroup.instanceMatrix.needsUpdate = true;
-
-      // Telemetry Readouts
-      const currentDepth = Math.max(0, Math.round(-submarine.position.y * 10));
-      document.getElementById('depth-readout').innerText = currentDepth + ' M';
-      document.getElementById('speed-readout').innerText = (Math.abs(velocity.z) * 35).toFixed(1) + ' KTS';
-
-      renderer.render(scene, camera);
-    }
-
-    animate();
+    // --- Ember Canvas Particle Animation ---
+    const canvas = document.getElementById('ember-canvas');
+    const ctx = canvas.getContext('2d');
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
 
     window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
     });
+
+    const embers = Array.from({ length: 45 }, () => ({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      size: Math.random() * 2.2 + 0.8,
+      speedY: -(Math.random() * 0.4 + 0.1),
+      speedX: (Math.random() - 0.5) * 0.3,
+      alpha: Math.random() * 0.6 + 0.2
+    }));
+
+    function drawEmbers() {
+      ctx.clearRect(0, 0, width, height);
+      embers.forEach(e => {
+        e.y += e.speedY;
+        e.x += e.speedX;
+        if (e.y < -10) { e.y = height + 10; e.x = Math.random() * width; }
+        ctx.fillStyle = `rgba(226, 176, 65, ${e.alpha})`;
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      requestAnimationFrame(drawEmbers);
+    }
+    drawEmbers();
+
+    // --- Web Audio Procedural Synthesizers ---
+    let audioCtx = null;
+    let isPlaying = false;
+
+    // Master & Channel Gain Nodes
+    let masterGain, rainGain, fireGain, windGain, droneGain;
+
+    function createNoiseBuffer(duration = 2) {
+      const bufferSize = audioCtx.sampleRate * duration;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const output = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+      }
+      return buffer;
+    }
+
+    function initAudio() {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+      masterGain = audioCtx.createGain();
+      masterGain.gain.setValueAtTime(0.8, audioCtx.currentTime);
+      masterGain.connect(audioCtx.destination);
+
+      const noiseBuffer = createNoiseBuffer();
+
+      // 1. Rain Synthesizer (Filtered Pink/White Noise)
+      const rainSource = audioCtx.createBufferSource();
+      rainSource.buffer = noiseBuffer;
+      rainSource.loop = true;
+
+      const rainFilter = audioCtx.createBiquadFilter();
+      rainFilter.type = 'lowpass';
+      rainFilter.frequency.setValueAtTime(900, audioCtx.currentTime);
+
+      rainGain = audioCtx.createGain();
+      rainGain.gain.setValueAtTime(document.getElementById('rain-vol').value, audioCtx.currentTime);
+
+      rainSource.connect(rainFilter);
+      rainFilter.connect(rainGain);
+      rainGain.connect(masterGain);
+      rainSource.start();
+
+      // 2. Wind Synthesizer (Modulated Bandpass Filter)
+      const windSource = audioCtx.createBufferSource();
+      windSource.buffer = noiseBuffer;
+      windSource.loop = true;
+
+      const windFilter = audioCtx.createBiquadFilter();
+      windFilter.type = 'bandpass';
+      windFilter.frequency.setValueAtTime(300, audioCtx.currentTime);
+      windFilter.Q.setValueAtTime(3.0, audioCtx.currentTime);
+
+      // LFO for wind howling effect
+      const windLFO = audioCtx.createOscillator();
+      const windLFOFilterGain = audioCtx.createGain();
+      windLFO.frequency.setValueAtTime(0.15, audioCtx.currentTime);
+      windLFOFilterGain.gain.setValueAtTime(180, audioCtx.currentTime);
+      windLFO.connect(windLFOFilterGain);
+      windLFOFilterGain.connect(windFilter.frequency);
+      windLFO.start();
+
+      windGain = audioCtx.createGain();
+      windGain.gain.setValueAtTime(document.getElementById('wind-vol').value, audioCtx.currentTime);
+
+      windSource.connect(windFilter);
+      windFilter.connect(windGain);
+      windGain.connect(masterGain);
+      windSource.start();
+
+      // 3. Campfire Crackle (Filtered Noise + Random Pop Spikes)
+      const fireNoise = audioCtx.createBufferSource();
+      fireNoise.buffer = noiseBuffer;
+      fireNoise.loop = true;
+
+      const fireFilter = audioCtx.createBiquadFilter();
+      fireFilter.type = 'bandpass';
+      fireFilter.frequency.setValueAtTime(1200, audioCtx.currentTime);
+
+      fireGain = audioCtx.createGain();
+      fireGain.gain.setValueAtTime(document.getElementById('fire-vol').value, audioCtx.currentTime);
+
+      fireNoise.connect(fireFilter);
+      fireFilter.connect(fireGain);
+      fireGain.connect(masterGain);
+      fireNoise.start();
+
+      // Periodic Pops/Crackles
+      setInterval(() => {
+        if (!isPlaying || fireGain.gain.value === 0) return;
+        const pop = audioCtx.createBufferSource();
+        pop.buffer = noiseBuffer;
+        const popFilter = audioCtx.createBiquadFilter();
+        popFilter.type = 'highpass';
+        popFilter.frequency.setValueAtTime(2500, audioCtx.currentTime);
+
+        const popGain = audioCtx.createGain();
+        popGain.gain.setValueAtTime(Math.random() * 0.15, audioCtx.currentTime);
+        popGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+
+        pop.connect(popFilter);
+        popFilter.connect(popGain);
+        popGain.connect(fireGain);
+        pop.start();
+      }, 120);
+
+      // 4. Arcane Synth Drone (C Minor Chord Oscillators)
+      const frequencies = [65.41, 77.78, 98.00]; // C2, Eb2, G2
+      droneGain = audioCtx.createGain();
+      droneGain.gain.setValueAtTime(document.getElementById('drone-vol').value, audioCtx.currentTime);
+
+      frequencies.forEach(freq => {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(220, audioCtx.currentTime);
+
+        osc.connect(filter);
+        filter.connect(droneGain);
+        osc.start();
+      });
+
+      droneGain.connect(masterGain);
+    }
+
+    // Trigger Distant Thunder
+    function triggerThunder() {
+      if (!audioCtx || !isPlaying) return;
+
+      const thunderSource = audioCtx.createBufferSource();
+      thunderSource.buffer = createNoiseBuffer(4);
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(120, audioCtx.currentTime);
+
+      const gain = audioCtx.createGain();
+      const now = audioCtx.currentTime;
+      gain.gain.setValueAtTime(0.01, now);
+      gain.gain.linearRampToValueAtTime(0.7, now + 0.3);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 3.8);
+
+      thunderSource.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+      thunderSource.start();
+    }
+
+    // --- UI Event Listeners ---
+    const powerBtn = document.getElementById('power-btn');
+    const statusReadout = document.getElementById('status-readout');
+
+    powerBtn.addEventListener('click', () => {
+      if (!audioCtx) {
+        initAudio();
+        isPlaying = true;
+        powerBtn.classList.add('active');
+        powerBtn.innerText = '⏸ PAUSE SOUND';
+        statusReadout.innerText = 'ACTIVE SANCTUARY';
+      } else if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+        isPlaying = true;
+        powerBtn.classList.add('active');
+        powerBtn.innerText = '⏸ PAUSE SOUND';
+        statusReadout.innerText = 'ACTIVE SANCTUARY';
+      } else {
+        audioCtx.suspend();
+        isPlaying = false;
+        powerBtn.classList.remove('active');
+        powerBtn.innerText = '▶ INITIALIZE SOUND';
+        statusReadout.innerText = 'PAUSED';
+      }
+    });
+
+    // Volume Sliders Controls
+    document.getElementById('rain-vol').addEventListener('input', (e) => {
+      if (rainGain) rainGain.gain.setValueAtTime(e.target.value, audioCtx.currentTime);
+    });
+
+    document.getElementById('fire-vol').addEventListener('input', (e) => {
+      if (fireGain) fireGain.gain.setValueAtTime(e.target.value, audioCtx.currentTime);
+    });
+
+    document.getElementById('wind-vol').addEventListener('input', (e) => {
+      if (windGain) windGain.gain.setValueAtTime(e.target.value, audioCtx.currentTime);
+    });
+
+    document.getElementById('drone-vol').addEventListener('input', (e) => {
+      if (droneGain) droneGain.gain.setValueAtTime(e.target.value, audioCtx.currentTime);
+    });
+
+    // Mute Toggles
+    const setupToggle = (btnId, gainNodeGetter, sliderId) => {
+      const btn = document.getElementById(btnId);
+      btn.addEventListener('click', () => {
+        btn.classList.toggle('active');
+        const active = btn.classList.contains('active');
+        btn.innerText = active ? 'ON' : 'OFF';
+        const sliderVal = document.getElementById(sliderId).value;
+        const gain = gainNodeGetter();
+        if (gain) gain.gain.setValueAtTime(active ? sliderVal : 0, audioCtx.currentTime);
+      });
+    };
+
+    setupToggle('rain-toggle', () => rainGain, 'rain-vol');
+    setupToggle('fire-toggle', () => fireGain, 'fire-vol');
+    setupToggle('wind-toggle', () => windGain, 'wind-vol');
+    setupToggle('drone-toggle', () => droneGain, 'drone-vol');
+
+    document.getElementById('thunder-btn').addEventListener('click', triggerThunder);
   </script>
 </body>
 </html>
