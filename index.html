@@ -3,15 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AstroForge — 3D Astrophysics Sandbox & Worldbuilder</title>
+  <title>Aegis Sub-1 — Deep Ocean Exploration Simulator</title>
   <style>
     :root {
-      --accent: #00f3ff;
-      --accent-glow: rgba(0, 243, 255, 0.4);
-      --danger: #ff3366;
-      --bg-dark: #030508;
-      --panel-bg: rgba(8, 12, 22, 0.88);
-      --border: rgba(0, 243, 255, 0.22);
+      --hud-cyan: #00f3ff;
+      --hud-green: #00ffaa;
+      --hud-bg: rgba(2, 12, 24, 0.85);
+      --hud-border: rgba(0, 243, 255, 0.3);
     }
 
     * { box-sizing: border-box; }
@@ -20,710 +18,359 @@
       margin: 0; padding: 0;
       width: 100%; height: 100%;
       overflow: hidden;
-      background-color: var(--bg-dark);
+      background-color: #010610;
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       color: #e2e8f0;
       user-select: none;
     }
 
+    /* 3D Canvas */
     #webgl-canvas {
       position: absolute; top: 0; left: 0;
       width: 100%; height: 100%;
       z-index: 1;
     }
 
+    /* Submarine Porthole / Cockpit Frame Overlay */
+    .cockpit-overlay {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 10;
+      pointer-events: none;
+      box-shadow: inset 0 0 120px rgba(0,0,0,0.95), inset 0 0 400px rgba(0, 15, 30, 0.8);
+      border: 28px solid #080d14;
+      display: flex; flex-direction: column;
+      justify-content: space-between;
+      padding: 24px;
+    }
+
+    /* Porthole Glass Vignette & Scanlines */
+    .porthole-vignette {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(circle at center, transparent 55%, rgba(1, 8, 18, 0.85) 85%, rgba(0, 0, 0, 0.98) 100%);
+      pointer-events: none;
+    }
+
+    /* HUD Top Bar */
     header {
-      position: absolute; top: 16px; left: 16px;
-      z-index: 10; pointer-events: none;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      z-index: 15;
+    }
+
+    .vessel-title {
+      background: var(--hud-bg);
+      border: 1px solid var(--hud-border);
+      padding: 10px 18px; border-radius: 12px;
+      backdrop-filter: blur(10px);
     }
 
     .badge {
-      background: rgba(0, 243, 255, 0.12);
-      color: var(--accent);
-      border: 1px solid var(--accent);
-      padding: 3px 10px;
-      border-radius: 20px;
-      font-size: 0.65rem;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      font-weight: 700;
+      background: rgba(0, 243, 255, 0.15);
+      color: var(--hud-cyan);
+      border: 1px solid var(--hud-cyan);
+      padding: 2px 8px; border-radius: 10px;
+      font-size: 0.65rem; letter-spacing: 2px;
+      text-transform: uppercase; font-weight: 700;
     }
 
-    h1 {
-      font-size: 1.6rem; margin: 6px 0 2px;
-      color: #fff;
-      text-shadow: 0 0 16px var(--accent-glow);
+    h1 { font-size: 1.3rem; margin: 4px 0 0; color: #fff; letter-spacing: 1px; }
+
+    /* Sonar Radar Widget */
+    .sonar-box {
+      width: 110px; height: 110px;
+      background: var(--hud-bg);
+      border: 1px solid var(--hud-border);
+      border-radius: 50%;
+      position: relative; overflow: hidden;
+      box-shadow: 0 0 15px rgba(0, 243, 255, 0.15);
     }
 
-    p.subtitle { color: #94a3b8; margin: 0; font-size: 0.8rem; }
-
-    .hud-panel {
-      position: absolute;
-      background: var(--panel-bg);
-      backdrop-filter: blur(16px);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 16px; z-index: 10;
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85);
-      max-height: calc(100vh - 40px);
-      overflow-y: auto;
+    .sonar-sweep {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      border-radius: 50%;
+      background: conic-gradient(from 0deg, rgba(0,255,170,0.4) 0deg, transparent 60deg);
+      animation: sweep 3s linear infinite;
     }
 
-    .hud-panel::-webkit-scrollbar { width: 4px; }
-    .hud-panel::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 4px; }
-
-    /* Left Panel - Telemetry & Lore */
-    .left-panel { top: 90px; left: 16px; width: 310px; }
-
-    /* Right Panel - Generator & Controls */
-    .right-panel { top: 16px; right: 16px; width: 330px; }
-
-    .panel-title {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: var(--accent);
-      font-weight: 700;
-      margin-bottom: 10px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      padding-bottom: 5px;
-      display: flex; justify-content: space-between; align-items: center;
+    .sonar-grid {
+      position: absolute; top: 10%; left: 10%; width: 80%; height: 80%;
+      border: 1px dashed rgba(0, 255, 170, 0.3); border-radius: 50%;
     }
 
-    .control-group { margin-bottom: 12px; }
-
-    .control-group label {
-      display: flex; justify-content: space-between;
-      font-size: 0.78rem; color: #94a3b8; margin-bottom: 4px;
+    .sonar-center {
+      position: absolute; top: 50%; left: 50%; width: 6px; height: 6px;
+      background: var(--hud-green); border-radius: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 8px var(--hud-green);
     }
 
-    input[type="range"] {
-      width: 100%; height: 4px;
-      border-radius: 2px;
-      accent-color: var(--accent);
-      background: rgba(255,255,255,0.1);
+    @keyframes sweep {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
     }
 
-    input[type="color"] {
-      width: 100%; height: 32px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background: transparent; cursor: pointer;
+    /* Telemetry HUD Bottom */
+    .telemetry-bar {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      z-index: 15;
     }
 
-    input[type="text"], textarea {
-      width: 100%; background: rgba(0,0,0,0.4);
-      border: 1px solid var(--border);
-      color: #fff; padding: 6px 10px;
-      border-radius: 6px; font-size: 0.8rem;
+    .stat-card {
+      background: var(--hud-bg);
+      border: 1px solid var(--hud-border);
+      padding: 12px 18px; border-radius: 12px;
+      backdrop-filter: blur(10px);
+      min-width: 140px;
     }
 
-    .btn-grid {
-      display: grid; grid-template-columns: repeat(2, 1fr);
-      gap: 6px; margin-top: 8px;
+    .stat-lbl { font-size: 0.65rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
+    .stat-val { font-size: 1.2rem; font-weight: bold; color: var(--hud-cyan); margin-top: 2px; }
+
+    .controls-card {
+      background: var(--hud-bg);
+      border: 1px solid var(--hud-border);
+      padding: 12px 18px; border-radius: 12px;
+      backdrop-filter: blur(10px); font-size: 0.75rem; color: #94a3b8;
     }
 
-    button {
-      background: rgba(255, 255, 255, 0.05);
-      color: #cbd5e1;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      padding: 7px 10px; border-radius: 6px;
-      cursor: pointer; font-size: 0.78rem; font-weight: 600;
-      transition: all 0.2s ease;
-      display: flex; align-items: center; justify-content: center; gap: 6px;
-    }
-
-    button:hover {
-      background: rgba(0, 243, 255, 0.2);
-      border-color: var(--accent); color: #fff;
-    }
-
-    button.active {
-      background: var(--accent); color: #030508;
-      border-color: var(--accent);
-      box-shadow: 0 0 10px var(--accent-glow);
-    }
-
-    button.btn-danger {
-      border-color: var(--danger); color: #ff88a5;
-    }
-    button.btn-danger:hover {
-      background: var(--danger); color: #fff;
-    }
-
-    .stats-grid {
-      display: grid; grid-template-columns: repeat(2, 1fr);
-      gap: 6px; margin-bottom: 10px;
-    }
-
-    .stat-box {
-      background: rgba(0, 0, 0, 0.45);
-      padding: 6px 8px; border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    .stat-lbl { font-size: 0.62rem; color: #64748b; text-transform: uppercase; }
-    .stat-val { font-size: 0.88rem; font-weight: bold; color: #fff; margin-top: 2px; }
-
-    .tag-habitable {
-      display: inline-block; padding: 2px 8px; border-radius: 10px;
-      font-size: 0.65rem; font-weight: bold; text-transform: uppercase;
-    }
-    .tag-yes { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid #22c55e; }
-    .tag-no { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
-
-    /* Toast Notification */
-    #toast {
-      position: absolute; bottom: 20px; left: 50%;
-      transform: translateX(-50%) translateY(100px);
-      background: var(--accent); color: #030508;
-      padding: 8px 18px; border-radius: 20px;
-      font-weight: 700; font-size: 0.82rem;
-      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      z-index: 100; box-shadow: 0 0 20px var(--accent-glow);
-    }
-    #toast.show { transform: translateX(-50%) translateY(0); }
-
-    .hint-bar {
-      position: absolute; bottom: 12px; right: 16px;
-      font-size: 0.72rem; color: #64748b; z-index: 10; pointer-events: none;
-    }
+    .controls-card span { color: #fff; font-weight: bold; }
   </style>
 
-  <!-- Three.js + OrbitControls -->
+  <!-- Three.js Engine -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
 
   <canvas id="webgl-canvas"></canvas>
 
-  <header>
-    <span class="badge">Astro Engine v2.0</span>
-    <h1>AstroForge</h1>
-    <p class="subtitle">Interactive Gravity Sandbox & Worldbuilder</p>
-  </header>
-
-  <!-- Left HUD: Telemetry & Lore -->
-  <div class="hud-panel left-panel">
-    <div class="panel-title">
-      <span>Target Telemetry</span>
-      <span id="target-hab-tag" class="tag-habitable tag-no">Uninhabitable</span>
-    </div>
-
-    <div class="control-group">
-      <input type="text" id="target-name-input" value="Terran Prime" placeholder="Planet Name...">
-    </div>
-
-    <div class="stats-grid">
-      <div class="stat-box">
-        <div class="stat-lbl">Gravity (g)</div>
-        <div class="stat-val" id="stat-gravity">1.00 g</div>
+  <!-- Submarine Cockpit Frame & HUD -->
+  <div class="porthole-vignette"></div>
+  <div class="cockpit-overlay">
+    <header>
+      <div class="vessel-title">
+        <span class="badge">SYSTEM ONLINE</span>
+        <h1>AEGIS SUB-1</h1>
       </div>
-      <div class="stat-box">
-        <div class="stat-lbl">Surf. Temp</div>
-        <div class="stat-val" id="stat-temp">288 K</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-lbl">Escape Vel</div>
-        <div class="stat-val" id="stat-escape">11.2 km/s</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-lbl">Orbital Distance</div>
-        <div class="stat-val" id="stat-distance">1.00 AU</div>
-      </div>
-    </div>
 
-    <div class="panel-title">Worldbuilding Lore</div>
-    <div class="control-group">
-      <textarea id="target-lore" rows="3" placeholder="Enter notes about atmosphere, civilization, or resources..."></textarea>
-    </div>
+      <!-- Rotating Sonar Display -->
+      <div class="sonar-box">
+        <div class="sonar-grid"></div>
+        <div class="sonar-sweep"></div>
+        <div class="sonar-center"></div>
+      </div>
+    </header>
 
-    <div class="btn-grid">
-      <button onclick="copyShareURL()">🔗 Share System Link</button>
-      <button onclick="toggleAudio()" id="audio-btn">🔊 Ambient Sound</button>
+    <div class="telemetry-bar">
+      <div class="stat-card">
+        <div class="stat-lbl">CURRENT DEPTH</div>
+        <div class="stat-val" id="tele-depth">320 M</div>
+      </div>
+
+      <div class="controls-card">
+        🕹️ <span>W / S</span>: Throttle Forward/Back | <span>A / D</span>: Turn Left/Right<br>
+        ⬆️ <span>SPACE</span>: Ascend | ⬇️ <span>SHIFT</span>: Descend | 🖱️ <span>Mouse</span>: Look
+      </div>
+
+      <div class="stat-card" style="text-align: right;">
+        <div class="stat-lbl">HEADING / SPEED</div>
+        <div class="stat-val" id="tele-speed">0.0 KTS</div>
+      </div>
     </div>
   </div>
-
-  <!-- Right HUD: Builder & Sandbox Tools -->
-  <div class="hud-panel right-panel">
-    <div class="panel-title">System Controls</div>
-    
-    <div class="control-group">
-      <label><span>Sim Speed</span> <span id="speed-val">1.0x</span></label>
-      <input type="range" id="speed-slider" min="0" max="4" step="0.1" value="1">
-    </div>
-
-    <div class="btn-grid">
-      <button onclick="toggleHabZone()" id="hab-btn">🟢 Goldilocks Zone</button>
-      <button onclick="spawnAsteroidBelt()">☄️ Asteroid Belt</button>
-    </div>
-
-    <div class="panel-title" style="margin-top: 14px;">Selected Body Editor</div>
-    
-    <div class="control-group">
-      <label><span>Radius / Scale</span> <span id="radius-val">2.0</span></label>
-      <input type="range" id="radius-slider" min="0.5" max="6.0" step="0.1" value="2.0">
-    </div>
-
-    <div class="control-group">
-      <label><span>Orbital Distance</span> <span id="orbit-val">22</span></label>
-      <input type="range" id="orbit-slider" min="10" max="60" step="1" value="22">
-    </div>
-
-    <div class="control-group">
-      <label><span>Surface Color</span></label>
-      <input type="color" id="planet-color-picker" value="#2b82c5">
-    </div>
-
-    <div class="btn-grid">
-      <button onclick="toggleRings()">🪐 Toggle Rings</button>
-      <button onclick="addMoon()">🌙 Add Moon</button>
-    </div>
-
-    <div class="btn-grid" style="margin-top: 6px;">
-      <button onclick="spawnNewPlanet()">➕ Add New Planet</button>
-      <button onclick="deleteSelectedPlanet()" class="btn-danger">🗑️ Destroy Body</button>
-    </div>
-
-    <div class="panel-title" style="margin-top: 14px;">Focus Camera</div>
-    <div class="btn-grid" id="focus-btn-container"></div>
-  </div>
-
-  <div id="toast">Link copied to clipboard!</div>
-  <div class="hint-bar">🖱️ Left Click: Rotate | Right Click: Pan | Scroll: Zoom</div>
 
   <script>
-    // --- Audio Engine (Web Audio API) ---
-    let audioCtx = null, droneOsc1 = null, droneOsc2 = null, isAudioPlaying = false;
-
-    function initAudio() {
-      if (audioCtx) return;
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      
-      droneOsc1 = audioCtx.createOscillator();
-      droneOsc2 = audioCtx.createOscillator();
-      const filter = audioCtx.createBiquadFilter();
-      const gain = audioCtx.createGain();
-
-      droneOsc1.type = 'sine'; droneOsc1.frequency.value = 55;
-      droneOsc2.type = 'triangle'; droneOsc2.frequency.value = 110.5;
-
-      filter.type = 'lowpass'; filter.frequency.value = 220;
-      gain.gain.value = 0.08;
-
-      droneOsc1.connect(filter);
-      droneOsc2.connect(filter);
-      filter.connect(gain);
-      gain.connect(audioCtx.destination);
-
-      droneOsc1.start();
-      droneOsc2.start();
-      isAudioPlaying = true;
-    }
-
-    function toggleAudio() {
-      if (!audioCtx) {
-        initAudio();
-        document.getElementById('audio-btn').innerText = '🔇 Mute Sound';
-      } else {
-        if (audioCtx.state === 'suspended') {
-          audioCtx.resume();
-          document.getElementById('audio-btn').innerText = '🔇 Mute Sound';
-        } else if (audioCtx.state === 'running') {
-          audioCtx.suspend();
-          document.getElementById('audio-btn').innerText = '🔊 Ambient Sound';
-        }
-      }
-    }
-
-    // --- 3D Scene & Renderer Setup ---
+    // --- 3D Scene & Rendering Setup ---
     const canvas = document.getElementById('webgl-canvas');
     const scene = new THREE.Scene();
 
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
-    camera.position.set(0, 40, 75);
+    // Deep Underwater Fog
+    const oceanFogColor = 0x021024;
+    scene.background = new THREE.Color(oceanFogColor);
+    scene.fog = new THREE.FogExp2(oceanFogColor, 0.018);
+
+    const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 300);
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-    const controls = new THREE.OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
+    // --- Submarine Vehicle Rig ---
+    const submarine = new THREE.Group();
+    submarine.position.set(0, 20, 0);
+    scene.add(submarine);
+    submarine.add(camera);
 
-    // --- Lighting ---
-    const ambientLight = new THREE.AmbientLight(0x222238, 1.2);
+    // --- Dual Submarine Headlights ---
+    const leftHeadlight = new THREE.SpotLight(0x00f3ff, 8, 90, Math.PI / 5, 0.5, 1);
+    leftHeadlight.position.set(-2, -0.5, -1);
+    leftHeadlight.target.position.set(-2, -0.5, -50);
+    submarine.add(leftHeadlight);
+    submarine.add(leftHeadlight.target);
+
+    const rightHeadlight = new THREE.SpotLight(0xfff5cc, 10, 110, Math.PI / 4, 0.4, 1);
+    rightHeadlight.position.set(2, -0.5, -1);
+    rightHeadlight.target.position.set(2, -0.5, -50);
+    submarine.add(rightHeadlight);
+    submarine.add(rightHeadlight.target);
+
+    // Soft Ambient Underwater Light
+    const ambientLight = new THREE.AmbientLight(0x0a2540, 1.5);
     scene.add(ambientLight);
 
-    const sunLight = new THREE.PointLight(0xfff8ee, 2.8, 500);
-    scene.add(sunLight);
+    // --- Procedural Seabed Terrain ---
+    const terrainGeo = new THREE.PlaneGeometry(500, 500, 100, 100);
+    terrainGeo.rotateX(-Math.PI / 2);
 
-    // --- Starfield Background ---
-    const starGeo = new THREE.BufferGeometry();
-    const starCount = 4000;
-    const starPos = new Float32Array(starCount * 3);
-    for (let i = 0; i < starCount * 3; i++) starPos[i] = (Math.random() - 0.5) * 600;
-    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-    const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.8, transparent: true, opacity: 0.85 });
-    scene.add(new THREE.Points(starGeo, starMat));
+    const pos = terrainGeo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const z = pos.getZ(i);
+      // Generate rolling underwater mountains and trenches
+      const y = Math.sin(x * 0.03) * Math.cos(z * 0.03) * 8 + Math.sin(x * 0.08) * 4;
+      pos.setY(i, y - 15);
+    }
+    terrainGeo.computeVertexNormals();
 
-    // --- Central Sun ---
-    const sunGeo = new THREE.SphereGeometry(6, 32, 32);
-    const sunMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
-    const sunMesh = new THREE.Mesh(sunGeo, sunMat);
-    scene.add(sunMesh);
+    const terrainMat = new THREE.MeshStandardMaterial({
+      color: 0x0a1d33,
+      roughness: 0.9,
+      metalness: 0.1,
+      wireframe: false
+    });
+    const seabed = new THREE.Mesh(terrainGeo, terrainMat);
+    scene.add(seabed);
 
-    // Sun Glow
-    const sunGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(6.8, 32, 32),
-      new THREE.MeshBasicMaterial({ color: 0xffdd44, transparent: true, opacity: 0.22 })
-    );
-    scene.add(sunGlow);
+    // --- Floating Marine Snow / Plankton Particles ---
+    const particleCount = 2000;
+    const particleGeo = new THREE.BufferGeometry();
+    const particlePos = new Float32Array(particleCount * 3);
 
-    // --- Goldilocks Zone Ring ---
-    const habGeo = new THREE.RingGeometry(20, 32, 64);
-    const habMat = new THREE.MeshBasicMaterial({ color: 0x22c55e, side: THREE.DoubleSide, transparent: true, opacity: 0.08 });
-    const habMesh = new THREE.Mesh(habGeo, habMat);
-    habMesh.rotation.x = Math.PI / 2;
-    scene.add(habMesh);
-    let habZoneVisible = true;
+    for (let i = 0; i < particleCount * 3; i += 3) {
+      particlePos[i] = (Math.random() - 0.5) * 160;
+      particlePos[i+1] = Math.random() * 80;
+      particlePos[i+2] = (Math.random() - 0.5) * 160;
+    }
+    particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
 
-    function toggleHabZone() {
-      habZoneVisible = !habZoneVisible;
-      habMesh.visible = habZoneVisible;
-      document.getElementById('hab-btn').classList.toggle('active', habZoneVisible);
+    const particleMat = new THREE.PointsMaterial({
+      color: 0x00f3ff,
+      size: 0.4,
+      transparent: true,
+      opacity: 0.6
+    });
+    const marineSnow = new THREE.Points(particleGeo, particleMat);
+    scene.add(marineSnow);
+
+    // --- Bioluminescent Glowing Jellyfish & Sea Life ---
+    const jellies = [];
+    function createJellyfish(x, y, z, colorHex) {
+      const group = new THREE.Group();
+      group.position.set(x, y, z);
+
+      const capGeo = new THREE.SphereGeometry(1.5, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+      const capMat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.7, wireframe: true });
+      const cap = new THREE.Mesh(capGeo, capMat);
+      group.add(cap);
+
+      const light = new THREE.PointLight(colorHex, 2, 15);
+      group.add(light);
+
+      scene.add(group);
+      jellies.push({ group, startY: y, speed: 0.5 + Math.random() * 0.5 });
     }
 
-    // --- Procedural Canvas Texture Generator ---
-    function generatePlanetTexture(hexColor) {
-      const canvas = document.createElement('canvas');
-      canvas.width = 512; canvas.height = 256;
-      const ctx = canvas.getContext('2d');
-
-      ctx.fillStyle = hexColor;
-      ctx.fillRect(0, 0, 512, 256);
-
-      for (let i = 0; i < 800; i++) {
-        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.15)';
-        ctx.fillRect(Math.random() * 512, Math.random() * 256, Math.random() * 12, Math.random() * 6);
-      }
-      return new THREE.CanvasTexture(canvas);
-    }
-
-    // --- Planetary System Data & State ---
-    let planets = [];
-    let asteroids = [];
-    let selectedIndex = 0;
-    let simSpeed = 1.0;
-
-    function createOrbitRing(radius) {
-      const points = [];
-      for (let i = 0; i <= 64; i++) {
-        const theta = (i / 64) * Math.PI * 2;
-        points.push(new THREE.Vector3(Math.cos(theta) * radius, 0, Math.sin(theta) * radius));
-      }
-      const ringGeo = new THREE.BufferGeometry().setFromPoints(points);
-      const ringMat = new THREE.LineBasicMaterial({ color: 0x00f3ff, transparent: true, opacity: 0.15 });
-      const orbitLine = new THREE.Line(ringGeo, ringMat);
-      scene.add(orbitLine);
-      return orbitLine;
-    }
-
-    function addPlanetData(name, color, size, distance, lore = "") {
-      const orbitLine = createOrbitRing(distance);
-      const pivot = new THREE.Group();
-      scene.add(pivot);
-
-      const texture = generatePlanetTexture(color);
-      const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(size, 32, 32),
-        new THREE.MeshStandardMaterial({ map: texture, roughness: 0.6, metalness: 0.2 })
+    // Spawn Bioluminescent Clusters
+    for (let i = 0; i < 25; i++) {
+      const color = i % 2 === 0 ? 0x00ffaa : 0xff00aa;
+      createJellyfish(
+        (Math.random() - 0.5) * 200,
+        5 + Math.random() * 30,
+        (Math.random() - 0.5) * 200,
+        color
       );
-      mesh.position.x = distance;
-      pivot.add(mesh);
-
-      const speed = (0.3 / Math.sqrt(distance)) * 0.2;
-
-      const planetObj = {
-        name, color, size, distance, speed, lore,
-        pivot, mesh, orbitLine, rings: null, moons: []
-      };
-
-      planets.push(planetObj);
-      updateFocusButtons();
-      selectPlanet(planets.length - 1);
     }
 
-    // Initialize Default Planets
-    addPlanetData('Terran Prime', '#2b82c5', 2.0, 22, 'Water-rich planet with nitrogen-oxygen atmosphere.');
-    addPlanetData('Aurelia Giant', '#e09f3e', 3.8, 36, 'Massive gas giant rich in atmospheric helium.');
-    addPlanetData('Pyros Outpost', '#d9381e', 1.4, 48, 'High-density lava world with active geothermal vents.');
+    // --- Keyboard & Navigation Controls ---
+    const keys = {};
+    let velocity = new THREE.Vector3();
+    let yaw = 0, pitch = 0;
+    let mouseX = 0, mouseY = 0;
 
-    // Add rings to Aurelia
-    toggleRings(1);
+    window.addEventListener('keydown', (e) => keys[e.code] = true);
+    window.addEventListener('keyup', (e) => keys[e.code] = false);
 
-    // --- Asteroid Belt Generator ---
-    function spawnAsteroidBelt() {
-      const count = 300;
-      const geo = new THREE.DodecahedronGeometry(0.3, 0);
-      const mat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.9 });
-      
-      for (let i = 0; i < count; i++) {
-        const dist = 28 + (Math.random() - 0.5) * 4;
-        const angle = Math.random() * Math.PI * 2;
-        const mesh = new THREE.Mesh(geo, mat);
-        
-        mesh.position.set(Math.cos(angle) * dist, (Math.random() - 0.5) * 1.5, Math.sin(angle) * dist);
-        scene.add(mesh);
-        asteroids.push({ mesh, dist, angle, speed: (0.3 / Math.sqrt(dist)) * 0.15 });
-      }
-      showToast('Asteroid belt deployed!');
-    }
-
-    // --- Interactive Selector & Editor ---
-    function selectPlanet(index) {
-      if (index < 0 || index >= planets.length) return;
-      selectedIndex = index;
-      const p = planets[index];
-
-      document.getElementById('target-name-input').value = p.name;
-      document.getElementById('target-lore').value = p.lore;
-      document.getElementById('radius-slider').value = p.size;
-      document.getElementById('radius-val').innerText = p.size.toFixed(1);
-      document.getElementById('orbit-slider').value = p.distance;
-      document.getElementById('orbit-val').innerText = p.distance;
-      document.getElementById('planet-color-picker').value = p.color;
-
-      calculateTelemetry(p);
-      updateFocusButtons();
-    }
-
-    function calculateTelemetry(p) {
-      // Astrophysics approximations
-      const gravity = (p.size / 2.0).toFixed(2);
-      const escapeVel = (11.2 * Math.sqrt(p.size)).toFixed(1);
-      const tempK = Math.round(380 / Math.sqrt(p.distance / 12));
-      const auDist = (p.distance / 22).toFixed(2);
-
-      document.getElementById('stat-gravity').innerText = gravity + ' g';
-      document.getElementById('stat-escape').innerText = escapeVel + ' km/s';
-      document.getElementById('stat-temp').innerText = tempK + ' K';
-      document.getElementById('stat-distance').innerText = auDist + ' AU';
-
-      const habTag = document.getElementById('target-hab-tag');
-      if (tempK >= 240 && tempK <= 325) {
-        habTag.className = 'tag-habitable tag-yes';
-        habTag.innerText = 'Habitable Zone';
-      } else {
-        habTag.className = 'tag-habitable tag-no';
-        habTag.innerText = 'Uninhabitable';
-      }
-    }
-
-    function updateFocusButtons() {
-      const container = document.getElementById('focus-btn-container');
-      container.innerHTML = '';
-      
-      // Sun Focus
-      const sunBtn = document.createElement('button');
-      sunBtn.innerText = '☀️ Sun';
-      sunBtn.onclick = () => { controls.target.set(0, 0, 0); };
-      container.appendChild(sunBtn);
-
-      planets.forEach((p, idx) => {
-        const btn = document.createElement('button');
-        btn.innerText = `🪐 ${p.name}`;
-        if (idx === selectedIndex) btn.classList.add('active');
-        btn.onclick = () => {
-          selectPlanet(idx);
-          const worldPos = new THREE.Vector3();
-          p.mesh.getWorldPosition(worldPos);
-          controls.target.copy(worldPos);
-        };
-        container.appendChild(btn);
-      });
-    }
-
-    // --- Dynamic Editor Controls ---
-    document.getElementById('radius-slider').addEventListener('input', (e) => {
-      const val = parseFloat(e.target.value);
-      document.getElementById('radius-val').innerText = val.toFixed(1);
-      if (planets[selectedIndex]) {
-        planets[selectedIndex].size = val;
-        planets[selectedIndex].mesh.geometry.dispose();
-        planets[selectedIndex].mesh.geometry = new THREE.SphereGeometry(val, 32, 32);
-        calculateTelemetry(planets[selectedIndex]);
-      }
+    window.addEventListener('mousemove', (e) => {
+      // Subtle cockpit mouse look
+      mouseX = (e.clientX / window.innerWidth - 0.5) * 0.4;
+      mouseY = (e.clientY / window.innerHeight - 0.5) * 0.3;
     });
 
-    document.getElementById('orbit-slider').addEventListener('input', (e) => {
-      const val = parseFloat(e.target.value);
-      document.getElementById('orbit-val').innerText = val;
-      if (planets[selectedIndex]) {
-        const p = planets[selectedIndex];
-        p.distance = val;
-        p.mesh.position.x = val;
-        p.speed = (0.3 / Math.sqrt(val)) * 0.2;
-        
-        // Rebuild Orbit Line
-        scene.remove(p.orbitLine);
-        p.orbitLine = createOrbitRing(val);
-        calculateTelemetry(p);
-      }
-    });
+    // --- Physics & Animation Loop ---
+    const clock = new THREE.Clock();
 
-    document.getElementById('planet-color-picker').addEventListener('input', (e) => {
-      const color = e.target.value;
-      if (planets[selectedIndex]) {
-        planets[selectedIndex].color = color;
-        planets[selectedIndex].mesh.material.map = generatePlanetTexture(color);
-        planets[selectedIndex].mesh.material.needsUpdate = true;
-      }
-    });
-
-    document.getElementById('target-name-input').addEventListener('input', (e) => {
-      if (planets[selectedIndex]) {
-        planets[selectedIndex].name = e.target.value;
-        updateFocusButtons();
-      }
-    });
-
-    document.getElementById('target-lore').addEventListener('input', (e) => {
-      if (planets[selectedIndex]) {
-        planets[selectedIndex].lore = e.target.value;
-      }
-    });
-
-    document.getElementById('speed-slider').addEventListener('input', (e) => {
-      simSpeed = parseFloat(e.target.value);
-      document.getElementById('speed-val').innerText = simSpeed.toFixed(1) + 'x';
-    });
-
-    function toggleRings(targetIdx = selectedIndex) {
-      const p = planets[targetIdx];
-      if (!p) return;
-
-      if (p.rings) {
-        p.mesh.remove(p.rings);
-        p.rings = null;
-      } else {
-        const ringGeo = new THREE.RingGeometry(p.size * 1.4, p.size * 2.3, 32);
-        const ringMat = new THREE.MeshBasicMaterial({ color: 0xd4af37, side: THREE.DoubleSide, transparent: true, opacity: 0.6 });
-        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-        ringMesh.rotation.x = Math.PI / 2;
-        p.mesh.add(ringMesh);
-        p.rings = ringMesh;
-      }
-    }
-
-    function addMoon() {
-      const p = planets[selectedIndex];
-      if (!p) return;
-
-      const moonMesh = new THREE.Mesh(
-        new THREE.SphereGeometry(p.size * 0.25, 16, 16),
-        new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.8 })
-      );
-      
-      const moonPivot = new THREE.Group();
-      p.mesh.add(moonPivot);
-      moonMesh.position.x = p.size * 2.2;
-      moonPivot.add(moonMesh);
-      p.moons.push({ pivot: moonPivot, speed: 0.03 });
-      showToast('Moon deployed to orbit!');
-    }
-
-    function spawnNewPlanet() {
-      const name = `World ${planets.length + 1}`;
-      const color = '#' + Math.floor(Math.random()*16777215).toString(16);
-      const dist = 15 + planets.length * 8;
-      addPlanetData(name, color, 1.8, dist, 'New planetary body.');
-      showToast('New planet created!');
-    }
-
-    function deleteSelectedPlanet() {
-      if (planets.length <= 1) return showToast('Cannot delete sole planet!');
-      const p = planets[selectedIndex];
-
-      scene.remove(p.pivot);
-      scene.remove(p.orbitLine);
-      planets.splice(selectedIndex, 1);
-
-      selectPlanet(Math.max(0, selectedIndex - 1));
-      showToast('Planet destroyed!');
-    }
-
-    // --- State Link Sharing ---
-    function copyShareURL() {
-      const data = planets.map(p => ({ n: p.name, c: p.color, s: p.size, d: p.distance, l: p.lore }));
-      const hash = btoa(JSON.stringify(data));
-      const url = window.location.origin + window.location.pathname + '#' + hash;
-      
-      navigator.clipboard.writeText(url);
-      showToast('System URL copied!');
-    }
-
-    function loadSystemFromURL() {
-      if (!window.location.hash) return;
-      try {
-        const data = JSON.parse(atob(window.location.hash.substring(1)));
-        
-        // Clear existing
-        planets.forEach(p => { scene.remove(p.pivot); scene.remove(p.orbitLine); });
-        planets = [];
-
-        data.forEach(item => addPlanetData(item.n, item.c, item.s, item.d, item.l));
-        showToast('Loaded system from URL!');
-      } catch (e) { console.error(e); }
-    }
-
-    function showToast(msg) {
-      const toast = document.getElementById('toast');
-      toast.innerText = msg;
-      toast.classList.add('show');
-      setTimeout(() => toast.classList.remove('show'), 2500);
-    }
-
-    // --- Main Simulation Loop ---
     function animate() {
       requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      const time = clock.getElapsedTime();
 
-      sunMesh.rotation.y += 0.002;
+      // Steering Input Processing
+      const speedFactor = 18.0 * delta;
+      const turnSpeed = 1.2 * delta;
 
-      // Rotate Planets & Orbit
-      planets.forEach(p => {
-        p.pivot.rotation.y += p.speed * simSpeed;
-        p.mesh.rotation.y += 0.008;
+      if (keys['KeyW']) velocity.z = THREE.MathUtils.lerp(velocity.z, -speedFactor, 0.05);
+      else if (keys['KeyS']) velocity.z = THREE.MathUtils.lerp(velocity.z, speedFactor * 0.5, 0.05);
+      else velocity.z = THREE.MathUtils.lerp(velocity.z, 0, 0.03);
 
-        // Animate Moons
-        p.moons.forEach(m => {
-          m.pivot.rotation.y += m.speed * simSpeed;
-        });
+      if (keys['KeyA']) yaw += turnSpeed;
+      if (keys['KeyD']) yaw -= turnSpeed;
+
+      if (keys['Space']) velocity.y = THREE.MathUtils.lerp(velocity.y, speedFactor * 0.6, 0.05);
+      else if (keys['ShiftLeft'] || keys['ShiftRight']) velocity.y = THREE.MathUtils.lerp(velocity.y, -speedFactor * 0.6, 0.05);
+      else velocity.y = THREE.MathUtils.lerp(velocity.y, 0, 0.03);
+
+      // Apply Yaw Rotation & Translation
+      submarine.rotation.y = yaw;
+      submarine.translateZ(velocity.z);
+      submarine.position.y += velocity.y;
+
+      // Prevent submarine from going below seabed or breaking water surface
+      submarine.position.y = Math.max( -2, Math.min( 45, submarine.position.y ) );
+
+      // Smooth Cockpit Camera Motion
+      camera.rotation.y = -mouseX;
+      camera.rotation.x = -mouseY;
+
+      // Animate Jellyfish Floating
+      jellies.forEach(j => {
+        j.group.position.y = j.startY + Math.sin(time * j.speed) * 2;
+        j.group.rotation.y += 0.005;
       });
 
-      // Animate Asteroid Belt
-      asteroids.forEach(a => {
-        a.angle += a.speed * simSpeed;
-        a.mesh.position.x = Math.cos(a.angle) * a.dist;
-        a.mesh.position.z = Math.sin(a.angle) * a.dist;
-        a.mesh.rotation.y += 0.01;
-      });
+      // Wrap Plankton Particles around submarine
+      const pPositions = particleGeo.attributes.position.array;
+      for (let i = 0; i < particleCount * 3; i += 3) {
+        if (Math.abs(pPositions[i] - submarine.position.x) > 80) pPositions[i] = submarine.position.x + (Math.random() - 0.5) * 140;
+        if (Math.abs(pPositions[i+2] - submarine.position.z) > 80) pPositions[i+2] = submarine.position.z + (Math.random() - 0.5) * 140;
+      }
+      particleGeo.attributes.position.needsUpdate = true;
 
-      controls.update();
+      // Telemetry HUD Updates
+      const depthMeters = Math.round(500 - submarine.position.y * 8);
+      const currentSpeed = (Math.abs(velocity.z) * 45).toFixed(1);
+      document.getElementById('tele-depth').innerText = depthMeters + ' M';
+      document.getElementById('tele-speed').innerText = currentSpeed + ' KTS';
+
       renderer.render(scene, camera);
     }
 
-    // Handle Window Resizing
+    animate();
+
+    // Window Resize Handler
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
-
-    // Boot Up
-    loadSystemFromURL();
-    animate();
   </script>
 </body>
 </html>
