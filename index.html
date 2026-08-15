@@ -3,450 +3,300 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aegis Deep-Sea Exploration Unit</title>
+  <title>Aegis Submarine Simulator</title>
   <style>
     :root {
       --hud-cyan: #00f3ff;
       --hud-green: #00ffaa;
       --hud-red: #ff3366;
       --hud-amber: #ffb700;
-      --hud-bg: rgba(2, 10, 22, 0.82);
-      --hud-border: rgba(0, 243, 255, 0.3);
+      --hud-bg: rgba(2, 10, 22, 0.85);
+      --hud-border: rgba(0, 243, 255, 0.35);
     }
 
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body, html {
-      margin: 0; padding: 0;
       width: 100%; height: 100%;
-      overflow: hidden;
-      background-color: #010408;
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      color: #e2e8f0;
-      user-select: none;
+      overflow: hidden; background: #000;
+      font-family: monospace, system-ui, sans-serif;
+      color: #e2e8f0; user-select: none;
     }
 
-    /* 3D WebGL Canvas */
-    #webgl-canvas {
+    #render-canvas {
       position: absolute; top: 0; left: 0;
-      width: 100%; height: 100%;
-      z-index: 1;
+      width: 100%; height: 100%; z-index: 1;
     }
 
-    /* Glass Dirt & Subtle Scanline Shader Filter */
-    .glass-overlay {
+    /* Glass Dirt & Vignette Shader Effect */
+    .viewport-overlay {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
       z-index: 5; pointer-events: none;
-      background: radial-gradient(circle at center, transparent 60%, rgba(0, 5, 15, 0.4) 100%);
-      box-shadow: inset 0 0 100px rgba(0, 243, 255, 0.05);
+      background: radial-gradient(circle at center, transparent 55%, rgba(0, 5, 12, 0.65) 100%);
+      box-shadow: inset 0 0 120px rgba(0, 243, 255, 0.08);
     }
 
-    /* Cockpit HUD Overlay Interface */
     .hud-layer {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      z-index: 10; pointer-events: none;
-      padding: 20px; display: flex; flex-direction: column;
-      justify-content: space-between;
+      z-index: 10; pointer-events: none; padding: 24px;
+      display: flex; flex-direction: column; justify-content: space-between;
     }
 
-    header {
-      display: flex; justify-content: space-between; align-items: flex-start;
+    header { display: flex; justify-content: space-between; align-items: flex-start; }
+
+    .vessel-card {
+      background: var(--hud-bg); border: 1px solid var(--hud-border);
+      padding: 12px 20px; border-radius: 8px; backdrop-filter: blur(8px);
     }
 
-    .vessel-badge {
-      background: var(--hud-bg);
-      border: 1px solid var(--hud-border);
-      padding: 10px 18px; border-radius: 10px;
-      backdrop-filter: blur(12px);
+    .badge {
+      font-size: 0.7rem; color: var(--hud-cyan); border: 1px solid var(--hud-cyan);
+      padding: 2px 8px; border-radius: 4px; font-weight: bold; background: rgba(0, 243, 255, 0.1);
     }
 
-    .status-tag {
-      font-size: 0.65rem; color: var(--hud-cyan);
-      border: 1px solid var(--hud-cyan);
-      padding: 2px 8px; border-radius: 12px;
-      letter-spacing: 1.5px; font-weight: 700;
-      background: rgba(0, 243, 255, 0.1);
-    }
+    h1 { font-size: 1.1rem; margin-top: 6px; color: #fff; letter-spacing: 1.5px; }
 
-    h1 { font-size: 1.25rem; margin: 4px 0 0; color: #fff; letter-spacing: 1px; }
-
-    /* Radar Monitor Widget */
+    /* Radar Sonar Scope */
     .radar-box {
-      width: 120px; height: 120px;
-      background: var(--hud-bg);
-      border: 1px solid var(--hud-border);
-      border-radius: 50%; position: relative;
-      overflow: hidden; backdrop-filter: blur(12px);
-      box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+      width: 130px; height: 130px; background: var(--hud-bg);
+      border: 1px solid var(--hud-border); border-radius: 50%;
+      position: relative; overflow: hidden; backdrop-filter: blur(8px);
     }
 
     .radar-sweep {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      border-radius: 50%;
-      background: conic-gradient(from 0deg, rgba(0, 255, 170, 0.45) 0deg, transparent 55deg);
-      animation: radarSweep 3s linear infinite;
+      position: absolute; width: 100%; height: 100%; border-radius: 50%;
+      background: conic-gradient(from 0deg, rgba(0, 255, 170, 0.5) 0deg, transparent 60deg);
+      animation: sweep 2.5s linear infinite;
     }
 
-    .radar-ring {
+    .radar-grid {
       position: absolute; top: 15%; left: 15%; width: 70%; height: 70%;
-      border: 1px dashed rgba(0, 255, 170, 0.35); border-radius: 50%;
+      border: 1px dashed rgba(0, 255, 170, 0.3); border-radius: 50%;
     }
 
     .radar-center {
       position: absolute; top: 50%; left: 50%; width: 6px; height: 6px;
-      background: var(--hud-green); border-radius: 50%;
-      transform: translate(-50%, -50%);
-      box-shadow: 0 0 10px var(--hud-green);
+      background: var(--hud-green); border-radius: 50%; transform: translate(-50%, -50%);
     }
 
-    /* Radar Contact Blip */
-    .radar-blip {
-      position: absolute; width: 5px; height: 5px;
-      background: var(--hud-red); border-radius: 50%;
-      box-shadow: 0 0 8px var(--hud-red);
-      animation: blipPulse 1.5s ease-in-out infinite alternate;
+    .radar-contact {
+      position: absolute; width: 6px; height: 6px; background: var(--hud-red);
+      border-radius: 50%; box-shadow: 0 0 8px var(--hud-red);
     }
 
-    @keyframes radarSweep {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
+    @keyframes sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    .footer-hud { display: flex; justify-content: space-between; align-items: flex-end; }
+
+    .telemetry-card {
+      background: var(--hud-bg); border: 1px solid var(--hud-border);
+      padding: 12px 18px; border-radius: 8px; backdrop-filter: blur(8px); min-width: 160px;
     }
 
-    @keyframes blipPulse {
-      from { opacity: 0.3; transform: scale(0.8); }
-      to { opacity: 1.0; transform: scale(1.4); }
+    .label { font-size: 0.65rem; color: #64748b; text-transform: uppercase; }
+    .val { font-size: 1.2rem; font-weight: bold; color: var(--hud-cyan); margin-top: 2px; }
+    .zone { font-size: 0.75rem; color: var(--hud-amber); font-weight: 600; }
+
+    .controls-card {
+      background: var(--hud-bg); border: 1px solid var(--hud-border);
+      padding: 12px 20px; border-radius: 8px; backdrop-filter: blur(8px);
+      font-size: 0.8rem; line-height: 1.5; color: #cbd5e1;
     }
 
-    /* Telemetry HUD Bottom */
-    .telemetry-row {
-      display: flex; justify-content: space-between; align-items: flex-end;
-    }
-
-    .stat-card {
-      background: var(--hud-bg);
-      border: 1px solid var(--hud-border);
-      padding: 10px 16px; border-radius: 10px;
-      backdrop-filter: blur(12px); min-width: 140px;
-    }
-
-    .stat-lbl { font-size: 0.62rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
-    .stat-val { font-size: 1.15rem; font-weight: bold; color: var(--hud-cyan); margin-top: 2px; }
-
-    .zone-indicator { font-size: 0.72rem; font-weight: 600; color: var(--hud-amber); }
-
-    .help-card {
-      background: var(--hud-bg);
-      border: 1px solid var(--hud-border);
-      padding: 10px 16px; border-radius: 10px;
-      backdrop-filter: blur(12px); font-size: 0.75rem; color: #94a3b8;
-    }
-
-    .help-card span { color: #fff; font-weight: bold; }
+    .controls-card span { color: #fff; font-weight: bold; }
   </style>
-
-  <!-- Three.js Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-  <canvas id="webgl-canvas"></canvas>
-  <div class="glass-overlay"></div>
+  <canvas id="render-canvas"></canvas>
+  <div class="viewport-overlay"></div>
 
-  <!-- Cockpit Heads-Up Display -->
   <div class="hud-layer">
     <header>
-      <div class="vessel-badge">
-        <span class="status-tag">PILOT DECK ACTIVE</span>
-        <h1>AEGIS-IX SUBMARINE</h1>
+      <div class="vessel-card">
+        <span class="badge">SYSTEM READY</span>
+        <h1>AEGIS DEEP-SEA UNIT</h1>
       </div>
-
-      <!-- Rotating Sonar Monitor -->
       <div class="radar-box">
-        <div class="radar-ring"></div>
+        <div class="radar-grid"></div>
         <div class="radar-sweep"></div>
         <div class="radar-center"></div>
-        <div class="radar-blip" id="radar-blip-1" style="top: 32%; left: 68%;"></div>
-        <div class="radar-blip" id="radar-blip-2" style="top: 70%; left: 25%; background: var(--hud-amber); box-shadow: 0 0 8px var(--hud-amber);"></div>
+        <div class="radar-contact" id="contact-1" style="top: 30%; left: 65%;"></div>
       </div>
     </header>
 
-    <div class="telemetry-row">
-      <div class="stat-card">
-        <div class="stat-lbl">DEPTH TELEMETRY</div>
-        <div class="stat-val" id="hud-depth">0 M</div>
-        <div class="zone-indicator" id="hud-zone">SURFACE LEVEL</div>
+    <div class="footer-hud">
+      <div class="telemetry-card">
+        <div class="label">CURRENT DEPTH</div>
+        <div class="val" id="depth-readout">0 M</div>
+        <div class="zone" id="zone-readout">SURFACE ZONE</div>
       </div>
 
-      <div class="help-card">
-        🕹️ <span>W / S</span>: Propel Forward/Back | <span>A / D</span>: Yaw Steer<br>
-        ⬆️ <span>SPACE</span>: Ascend Surface | ⬇️ <span>SHIFT</span>: Dive Abyss<br>
-        🖱️ <span>Mouse Drag</span>: Look 360° inside Submarine Cockpit
+      <div class="controls-card">
+        ⌨️ <span>W/S</span>: Engine Throttle | <span>A/D</span>: Yaw Steer<br>
+        ⬆️ <span>SPACE</span>: Ascent | ⬇️ <span>SHIFT</span>: Descent<br>
+        🖱️ <span>Mouse Drag</span>: 360° Cockpit Camera Look
       </div>
 
-      <div class="stat-card" style="text-align: right;">
-        <div class="stat-lbl">CRUISE SPEED</div>
-        <div class="stat-val" id="hud-speed">0.0 KTS</div>
+      <div class="telemetry-card" style="text-align: right;">
+        <div class="label">PROPULSION SPEED</div>
+        <div class="val" id="speed-readout">0.0 KTS</div>
       </div>
     </div>
   </div>
 
   <script>
-    // --- 3D Scene Initialization ---
-    const canvas = document.getElementById('webgl-canvas');
+    // --- 3D Scene Setup ---
+    const canvas = document.getElementById('render-canvas');
     const scene = new THREE.Scene();
+    
+    const depthFogColor = new THREE.Color(0x010c1e);
+    scene.background = depthFogColor;
+    scene.fog = new THREE.FogExp2(depthFogColor, 0.015);
 
-    const fogColorUnderwater = new THREE.Color(0x021024);
-    const fogColorSurface = new THREE.Color(0x040914);
-    scene.background = fogColorSurface;
-    scene.fog = new THREE.FogExp2(fogColorSurface, 0.012);
-
-    const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 800);
-
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-    // --- Submarine Vessel & Cockpit Rig ---
+    // --- Submarine Rig & Cockpit Structure ---
     const submarine = new THREE.Group();
-    submarine.position.set(0, 0, 0);
     scene.add(submarine);
 
-    // Camera Rig inside Control Room
-    const cockpitPivot = new THREE.Group();
-    cockpitPivot.position.set(0, 0.2, 0);
-    submarine.add(cockpitPivot);
-    cockpitPivot.add(camera);
+    const cameraPivot = new THREE.Group();
+    cameraPivot.position.set(0, 0.2, 0);
+    submarine.add(cameraPivot);
+    cameraPivot.add(camera);
 
-    // --- 1. Submarine Interior Cockpit Geometry ---
-    function buildCockpit() {
-      const cockpitGroup = new THREE.Group();
+    function buildRealisticCockpit() {
+      const cockpit = new THREE.Group();
 
-      // Outer Hull Shell
-      const hullGeo = new THREE.CylinderGeometry(3.2, 3.2, 8, 24, 1, true);
+      // Hull Cylinder
+      const hullGeo = new THREE.CylinderGeometry(2.8, 2.8, 7, 32, 1, true);
       hullGeo.rotateX(Math.PI / 2);
-      const hullMat = new THREE.MeshStandardMaterial({ color: 0x121820, side: THREE.BackSide, roughness: 0.7 });
+      const hullMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8, side: THREE.BackSide });
       const hull = new THREE.Mesh(hullGeo, hullMat);
-      cockpitGroup.add(hull);
+      cockpit.add(hull);
 
-      // Porthole Glass Window Frame
-      const windowRingGeo = new THREE.TorusGeometry(2.2, 0.2, 16, 32);
-      const windowRingMat = new THREE.MeshStandardMaterial({ color: 0x222d3d, metalness: 0.8, roughness: 0.3 });
-      const windowRing = new THREE.Mesh(windowRingGeo, windowRingMat);
-      windowRing.position.set(0, 0, -3.8);
-      cockpitGroup.add(windowRing);
+      // Porthole Window Bezel
+      const bezelGeo = new THREE.TorusGeometry(2.0, 0.15, 16, 48);
+      const bezelMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9, roughness: 0.2 });
+      const bezel = new THREE.Mesh(bezelGeo, bezelMat);
+      bezel.position.set(0, 0, -3.2);
+      cockpit.add(bezel);
 
-      // Glass Pane Mesh
-      const glassGeo = new THREE.CircleGeometry(2.1, 32);
+      // Glass Lens
+      const glassGeo = new THREE.CircleGeometry(1.95, 32);
       const glassMat = new THREE.MeshPhysicalMaterial({
-        color: 0x00f3ff, transparent: true, opacity: 0.15,
-        roughness: 0.1, transmission: 0.9, thickness: 0.5
+        color: 0x00f3ff, transparent: true, opacity: 0.12, transmission: 0.9, roughness: 0.1
       });
-      const glassPane = new THREE.Mesh(glassGeo, glassMat);
-      glassPane.position.set(0, 0, -3.75);
-      cockpitGroup.add(glassPane);
+      const glass = new THREE.Mesh(glassGeo, glassMat);
+      glass.position.set(0, 0, -3.15);
+      cockpit.add(glass);
 
-      // Dashboard Console (Front Controls)
-      const dashGeo = new THREE.BoxGeometry(4.8, 1.2, 1.6);
-      const dashMat = new THREE.MeshStandardMaterial({ color: 0x0a0f18, metalness: 0.5, roughness: 0.5 });
+      // Control Dash
+      const dashGeo = new THREE.BoxGeometry(4.2, 1.0, 1.4);
+      const dashMat = new THREE.MeshStandardMaterial({ color: 0x020617, roughness: 0.6 });
       const dash = new THREE.Mesh(dashGeo, dashMat);
-      dash.position.set(0, -1.2, -2.8);
-      dash.rotation.x = 0.2;
-      cockpitGroup.add(dash);
+      dash.position.set(0, -1.1, -2.4);
+      dash.rotation.x = 0.25;
+      cockpit.add(dash);
 
-      // Illuminated Dashboard Buttons
-      const buttonColors = [0x00f3ff, 0xff3366, 0x00ffaa, 0xffb700];
-      for (let i = 0; i < 12; i++) {
-        const btnGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.1, 12);
-        const btnMat = new THREE.MeshBasicMaterial({ color: buttonColors[i % 4] });
+      // Dynamic Gauges & Illuminated Controls
+      const colors = [0x00f3ff, 0x00ffaa, 0xff3366, 0xffb700];
+      for(let i = 0; i < 16; i++) {
+        const btnGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.08, 12);
+        const btnMat = new THREE.MeshBasicMaterial({ color: colors[i % 4] });
         const btn = new THREE.Mesh(btnGeo, btnMat);
-        btn.position.set(-1.8 + (i % 6) * 0.7, -0.9 + Math.floor(i / 6) * 0.3, -2.5);
-        btn.rotation.x = 0.2;
-        cockpitGroup.add(btn);
+        btn.position.set(-1.6 + (i % 8) * 0.45, -0.85 + Math.floor(i / 8) * 0.25, -2.1);
+        btn.rotation.x = 0.25;
+        cockpit.add(btn);
       }
 
-      // Interior Cockpit Overhead Ambient Light
-      const cabinLight = new THREE.PointLight(0x00f3ff, 1.2, 6);
-      cabinLight.position.set(0, 1.8, -1);
-      cockpitGroup.add(cabinLight);
+      // Interior Ambient Cabin Lights
+      const cabinLight = new THREE.PointLight(0x00f3ff, 1.5, 5);
+      cabinLight.position.set(0, 1.5, -0.8);
+      cockpit.add(cabinLight);
 
-      const warmLight = new THREE.PointLight(0xffaa44, 0.8, 5);
-      warmLight.position.set(-1.8, 0, 1);
-      cockpitGroup.add(warmLight);
-
-      // --- Wall Posters ---
-      const canvasPoster = document.createElement('canvas');
-      canvasPoster.width = 256; canvasPoster.height = 384;
-      const ctxP = canvasPoster.getContext('2d');
-      ctxP.fillStyle = '#08121e'; ctxP.fillRect(0,0,256,384);
-      ctxP.fillStyle = '#00f3ff'; ctxP.font = 'bold 20px sans-serif';
-      ctxP.fillText('AEGIS DEEP PROTOCOL', 15, 40);
-      ctxP.fillStyle = '#94a3b8'; ctxP.font = '14px sans-serif';
-      ctxP.fillText('1. Max Depth: 11,000m', 20, 80);
-      ctxP.fillText('2. Maintain Pressure Seals', 20, 110);
-      ctxP.fillText('3. Avoid Anomalous Contact', 20, 140);
-      ctxP.strokeStyle = '#00ffaa'; ctxP.strokeRect(15, 170, 226, 180);
-
-      const posterTex = new THREE.CanvasTexture(canvasPoster);
-      const posterGeo = new THREE.PlaneGeometry(1.2, 1.8);
-      const posterMat = new THREE.MeshBasicMaterial({ map: posterTex });
-      const poster = new THREE.Mesh(posterGeo, posterMat);
-      poster.position.set(-3.0, 0.5, -0.5);
-      poster.rotation.y = Math.PI / 2;
-      cockpitGroup.add(poster);
-
-      // --- Easter Egg: Bottle of White Liquid ---
-      const flaskGeo = new THREE.CylinderGeometry(0.12, 0.16, 0.6, 16);
-      const flaskMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.9, opacity: 1, roughness: 0.1 });
+      // Flask Easter Egg (Kinetically Unified Matter)
+      const flaskGeo = new THREE.CylinderGeometry(0.1, 0.14, 0.5, 16);
+      const flaskMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.9, opacity: 0.9 });
       const flask = new THREE.Mesh(flaskGeo, flaskMat);
-      flask.position.set(2.1, -0.6, -2.2);
-
-      // Liquid Content (Kinetically Unified Matter)
-      const liquidGeo = new THREE.CylinderGeometry(0.1, 0.14, 0.45, 16);
+      flask.position.set(1.8, -0.55, -1.8);
+      
+      const liquidGeo = new THREE.CylinderGeometry(0.08, 0.12, 0.38, 16);
       const liquidMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
       const liquid = new THREE.Mesh(liquidGeo, liquidMat);
-      liquid.position.set(2.1, -0.65, -2.2);
-      
-      const liquidGlow = new THREE.PointLight(0xffffff, 1.5, 2);
-      liquidGlow.position.set(2.1, -0.6, -2.2);
+      liquid.position.set(1.8, -0.6, -1.8);
 
-      cockpitGroup.add(flask);
-      cockpitGroup.add(liquid);
-      cockpitGroup.add(liquidGlow);
+      const liquidGlow = new THREE.PointLight(0xffffff, 1.2, 2);
+      liquidGlow.position.set(1.8, -0.55, -1.8);
 
-      submarine.add(cockpitGroup);
+      cockpit.add(flask); cockpit.add(liquid); cockpit.add(liquidGlow);
+      submarine.add(cockpit);
     }
 
-    buildCockpit();
+    buildRealisticCockpit();
 
-    // Exterior Headlights
-    const mainHeadlight = new THREE.SpotLight(0x00f3ff, 12, 140, Math.PI / 4, 0.4, 1);
-    mainHeadlight.position.set(0, 0, -3.8);
-    mainHeadlight.target.position.set(0, 0, -80);
-    submarine.add(mainHeadlight);
-    submarine.add(mainHeadlight.target);
+    // Exterior Spotlight
+    const headlight = new THREE.SpotLight(0x00f3ff, 15, 120, Math.PI / 4, 0.4, 1);
+    headlight.position.set(0, 0, -3.2);
+    headlight.target.position.set(0, 0, -60);
+    submarine.add(headlight); submarine.add(headlight.target);
 
-    // --- 2. Ocean World Environments (Surface & Deep Sea) ---
-
-    // Night Surface Atmosphere (Moon & Sky)
-    const skyGeo = new THREE.SphereGeometry(600, 32, 32);
-    const skyMat = new THREE.MeshBasicMaterial({ color: 0x020612, side: THREE.BackSide });
+    // --- Ocean Environment (Night Sky, Surface, Seabed) ---
+    const skyGeo = new THREE.SphereGeometry(800, 32, 32);
+    const skyMat = new THREE.MeshBasicMaterial({ color: 0x01040a, side: THREE.BackSide });
     const sky = new THREE.Mesh(skyGeo, skyMat);
     scene.add(sky);
 
-    // Moon
-    const moonGeo = new THREE.SphereGeometry(12, 32, 32);
-    const moonMat = new THREE.MeshBasicMaterial({ color: 0xfff5dd });
+    const moonGeo = new THREE.SphereGeometry(14, 32, 32);
+    const moonMat = new THREE.MeshBasicMaterial({ color: 0xfffaed });
     const moon = new THREE.Mesh(moonGeo, moonMat);
-    moon.position.set(120, 180, -300);
+    moon.position.set(150, 220, -400);
     scene.add(moon);
 
-    const moonLight = new THREE.DirectionalLight(0x88bbff, 1.2);
-    moonLight.position.set(120, 180, -300);
-    scene.add(moonLight);
-
-    // Surface Water Plane
-    const waterGeo = new THREE.PlaneGeometry(800, 800, 80, 80);
+    const waterGeo = new THREE.PlaneGeometry(1000, 1000, 100, 100);
     waterGeo.rotateX(-Math.PI / 2);
     const waterMat = new THREE.MeshStandardMaterial({
-      color: 0x003355, roughness: 0.1, metalness: 0.8, transparent: true, opacity: 0.85
+      color: 0x002244, roughness: 0.1, metalness: 0.9, transparent: true, opacity: 0.85
     });
-    const waterMesh = new THREE.Mesh(waterGeo, waterMat);
-    waterMesh.position.y = 2;
-    scene.add(waterMesh);
+    const water = new THREE.Mesh(waterGeo, waterMat);
+    water.position.y = 2;
+    scene.add(water);
 
-    // Procedural Seabed Terrain
-    const terrainGeo = new THREE.PlaneGeometry(1000, 1000, 120, 120);
-    terrainGeo.rotateX(-Math.PI / 2);
-    const tPos = terrainGeo.attributes.position;
-
-    for (let i = 0; i < tPos.count; i++) {
-      const x = tPos.getX(i);
-      const z = tPos.getZ(i);
-      // Create deeper abyssal trenches and rolling underwater hills
-      const height = Math.sin(x * 0.015) * Math.cos(z * 0.015) * 25 + Math.sin(x * 0.04) * 8;
-      tPos.setY(i, height - 120);
+    // Seabed Terrain Generation
+    const seabedGeo = new THREE.PlaneGeometry(1200, 1200, 120, 120);
+    seabedGeo.rotateX(-Math.PI / 2);
+    const pos = seabedGeo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i); const z = pos.getZ(i);
+      const h = Math.sin(x * 0.01) * Math.cos(z * 0.01) * 30 + Math.sin(x * 0.03) * 6;
+      pos.setY(i, h - 140);
     }
-    terrainGeo.computeVertexNormals();
-
-    const terrainMat = new THREE.MeshStandardMaterial({ color: 0x0a1e36, roughness: 0.95 });
-    const seabed = new THREE.Mesh(terrainGeo, terrainMat);
+    seabedGeo.computeVertexNormals();
+    const seabedMat = new THREE.MeshStandardMaterial({ color: 0x071526, roughness: 0.9 });
+    const seabed = new THREE.Mesh(seabedGeo, seabedMat);
     scene.add(seabed);
 
-    // --- 3. Marine Flora, Rocks & Marine Life ---
-
-    // Seabed Boulders & Coral Rocks
-    const rockGroup = new THREE.Group();
-    const rockGeo = new THREE.DodecahedronGeometry(3, 1);
-    const rockMat = new THREE.MeshStandardMaterial({ color: 0x0e2a47, roughness: 0.9 });
-
-    for (let i = 0; i < 120; i++) {
-      const rock = new THREE.Mesh(rockGeo, rockMat);
-      const rx = (Math.random() - 0.5) * 700;
-      const rz = (Math.random() - 0.5) * 700;
-      rock.position.set(rx, -110 + Math.random() * 5, rz);
-      rock.scale.set(1 + Math.random() * 3, 1 + Math.random() * 4, 1 + Math.random() * 3);
-      rockGroup.add(rock);
-    }
-    scene.add(rockGroup);
-
-    // Glowing Deep-Sea Jellyfish
-    const jellies = [];
-    function createJelly(x, y, z, colorHex) {
-      const group = new THREE.Group();
-      group.position.set(x, y, z);
-
-      const capGeo = new THREE.SphereGeometry(2, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
-      const capMat = new THREE.MeshBasicMaterial({ color: colorHex, wireframe: true, transparent: true, opacity: 0.7 });
-      const cap = new THREE.Mesh(capGeo, capMat);
-      group.add(cap);
-
-      const pLight = new THREE.PointLight(colorHex, 2, 20);
-      group.add(pLight);
-
-      scene.add(group);
-      jellies.push({ group, baseY: y, speed: 0.8 + Math.random() });
-    }
-
-    for (let i = 0; i < 35; i++) {
-      createJelly((Math.random() - 0.5) * 500, -20 - Math.random() * 80, (Math.random() - 0.5) * 500, i % 2 === 0 ? 0x00f3ff : 0xff00aa);
-    }
-
-    // Fish Schools
-    const fishCount = 150;
-    const fishGeo = new THREE.ConeGeometry(0.4, 1.5, 8);
-    fishGeo.rotateX(Math.PI / 2);
-    const fishMat = new THREE.MeshStandardMaterial({ color: 0x00ffaa, roughness: 0.3 });
-    const fishSchool = new THREE.InstancedMesh(fishGeo, fishMat, fishCount);
+    // --- Marine Life (Boids Fish & Predators) ---
+    const fishGroup = new THREE.InstancedMesh(
+      new THREE.ConeGeometry(0.3, 1.2, 8).rotateX(Math.PI / 2),
+      new THREE.MeshStandardMaterial({ color: 0x00ffaa, roughness: 0.3 }),
+      120
+    );
     const dummy = new THREE.Object3D();
+    const fishData = Array.from({ length: 120 }, () => ({
+      pos: new THREE.Vector3((Math.random() - 0.5) * 500, -20 - Math.random() * 90, (Math.random() - 0.5) * 500),
+      vel: new THREE.Vector3((Math.random() - 0.5) * 0.2, 0, (Math.random() - 0.5) * 0.2)
+    }));
+    scene.add(fishGroup);
 
-    const fishData = [];
-    for (let i = 0; i < fishCount; i++) {
-      const pos = new THREE.Vector3((Math.random() - 0.5) * 400, -10 - Math.random() * 80, (Math.random() - 0.5) * 400);
-      const speed = 0.2 + Math.random() * 0.3;
-      fishData.push({ pos, speed, angle: Math.random() * Math.PI * 2 });
-    }
-    scene.add(fishSchool);
-
-    // Giant Apex Predator (Apex Whale/Shark on Radar)
-    const leviathan = new THREE.Group();
-    const bodyGeo = new THREE.ConeGeometry(4, 28, 16);
-    bodyGeo.rotateX(-Math.PI / 2);
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x081524, roughness: 0.8 });
-    const body = new THREE.Mesh(bodyGeo, bodyMat);
-    leviathan.add(body);
-    leviathan.position.set(80, -60, -120);
-    scene.add(leviathan);
-
-    // --- 4. Controls & Camera Rotation ---
-    let isMouseDown = false;
-    let mouseX = 0, mouseY = 0;
-    let targetYaw = 0, targetPitch = 0;
-
-    window.addEventListener('mousedown', (e) => {
-      if (e.target.tagName === 'CANVAS') isMouseDown = true;
-    });
+    // --- Interaction & Controls ---
+    let isMouseDown = false, targetYaw = 0, targetPitch = 0;
+    window.addEventListener('mousedown', (e) => { if (e.target.tagName === 'CANVAS') isMouseDown = true; });
     window.addEventListener('mouseup', () => isMouseDown = false);
-
     window.addEventListener('mousemove', (e) => {
       if (!isMouseDown) return;
       targetYaw -= e.movementX * 0.003;
@@ -458,104 +308,66 @@
     window.addEventListener('keydown', (e) => keys[e.code] = true);
     window.addEventListener('keyup', (e) => keys[e.code] = false);
 
-    let subVelocity = new THREE.Vector3();
-    let subYaw = 0;
-
-    // --- 5. Main Animation Loop ---
+    // --- Main Loop ---
     const clock = new THREE.Clock();
+    let velocity = new THREE.Vector3(), yaw = 0;
 
     function animate() {
       requestAnimationFrame(animate);
       const delta = clock.getDelta();
       const time = clock.getElapsedTime();
 
-      // Smooth Cockpit 360 Camera Look
-      cockpitPivot.rotation.y = THREE.MathUtils.lerp(cockpitPivot.rotation.y, targetYaw, 0.08);
-      cockpitPivot.rotation.x = THREE.MathUtils.lerp(cockpitPivot.rotation.x, targetPitch, 0.08);
+      // Camera Smooth Interpolation
+      cameraPivot.rotation.y = THREE.MathUtils.lerp(cameraPivot.rotation.y, targetYaw, 0.08);
+      cameraPivot.rotation.x = THREE.MathUtils.lerp(cameraPivot.rotation.x, targetPitch, 0.08);
 
-      // Submarine Steering & Physics
-      const forwardSpeed = 22.0 * delta;
-      const turnSpeed = 1.0 * delta;
+      // Submarine Controls
+      const fwdSpeed = 24.0 * delta;
+      if (keys['KeyW']) velocity.z = THREE.MathUtils.lerp(velocity.z, -fwdSpeed, 0.04);
+      else if (keys['KeyS']) velocity.z = THREE.MathUtils.lerp(velocity.z, fwdSpeed * 0.5, 0.04);
+      else velocity.z = THREE.MathUtils.lerp(velocity.z, 0, 0.03);
 
-      if (keys['KeyW']) subVelocity.z = THREE.MathUtils.lerp(subVelocity.z, -forwardSpeed, 0.04);
-      else if (keys['KeyS']) subVelocity.z = THREE.MathUtils.lerp(subVelocity.z, forwardSpeed * 0.5, 0.04);
-      else subVelocity.z = THREE.MathUtils.lerp(subVelocity.z, 0, 0.03);
+      if (keys['KeyA']) yaw += 1.0 * delta;
+      if (keys['KeyD']) yaw -= 1.0 * delta;
 
-      if (keys['KeyA']) subYaw += turnSpeed;
-      if (keys['KeyD']) subYaw -= turnSpeed;
+      if (keys['Space']) velocity.y = THREE.MathUtils.lerp(velocity.y, fwdSpeed * 0.5, 0.04);
+      else if (keys['ShiftLeft'] || keys['ShiftRight']) velocity.y = THREE.MathUtils.lerp(velocity.y, -fwdSpeed * 0.5, 0.04);
+      else velocity.y = THREE.MathUtils.lerp(velocity.y, 0, 0.03);
 
-      if (keys['Space']) subVelocity.y = THREE.MathUtils.lerp(subVelocity.y, forwardSpeed * 0.6, 0.04);
-      else if (keys['ShiftLeft'] || keys['ShiftRight']) subVelocity.y = THREE.MathUtils.lerp(subVelocity.y, -forwardSpeed * 0.6, 0.04);
-      else subVelocity.y = THREE.MathUtils.lerp(subVelocity.y, 0, 0.03);
+      submarine.rotation.y = yaw;
+      submarine.translateZ(velocity.z);
+      submarine.position.y = Math.max(-125, Math.min(2.5, submarine.position.y + velocity.y));
 
-      submarine.rotation.y = subYaw;
-      submarine.translateZ(subVelocity.z);
-      submarine.position.y += subVelocity.y;
-
-      // Depth Clamp (-110m floor to +2m surface)
-      submarine.position.y = Math.max(-108, Math.min(2.5, submarine.position.y));
-
-      // Animate Surface Waves
+      // Wave Motion
       const wPos = waterGeo.attributes.position;
       for (let i = 0; i < wPos.count; i++) {
-        const u = wPos.getX(i);
-        const v = wPos.getY(i);
-        wPos.setZ(i, Math.sin(u * 0.05 + time * 1.5) * 0.8 + Math.cos(v * 0.05 + time * 1.5) * 0.8);
+        const u = wPos.getX(i); const v = wPos.getY(i);
+        wPos.setZ(i, Math.sin(u * 0.04 + time * 1.5) * 0.6 + Math.cos(v * 0.04 + time * 1.5) * 0.6);
       }
       waterGeo.attributes.position.needsUpdate = true;
 
-      // Dynamic Underwater Lighting Transitions
-      const currentDepth = Math.max(0, Math.round(-submarine.position.y * 10));
-      if (currentDepth < 30) {
-        scene.fog.color.lerp(fogColorSurface, 0.05);
-        document.getElementById('hud-zone').innerText = 'SURFACE / SUNLIT ZONE';
-      } else if (currentDepth < 500) {
-        scene.fog.color.lerp(fogColorUnderwater, 0.05);
-        document.getElementById('hud-zone').innerText = 'TWILIGHT MESOPELAGIC';
-      } else {
-        scene.fog.color.setHex(0x01050d);
-        document.getElementById('hud-zone').innerText = 'ABYSSAL TRENCH ZONE';
-      }
-
-      // Animate Sea Life
-      jellies.forEach(j => {
-        j.group.position.y = j.baseY + Math.sin(time * j.speed) * 3;
-      });
-
+      // Fish Simulation
       fishData.forEach((f, i) => {
-        f.angle += 0.01;
-        f.pos.x += Math.cos(f.angle) * f.speed;
-        f.pos.z += Math.sin(f.angle) * f.speed;
-
+        f.pos.add(f.vel);
+        if(Math.abs(f.pos.x) > 300) f.vel.x *= -1;
+        if(Math.abs(f.pos.z) > 300) f.vel.z *= -1;
         dummy.position.copy(f.pos);
-        dummy.rotation.y = -f.angle;
+        dummy.rotation.y = Math.atan2(f.vel.x, f.vel.z);
         dummy.updateMatrix();
-        fishSchool.setMatrixAt(i, dummy.matrix);
+        fishGroup.setMatrixAt(i, dummy.matrix);
       });
-      fishSchool.instanceMatrix.needsUpdate = true;
+      fishGroup.instanceMatrix.needsUpdate = true;
 
-      // Animate Leviathan Patrol
-      leviathan.position.x = Math.sin(time * 0.15) * 160;
-      leviathan.position.z = Math.cos(time * 0.15) * 160;
-      leviathan.rotation.y = time * 0.15 + Math.PI / 2;
-
-      // Radar Contact Position Tracking
-      const dx = leviathan.position.x - submarine.position.x;
-      const dz = leviathan.position.z - submarine.position.z;
-      const blip1 = document.getElementById('radar-blip-1');
-      blip1.style.left = `${50 + (dx / 300) * 40}%`;
-      blip1.style.top = `${50 + (dz / 300) * 40}%`;
-
-      // Update HUD Values
-      document.getElementById('hud-depth').innerText = currentDepth + ' M';
-      document.getElementById('hud-speed').innerText = (Math.abs(subVelocity.z) * 35).toFixed(1) + ' KTS';
+      // Telemetry Readouts
+      const currentDepth = Math.max(0, Math.round(-submarine.position.y * 10));
+      document.getElementById('depth-readout').innerText = currentDepth + ' M';
+      document.getElementById('speed-readout').innerText = (Math.abs(velocity.z) * 35).toFixed(1) + ' KTS';
 
       renderer.render(scene, camera);
     }
 
     animate();
 
-    // Window Resize Handler
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
