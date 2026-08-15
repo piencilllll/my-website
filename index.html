@@ -1,66 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Website</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #121212;
-            color: #ffffff;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-        }
-        header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        h1 {
-            color: #00ffcc;
-        }
-        .container {
-            background-color: #1e1e1e;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-            max-width: 600px;
-            width: 90%;
-            text-align: center;
-        }
-        button {
-            background-color: #00ffcc;
-            color: #121212;
-            border: none;
-            padding: 10px 20px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 15px;
-        }
-        button:hover {
-            background-color: #00b38f;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Unseen Senses Simulator</title>
+  <style>
+    body {
+      background: #0d0f12;
+      color: #fff;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+
+    h1 { color: #00ffcc; margin-bottom: 5px; }
+    p { color: #aaa; margin-top: 0; }
+
+    .nav-bar {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+
+    button {
+      background: #1a1d24;
+      color: #fff;
+      border: 1px solid #333;
+      padding: 10px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    button:hover, button.active {
+      background: #00ffcc;
+      color: #0d0f12;
+      border-color: #00ffcc;
+    }
+
+    .viewport {
+      position: relative;
+      width: 90%;
+      max-width: 850px;
+      height: 480px;
+      margin: 0 auto;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 2px solid #222;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    }
+
+    .scene-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: filter 0.4s ease;
+    }
+
+    /* Vision Filters */
+    .filter-human { filter: none; }
+    .filter-dog { filter: sepia(0.4) hue-rotate(170deg) saturate(1.2); }
+    .filter-uv { filter: hue-rotate(230deg) saturate(3.5) contrast(1.2); }
+    .filter-thermal { filter: invert(0.85) hue-rotate(130deg) saturate(3) contrast(2); }
+    .filter-echo { filter: grayscale(1) contrast(4) invert(0.9); }
+
+    .info-box {
+      margin-top: 20px;
+      background: #1a1d24;
+      padding: 15px;
+      border-radius: 8px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      border-left: 4px solid #00ffcc;
+    }
+  </style>
 </head>
 <body>
 
-    <header>
-        <h1>Welcome to My Website</h1>
-        <p>Built and hosted with GitHub Pages</p>
-    </header>
+  <h1>Unseen Senses Simulator</h1>
+  <p>Experience the world through the eyes and senses of other organisms.</p>
 
-    <div class="container">
-        <h2>About This Page</h2>
-        <p>This is a custom webpage starter template. You can edit the HTML code to add your own text, images, and links.</p>
-        <button onclick="alert('Hello! Your site is working!')">Click Me</button>
-    </div>
+  <!-- Environment Controls -->
+  <div class="nav-bar">
+    <button onclick="setFilter('filter-human', 'Standard Human Vision: Full color spectrum with high spatial resolution.')">👁️ Human</button>
+    <button onclick="setFilter('filter-dog', 'Canine Vision: Blue-yellow dichromatic spectrum. Red tones appear gray/brown.')">🐶 Dog</button>
+    <button onclick="setFilter('filter-uv', 'Insect UV Spectrum: Reveals glowing bullseye patterns on flower petals invisible to humans.')">🐝 Bee (UV)</button>
+    <button onclick="setFilter('filter-thermal', 'Viper Thermal Sensing: Detects infrared heat signatures from warm-blooded prey.')">🐍 Pit Viper</button>
+    <button onclick="setFilter('filter-echo', 'Echolocation: High-contrast acoustic bounce mapping of physical surfaces.')">🦇 Bat</button>
+  </div>
+
+  <div class="viewport">
+    <img id="scene" class="scene-img filter-human" src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80" alt="Landscape">
+  </div>
+
+  <div class="info-box" id="info">
+    Standard Human Vision: Full color spectrum with high spatial resolution.
+  </div>
+
+  <script>
+    function setFilter(filterClass, description) {
+      document.getElementById('scene').className = 'scene-img ' + filterClass;
+      document.getElementById('info').innerText = description;
+    }
+  </script>
 
 </body>
 </html>
