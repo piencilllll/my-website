@@ -2,109 +2,345 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Unseen Senses Simulator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unseen Senses — Biological Perception Simulator</title>
   <style>
+    :root {
+      --accent: #00f3ff;
+      --bg-dark: #07090e;
+      --card-bg: rgba(18, 24, 38, 0.75);
+      --border: rgba(0, 243, 255, 0.2);
+    }
+
+    * { box-sizing: border-box; }
+
     body {
-      background: #0d0f12;
-      color: #fff;
-      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: radial-gradient(circle at 50% 20%, #121929 0%, var(--bg-dark) 80%);
+      color: #e2e8f0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       margin: 0;
-      padding: 20px;
-      text-align: center;
-    }
-
-    h1 { color: #00ffcc; margin-bottom: 5px; }
-    p { color: #aaa; margin-top: 0; }
-
-    .nav-bar {
+      padding: 30px 15px;
+      min-height: 100vh;
       display: flex;
-      justify-content: center;
-      gap: 10px;
-      margin: 20px 0;
-      flex-wrap: wrap;
+      flex-direction: column;
+      align-items: center;
     }
+
+    /* Header & Titles */
+    header {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .badge {
+      background: rgba(0, 243, 255, 0.1);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    h1 {
+      font-size: 2.4rem;
+      margin: 10px 0 5px;
+      color: #fff;
+      text-shadow: 0 0 20px rgba(0, 243, 255, 0.4);
+    }
+
+    p.subtitle {
+      color: #94a3b8;
+      margin: 0;
+      font-size: 0.95rem;
+    }
+
+    /* Controls Panel */
+    .controls-container {
+      width: 100%;
+      max-width: 900px;
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .control-label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #64748b;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+
+    .btn-group:last-child { margin-bottom: 0; }
 
     button {
-      background: #1a1d24;
-      color: #fff;
-      border: 1px solid #333;
-      padding: 10px 18px;
+      background: rgba(255, 255, 255, 0.05);
+      color: #cbd5e1;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 8px 14px;
       border-radius: 8px;
       cursor: pointer;
+      font-size: 0.85rem;
       font-weight: 600;
-      transition: all 0.2s;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    button:hover, button.active {
-      background: #00ffcc;
-      color: #0d0f12;
-      border-color: #00ffcc;
+    button:hover {
+      background: rgba(0, 243, 255, 0.15);
+      border-color: var(--accent);
+      color: #fff;
     }
 
+    button.active {
+      background: var(--accent);
+      color: #07090e;
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(0, 243, 255, 0.5);
+    }
+
+    /* Viewport Frame */
     .viewport {
       position: relative;
-      width: 90%;
-      max-width: 850px;
+      width: 100%;
+      max-width: 900px;
       height: 480px;
-      margin: 0 auto;
-      border-radius: 12px;
+      border-radius: 16px;
       overflow: hidden;
-      border: 2px solid #222;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+      border: 1px solid var(--border);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+      cursor: none; /* Hides standard cursor over image */
     }
 
     .scene-img {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: filter 0.4s ease;
+      transition: filter 0.4s ease, transform 0.3s ease;
+    }
+
+    /* Custom Reticle Cursor */
+    #lens-cursor {
+      position: absolute;
+      width: 90px;
+      height: 90px;
+      border: 2px solid var(--accent);
+      border-radius: 50%;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 15px rgba(0, 243, 255, 0.6), inset 0 0 15px rgba(0, 243, 255, 0.2);
+      display: none;
+      z-index: 10;
+      transition: width 0.2s, height 0.2s;
+    }
+
+    #lens-cursor::before, #lens-cursor::after {
+      content: '';
+      position: absolute;
+      background: var(--accent);
+    }
+
+    /* Crosshair lines */
+    #lens-cursor::before { top: 50%; left: -10px; right: -10px; height: 1px; transform: translateY(-50%); }
+    #lens-cursor::after { left: 50%; top: -10px; bottom: -10px; width: 1px; transform: translateX(-50%); }
+
+    /* Click Ripple Pulse */
+    .sonar-ripple {
+      position: absolute;
+      border: 2px solid var(--accent);
+      border-radius: 50%;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      animation: ripple 0.6s ease-out forwards;
+      z-index: 9;
+    }
+
+    @keyframes ripple {
+      0% { width: 0; height: 0; opacity: 1; }
+      100% { width: 250px; height: 250px; opacity: 0; }
     }
 
     /* Vision Filters */
-    .filter-human { filter: none; }
-    .filter-dog { filter: sepia(0.4) hue-rotate(170deg) saturate(1.2); }
-    .filter-uv { filter: hue-rotate(230deg) saturate(3.5) contrast(1.2); }
-    .filter-thermal { filter: invert(0.85) hue-rotate(130deg) saturate(3) contrast(2); }
-    .filter-echo { filter: grayscale(1) contrast(4) invert(0.9); }
+    .filter-human   { filter: none; }
+    .filter-bee     { filter: hue-rotate(240deg) saturate(3.5) contrast(1.3) brightness(1.1); }
+    .filter-viper   { filter: invert(0.9) hue-rotate(140deg) saturate(4) contrast(2.5); }
+    .filter-bat     { filter: grayscale(1) contrast(5) invert(1); }
+    .filter-shrimp  { filter: hue-rotate(90deg) saturate(5) contrast(1.8) invert(0.1); }
+    .filter-owl     { filter: sepia(0.3) hue-rotate(80deg) brightness(1.6) contrast(1.4); }
+    .filter-dog     { filter: sepia(0.5) hue-rotate(160deg) saturate(1.2); }
 
-    .info-box {
+    /* Stats HUD Card */
+    .hud-card {
+      width: 100%;
+      max-width: 900px;
       margin-top: 20px;
-      background: #1a1d24;
-      padding: 15px;
-      border-radius: 8px;
-      max-width: 600px;
-      margin-left: auto;
-      margin-right: auto;
-      border-left: 4px solid #00ffcc;
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 15px;
+    }
+
+    .hud-info h3 {
+      margin: 0 0 6px;
+      color: var(--accent);
+      font-size: 1.1rem;
+    }
+
+    .hud-info p {
+      margin: 0;
+      color: #94a3b8;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    .hud-stat {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .hud-stat-title {
+      font-size: 0.7rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .hud-stat-value {
+      font-size: 1.05rem;
+      font-weight: bold;
+      color: #fff;
+      margin-top: 4px;
+    }
+
+    @media (max-width: 768px) {
+      .hud-card { grid-template-columns: 1fr; }
+      .viewport { height: 320px; }
     }
   </style>
 </head>
 <body>
 
-  <h1>Unseen Senses Simulator</h1>
-  <p>Experience the world through the eyes and senses of other organisms.</p>
+  <header>
+    <span class="badge">Interactive Simulation</span>
+    <h1>Unseen Senses</h1>
+    <p class="subtitle">Explore non-human visual spectrums, echolocation, and infrared perception.</p>
+  </header>
 
-  <!-- Environment Controls -->
-  <div class="nav-bar">
-    <button onclick="setFilter('filter-human', 'Standard Human Vision: Full color spectrum with high spatial resolution.')">👁️ Human</button>
-    <button onclick="setFilter('filter-dog', 'Canine Vision: Blue-yellow dichromatic spectrum. Red tones appear gray/brown.')">🐶 Dog</button>
-    <button onclick="setFilter('filter-uv', 'Insect UV Spectrum: Reveals glowing bullseye patterns on flower petals invisible to humans.')">🐝 Bee (UV)</button>
-    <button onclick="setFilter('filter-thermal', 'Viper Thermal Sensing: Detects infrared heat signatures from warm-blooded prey.')">🐍 Pit Viper</button>
-    <button onclick="setFilter('filter-echo', 'Echolocation: High-contrast acoustic bounce mapping of physical surfaces.')">🦇 Bat</button>
+  <!-- Control Panels -->
+  <div class="controls-container">
+    <div class="control-label">1. Select Environment Scene</div>
+    <div class="btn-group">
+      <button class="scene-btn active" onclick="setScene('https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1200&q=80', this)">🪸 Coral Reef</button>
+      <button class="scene-btn" onclick="setScene('https://images.unsplash.com/photo-1470240731273-7821a6eeb6bd?auto=format&fit=crop&w=1200&q=80', this)">🌸 Flower Meadow</button>
+      <button class="scene-btn" onclick="setScene('https://images.unsplash.com/photo-1511497584788-876761c11969?auto=format&fit=crop&w=1200&q=80', this)">🌲 Night Forest</button>
+      <button class="scene-btn" onclick="setScene('https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1200&q=80', this)">🏙️ Cyber City</button>
+    </div>
+
+    <div class="control-label">2. Select Organism Perception</div>
+    <div class="btn-group">
+      <button class="sense-btn active" onclick="setVision('filter-human', 'Standard Human Vision', 'Trichromatic full color spectrum with high spatial clarity.', '380 - 740 nm', '3 Cone Types', this)">👁️ Human</button>
+      <button class="sense-btn" onclick="setVision('filter-bee', 'Honeybee (Ultraviolet)', 'Sees UV nectar guides on petals invisible to human eyes.', '300 - 650 nm (UV)', 'UV, Blue, Green', this)">🐝 Honeybee</button>
+      <button class="sense-btn" onclick="setVision('filter-viper', 'Pit Viper (Thermal IR)', 'Pit organs sense heat signatures emitted by warm prey.', '5,000 - 30,000 nm (Heat)', 'Infrared Pit Organ', this)">🐍 Pit Viper</button>
+      <button class="sense-btn" onclick="setVision('filter-bat', 'Microbat (Echolocation)', 'High-frequency acoustic bounce mapping of physical terrain.', '20 - 120 kHz (Sound)', 'Acoustic Sonar', this)">🦇 Bat Sonar</button>
+      <button class="sense-btn" onclick="setVision('filter-shrimp', 'Mantis Shrimp (Hyper-UV)', 'Possesses 16 photoreceptor types and detects polarized light.', '16-Band Spectrum', '16 Cone Types', this)">🦐 Mantis Shrimp</button>
+      <button class="sense-btn" onclick="setVision('filter-owl', 'Great Horned Owl (Night)', 'Tapetum lucidum layer magnifies low ambient night light.', 'Extreme Low Light', 'High Density Rods', this)">🦉 Owl Vision</button>
+      <button class="sense-btn" onclick="setVision('filter-dog', 'Canine (Dichromatic)', 'Blue-yellow color spectrum. Red/green shades blend into gray.', '430 - 555 nm', '2 Cone Types', this)">🐶 Dog</button>
+    </div>
   </div>
 
-  <div class="viewport">
-    <img id="scene" class="scene-img filter-human" src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80" alt="Landscape">
+  <!-- Interactive Image Viewport -->
+  <div class="viewport" id="viewport">
+    <img id="scene" class="scene-img filter-human" src="https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1200&q=80" alt="Environment Scene">
+    <div id="lens-cursor"></div>
   </div>
 
-  <div class="info-box" id="info">
-    Standard Human Vision: Full color spectrum with high spatial resolution.
+  <!-- Biological HUD Card -->
+  <div class="hud-card">
+    <div class="hud-info">
+      <h3 id="hud-title">Standard Human Vision</h3>
+      <p id="hud-desc">Trichromatic full color spectrum with high spatial clarity.</p>
+    </div>
+    <div class="hud-stat">
+      <div class="hud-stat-title">Spectral Range</div>
+      <div class="hud-stat-value" id="hud-range">380 - 740 nm</div>
+    </div>
+    <div class="hud-stat">
+      <div class="hud-stat-title">Receptors / Sensors</div>
+      <div class="hud-stat-value" id="hud-sensors">3 Cone Types</div>
+    </div>
   </div>
 
   <script>
-    function setFilter(filterClass, description) {
+    const viewport = document.getElementById('viewport');
+    const lensCursor = document.getElementById('lens-cursor');
+
+    // Reticle Lens Mouse Motion
+    viewport.addEventListener('mousemove', (e) => {
+      const rect = viewport.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      lensCursor.style.left = `${x}px`;
+      lensCursor.style.top = `${y}px`;
+      lensCursor.style.display = 'block';
+    });
+
+    viewport.addEventListener('mouseleave', () => {
+      lensCursor.style.display = 'none';
+    });
+
+    // Sonar Ripple Click Effect
+    viewport.addEventListener('click', (e) => {
+      const rect = viewport.getBoundingClientRect();
+      const ripple = document.createElement('div');
+      ripple.className = 'sonar-ripple';
+      ripple.style.left = `${e.clientX - rect.left}px`;
+      ripple.style.top = `${e.clientY - rect.top}px`;
+      
+      viewport.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 600);
+    });
+
+    // Environment Switcher
+    function setScene(imgUrl, btn) {
+      document.getElementById('scene').src = imgUrl;
+      document.querySelectorAll('.scene-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+
+    // Vision Mode Switcher & HUD Updater
+    function setVision(filterClass, title, desc, range, sensors, btn) {
       document.getElementById('scene').className = 'scene-img ' + filterClass;
-      document.getElementById('info').innerText = description;
+      document.getElementById('hud-title').innerText = title;
+      document.getElementById('hud-desc').innerText = desc;
+      document.getElementById('hud-range').innerText = range;
+      document.getElementById('hud-sensors').innerText = sensors;
+
+      document.querySelectorAll('.sense-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
     }
   </script>
 
