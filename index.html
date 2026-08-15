@@ -7,12 +7,13 @@
   <style>
     :root {
       --bg-dark: #07080c;
-      --panel-bg: rgba(15, 17, 26, 0.85);
+      --panel-bg: rgba(15, 17, 26, 0.88);
       --border-color: #3b334d;
       --border-glow: #7a52aa;
       --accent-gold: #e2b041;
       --accent-purple: #9d65c9;
       --accent-cyan: #4fe0b0;
+      --accent-red: #ff4a6e;
       --text-muted: #8c829e;
       --text-bright: #f0e6ff;
     }
@@ -24,15 +25,27 @@
       background-color: var(--bg-dark);
       color: var(--text-bright);
       font-family: 'Courier New', Courier, monospace;
-      overflow: hidden;
+      overflow-x: hidden;
       display: flex;
       justify-content: center;
       align-items: center;
+      padding: 20px 0;
+    }
+
+    /* Thunder Lighting Flash Overlay */
+    #flash-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: #e2f1ff;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 100;
+      transition: opacity 0.05s ease-out;
     }
 
     /* Ambient Ember Canvas */
     #ember-canvas {
-      position: absolute;
+      position: fixed;
       top: 0; left: 0;
       width: 100%; height: 100%;
       z-index: 1;
@@ -41,7 +54,7 @@
 
     /* Retro CRT Grain Overlay */
     .grain-overlay {
-      position: absolute;
+      position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;
       z-index: 2;
       pointer-events: none;
@@ -53,14 +66,16 @@
     .mixer-container {
       position: relative;
       z-index: 10;
-      width: 90%;
-      max-width: 680px;
+      width: 92%;
+      max-width: 780px;
       background: var(--panel-bg);
       border: 2px solid var(--border-color);
-      box-shadow: 0 0 25px rgba(122, 82, 170, 0.25), inset 0 0 15px rgba(0,0,0,0.8);
+      box-shadow: 0 0 30px rgba(122, 82, 170, 0.25), inset 0 0 20px rgba(0,0,0,0.85);
       border-radius: 8px;
       padding: 24px;
-      backdrop-filter: blur(8px);
+      backdrop-filter: blur(10px);
+      max-height: 90vh;
+      overflow-y: auto;
     }
 
     /* Header */
@@ -72,11 +87,11 @@
     }
 
     header h1 {
-      font-size: 1.4rem;
+      font-size: 1.5rem;
       letter-spacing: 3px;
       color: var(--accent-gold);
       text-transform: uppercase;
-      text-shadow: 0 0 8px rgba(226, 176, 65, 0.4);
+      text-shadow: 0 0 10px rgba(226, 176, 65, 0.4);
     }
 
     header p {
@@ -90,8 +105,8 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: rgba(0, 0, 0, 0.4);
-      padding: 12px 16px;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 12px 18px;
       border-radius: 6px;
       border: 1px solid rgba(122, 82, 170, 0.3);
       margin-bottom: 20px;
@@ -101,7 +116,7 @@
       background: var(--accent-purple);
       color: #fff;
       border: none;
-      padding: 10px 20px;
+      padding: 10px 22px;
       font-family: inherit;
       font-weight: bold;
       font-size: 0.85rem;
@@ -122,22 +137,34 @@
       box-shadow: 0 4px 0 #9c731e;
     }
 
-    /* Mixer Channels Grid */
-    .channels-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
+    /* Sound Catalogue Grid */
+    .catalogue-section-title {
+      font-size: 0.8rem;
+      color: var(--accent-gold);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
-    @media (max-width: 580px) {
-      .channels-grid { grid-template-columns: 1fr; }
+    .catalogue-section-title::after {
+      content: ''; flex: 1; height: 1px; background: var(--border-color);
+    }
+
+    .channels-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
     }
 
     .channel-card {
-      background: rgba(8, 10, 16, 0.6);
+      background: rgba(8, 10, 16, 0.7);
       border: 1px solid var(--border-color);
       border-radius: 6px;
-      padding: 14px;
+      padding: 12px 14px;
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -150,14 +177,12 @@
     }
 
     .channel-title {
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       color: var(--text-bright);
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
-
-    .channel-title span { font-size: 1.1rem; }
 
     .toggle-btn {
       background: transparent;
@@ -175,7 +200,7 @@
       background: rgba(79, 224, 176, 0.1);
     }
 
-    /* Custom Slider */
+    /* Custom Sliders */
     .slider-container {
       display: flex;
       align-items: center;
@@ -203,90 +228,152 @@
     }
 
     .trigger-btn {
-      background: rgba(157, 101, 201, 0.2);
-      border: 1px solid var(--accent-purple);
-      color: var(--text-bright);
-      padding: 6px 12px;
+      background: rgba(226, 176, 65, 0.15);
+      border: 1px solid var(--accent-gold);
+      color: var(--accent-gold);
+      padding: 12px;
       font-family: inherit;
-      font-size: 0.75rem;
-      border-radius: 4px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      border-radius: 6px;
       cursor: pointer;
       width: 100%;
-      margin-top: 4px;
+      letter-spacing: 1.5px;
+      transition: all 0.15 ease;
+      box-shadow: 0 0 12px rgba(226, 176, 65, 0.1);
     }
 
     .trigger-btn:hover {
-      background: rgba(157, 101, 201, 0.4);
+      background: rgba(226, 176, 65, 0.3);
+      box-shadow: 0 0 18px rgba(226, 176, 65, 0.25);
+    }
+
+    .trigger-btn:active {
+      transform: scale(0.99);
     }
   </style>
 </head>
 <body>
 
+  <div id="flash-overlay"></div>
   <canvas id="ember-canvas"></canvas>
   <div class="grain-overlay"></div>
 
   <div class="mixer-container">
     <header>
-      <h1>Sanctuary Ambience</h1>
-      <p>Retro Dark Fantasy Soundscape Generator</p>
+      <h1>Sanctuary Audio Vault</h1>
+      <p>Procedural Dark Fantasy Soundscape Engine</p>
     </header>
 
     <div class="master-bar">
-      <button class="btn-main" id="power-btn">▶ INITIALIZE SOUND</button>
-      <div style="font-size: 0.75rem; color: var(--text-muted);" id="status-readout">SYSTEM IDLE</div>
+      <button class="btn-main" id="power-btn">▶ INITIALIZE ALL SOUNDS</button>
+      <div style="font-size: 0.75rem; color: var(--text-muted);" id="status-readout">SYSTEM STANDBY</div>
     </div>
 
+    <!-- Catalogue Section 1: Weather & Environment -->
+    <div class="catalogue-section-title"><span>🌤️</span> Environmental Elements</div>
     <div class="channels-grid">
 
-      <!-- Heavy Rain -->
+      <!-- Rainstorm -->
       <div class="channel-card">
         <div class="channel-header">
           <div class="channel-title"><span>🌧️</span> Rainstorm</div>
-          <button class="toggle-btn active" id="rain-toggle">ON</button>
+          <button class="toggle-btn active" data-channel="rain">ON</button>
         </div>
         <div class="slider-container">
           <input type="range" id="rain-vol" min="0" max="1" step="0.01" value="0.5">
         </div>
       </div>
 
-      <!-- Campfire Crackle -->
+      <!-- Hearth Fire -->
       <div class="channel-card">
         <div class="channel-header">
           <div class="channel-title"><span>🔥</span> Hearth Fire</div>
-          <button class="toggle-btn active" id="fire-toggle">ON</button>
+          <button class="toggle-btn active" data-channel="fire">ON</button>
         </div>
         <div class="slider-container">
           <input type="range" id="fire-vol" min="0" max="1" step="0.01" value="0.4">
         </div>
       </div>
 
-      <!-- Night Wind -->
+      <!-- Howling Wind -->
       <div class="channel-card">
         <div class="channel-header">
           <div class="channel-title"><span>🌬️</span> Howling Wind</div>
-          <button class="toggle-btn active" id="wind-toggle">ON</button>
+          <button class="toggle-btn active" data-channel="wind">ON</button>
         </div>
         <div class="slider-container">
           <input type="range" id="wind-vol" min="0" max="1" step="0.01" value="0.3">
         </div>
       </div>
 
-      <!-- Abyssal Drone -->
+      <!-- Night Insects -->
+      <div class="channel-card">
+        <div class="channel-header">
+          <div class="channel-title"><span>🦗</span> Night Insects</div>
+          <button class="toggle-btn active" data-channel="insects">ON</button>
+        </div>
+        <div class="slider-container">
+          <input type="range" id="insects-vol" min="0" max="1" step="0.01" value="0.25">
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Catalogue Section 2: Mystical & Underground -->
+    <div class="catalogue-section-title"><span>🔮</span> Mystical & Subterranean</div>
+    <div class="channels-grid">
+
+      <!-- Arcane Drone -->
       <div class="channel-card">
         <div class="channel-header">
           <div class="channel-title"><span>🔮</span> Arcane Drone</div>
-          <button class="toggle-btn active" id="drone-toggle">ON</button>
+          <button class="toggle-btn active" data-channel="drone">ON</button>
         </div>
         <div class="slider-container">
           <input type="range" id="drone-vol" min="0" max="1" step="0.01" value="0.35">
         </div>
       </div>
 
+      <!-- Underground Stream -->
+      <div class="channel-card">
+        <div class="channel-header">
+          <div class="channel-title"><span>🌊</span> Deep Stream</div>
+          <button class="toggle-btn active" data-channel="stream">ON</button>
+        </div>
+        <div class="slider-container">
+          <input type="range" id="stream-vol" min="0" max="1" step="0.01" value="0.3">
+        </div>
+      </div>
+
+      <!-- Temple Chimes -->
+      <div class="channel-card">
+        <div class="channel-header">
+          <div class="channel-title"><span>🔔</span> Temple Chimes</div>
+          <button class="toggle-btn active" data-channel="chimes">ON</button>
+        </div>
+        <div class="slider-container">
+          <input type="range" id="chimes-vol" min="0" max="1" step="0.01" value="0.3">
+        </div>
+      </div>
+
+      <!-- Dungeon Echoes -->
+      <div class="channel-card">
+        <div class="channel-header">
+          <div class="channel-title"><span>⛓️</span> Dungeon Echoes</div>
+          <button class="toggle-btn active" data-channel="echoes">ON</button>
+        </div>
+        <div class="slider-container">
+          <input type="range" id="echoes-vol" min="0" max="1" step="0.01" value="0.2">
+        </div>
+      </div>
+
     </div>
 
-    <!-- Thunder Trigger -->
-    <div style="margin-top: 16px;">
-      <button class="trigger-btn" id="thunder-btn">⚡ TRIGGER DISTANT THUNDER</button>
+    <!-- Special Action Triggers -->
+    <div class="catalogue-section-title"><span>⚡</span> Event Triggers</div>
+    <div>
+      <button class="trigger-btn" id="thunder-btn">⚡ STRIKE THUNDERSTORM ⚡</button>
     </div>
   </div>
 
@@ -302,7 +389,7 @@
       height = canvas.height = window.innerHeight;
     });
 
-    const embers = Array.from({ length: 45 }, () => ({
+    const embers = Array.from({ length: 50 }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
       size: Math.random() * 2.2 + 0.8,
@@ -326,14 +413,31 @@
     }
     drawEmbers();
 
-    // --- Web Audio Procedural Synthesizers ---
+    // --- Web Audio Engine & Synthesizers ---
     let audioCtx = null;
     let isPlaying = false;
+    let masterGain = null;
+    let noiseBuffer = null;
 
-    // Master & Channel Gain Nodes
-    let masterGain, rainGain, fireGain, windGain, droneGain;
+    const gains = {};
+    const toggles = {
+      rain: true, fire: true, wind: true, insects: true,
+      drone: true, stream: true, chimes: true, echoes: true
+    };
 
-    function createNoiseBuffer(duration = 2) {
+    function ensureAudioContext() {
+      if (!audioCtx) {
+        initAudio();
+      } else if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      isPlaying = true;
+      document.getElementById('power-btn').classList.add('active');
+      document.getElementById('power-btn').innerText = '⏸ PAUSE ALL SOUNDS';
+      document.getElementById('status-readout').innerText = 'SANCTUARY ACTIVE';
+    }
+
+    function createNoiseBuffer(duration = 3) {
       const bufferSize = audioCtx.sampleRate * duration;
       const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
       const output = buffer.getChannelData(0);
@@ -347,196 +451,255 @@
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
       masterGain = audioCtx.createGain();
-      masterGain.gain.setValueAtTime(0.8, audioCtx.currentTime);
+      masterGain.gain.setValueAtTime(0.85, audioCtx.currentTime);
       masterGain.connect(audioCtx.destination);
 
-      const noiseBuffer = createNoiseBuffer();
+      noiseBuffer = createNoiseBuffer(3);
 
-      // 1. Rain Synthesizer (Filtered Pink/White Noise)
-      const rainSource = audioCtx.createBufferSource();
-      rainSource.buffer = noiseBuffer;
-      rainSource.loop = true;
+      // Helper Gain Generator
+      const setupGain = (key, sliderId) => {
+        const gain = audioCtx.createGain();
+        const val = parseFloat(document.getElementById(sliderId).value);
+        gain.gain.setValueAtTime(toggles[key] ? val : 0, audioCtx.currentTime);
+        gain.connect(masterGain);
+        gains[key] = gain;
+        return gain;
+      };
 
+      // 1. Rainstorm
+      const rainNode = audioCtx.createBufferSource();
+      rainNode.buffer = noiseBuffer;
+      rainNode.loop = true;
       const rainFilter = audioCtx.createBiquadFilter();
       rainFilter.type = 'lowpass';
-      rainFilter.frequency.setValueAtTime(900, audioCtx.currentTime);
+      rainFilter.frequency.setValueAtTime(850, audioCtx.currentTime);
+      rainNode.connect(rainFilter);
+      rainFilter.connect(setupGain('rain', 'rain-vol'));
+      rainNode.start();
 
-      rainGain = audioCtx.createGain();
-      rainGain.gain.setValueAtTime(document.getElementById('rain-vol').value, audioCtx.currentTime);
-
-      rainSource.connect(rainFilter);
-      rainFilter.connect(rainGain);
-      rainGain.connect(masterGain);
-      rainSource.start();
-
-      // 2. Wind Synthesizer (Modulated Bandpass Filter)
-      const windSource = audioCtx.createBufferSource();
-      windSource.buffer = noiseBuffer;
-      windSource.loop = true;
-
-      const windFilter = audioCtx.createBiquadFilter();
-      windFilter.type = 'bandpass';
-      windFilter.frequency.setValueAtTime(300, audioCtx.currentTime);
-      windFilter.Q.setValueAtTime(3.0, audioCtx.currentTime);
-
-      // LFO for wind howling effect
-      const windLFO = audioCtx.createOscillator();
-      const windLFOFilterGain = audioCtx.createGain();
-      windLFO.frequency.setValueAtTime(0.15, audioCtx.currentTime);
-      windLFOFilterGain.gain.setValueAtTime(180, audioCtx.currentTime);
-      windLFO.connect(windLFOFilterGain);
-      windLFOFilterGain.connect(windFilter.frequency);
-      windLFO.start();
-
-      windGain = audioCtx.createGain();
-      windGain.gain.setValueAtTime(document.getElementById('wind-vol').value, audioCtx.currentTime);
-
-      windSource.connect(windFilter);
-      windFilter.connect(windGain);
-      windGain.connect(masterGain);
-      windSource.start();
-
-      // 3. Campfire Crackle (Filtered Noise + Random Pop Spikes)
-      const fireNoise = audioCtx.createBufferSource();
-      fireNoise.buffer = noiseBuffer;
-      fireNoise.loop = true;
-
+      // 2. Hearth Fire
+      const fireNode = audioCtx.createBufferSource();
+      fireNode.buffer = noiseBuffer;
+      fireNode.loop = true;
       const fireFilter = audioCtx.createBiquadFilter();
       fireFilter.type = 'bandpass';
-      fireFilter.frequency.setValueAtTime(1200, audioCtx.currentTime);
+      fireFilter.frequency.setValueAtTime(1100, audioCtx.currentTime);
+      const fireG = setupGain('fire', 'fire-vol');
+      fireNode.connect(fireFilter);
+      fireFilter.connect(fireG);
+      fireNode.start();
 
-      fireGain = audioCtx.createGain();
-      fireGain.gain.setValueAtTime(document.getElementById('fire-vol').value, audioCtx.currentTime);
-
-      fireNoise.connect(fireFilter);
-      fireFilter.connect(fireGain);
-      fireGain.connect(masterGain);
-      fireNoise.start();
-
-      // Periodic Pops/Crackles
+      // Fire Crackle Pops
       setInterval(() => {
-        if (!isPlaying || fireGain.gain.value === 0) return;
+        if (!isPlaying || !toggles.fire || gains.fire.gain.value === 0) return;
         const pop = audioCtx.createBufferSource();
         pop.buffer = noiseBuffer;
-        const popFilter = audioCtx.createBiquadFilter();
-        popFilter.type = 'highpass';
-        popFilter.frequency.setValueAtTime(2500, audioCtx.currentTime);
-
-        const popGain = audioCtx.createGain();
-        popGain.gain.setValueAtTime(Math.random() * 0.15, audioCtx.currentTime);
-        popGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
-
-        pop.connect(popFilter);
-        popFilter.connect(popGain);
-        popGain.connect(fireGain);
+        const popF = audioCtx.createBiquadFilter();
+        popF.type = 'highpass';
+        popF.frequency.setValueAtTime(2200, audioCtx.currentTime);
+        const popG = audioCtx.createGain();
+        popG.gain.setValueAtTime(Math.random() * 0.18, audioCtx.currentTime);
+        popG.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+        pop.connect(popF);
+        popF.connect(popG);
+        popG.connect(fireG);
         pop.start();
-      }, 120);
+      }, 100);
 
-      // 4. Arcane Synth Drone (C Minor Chord Oscillators)
-      const frequencies = [65.41, 77.78, 98.00]; // C2, Eb2, G2
-      droneGain = audioCtx.createGain();
-      droneGain.gain.setValueAtTime(document.getElementById('drone-vol').value, audioCtx.currentTime);
+      // 3. Howling Wind
+      const windNode = audioCtx.createBufferSource();
+      windNode.buffer = noiseBuffer;
+      windNode.loop = true;
+      const windFilter = audioCtx.createBiquadFilter();
+      windFilter.type = 'bandpass';
+      windFilter.frequency.setValueAtTime(320, audioCtx.currentTime);
+      windFilter.Q.setValueAtTime(2.5, audioCtx.currentTime);
 
-      frequencies.forEach(freq => {
+      const windLFO = audioCtx.createOscillator();
+      const windLFOGain = audioCtx.createGain();
+      windLFO.frequency.setValueAtTime(0.12, audioCtx.currentTime);
+      windLFOGain.gain.setValueAtTime(160, audioCtx.currentTime);
+      windLFO.connect(windLFOGain);
+      windLFOGain.connect(windFilter.frequency);
+      windLFO.start();
+
+      windNode.connect(windFilter);
+      windFilter.connect(setupGain('wind', 'wind-vol'));
+      windNode.start();
+
+      // 4. Night Insects (Chirps)
+      const insectG = setupGain('insects', 'insects-vol');
+      setInterval(() => {
+        if (!isPlaying || !toggles.insects || insectG.gain.value === 0) return;
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(4200 + Math.random() * 600, audioCtx.currentTime);
+        const g = audioCtx.createGain();
+        const now = audioCtx.currentTime;
+        g.gain.setValueAtTime(0.001, now);
+        g.gain.linearRampToValueAtTime(0.08, now + 0.03);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        osc.connect(g);
+        g.connect(insectG);
+        osc.start(now);
+        osc.stop(now + 0.13);
+      }, 350);
+
+      // 5. Arcane Drone
+      const droneG = setupGain('drone', 'drone-vol');
+      [65.41, 77.78, 98.00, 130.81].forEach(freq => {
         const osc = audioCtx.createOscillator();
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-
         const filter = audioCtx.createBiquadFilter();
         filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(220, audioCtx.currentTime);
-
+        filter.frequency.setValueAtTime(210, audioCtx.currentTime);
         osc.connect(filter);
-        filter.connect(droneGain);
+        filter.connect(droneG);
         osc.start();
       });
 
-      droneGain.connect(masterGain);
+      // 6. Underground Stream
+      const streamNode = audioCtx.createBufferSource();
+      streamNode.buffer = noiseBuffer;
+      streamNode.loop = true;
+      const streamFilter = audioCtx.createBiquadFilter();
+      streamFilter.type = 'lowpass';
+      streamFilter.frequency.setValueAtTime(450, audioCtx.currentTime);
+      
+      const streamLFO = audioCtx.createOscillator();
+      const streamLFOG = audioCtx.createGain();
+      streamLFO.frequency.setValueAtTime(0.8, audioCtx.currentTime);
+      streamLFOG.gain.setValueAtTime(120, audioCtx.currentTime);
+      streamLFO.connect(streamLFOG);
+      streamLFOG.connect(streamFilter.frequency);
+      streamLFO.start();
+
+      streamNode.connect(streamFilter);
+      streamFilter.connect(setupGain('stream', 'stream-vol'));
+      streamNode.start();
+
+      // 7. Temple Chimes
+      const chimesG = setupGain('chimes', 'chimes-vol');
+      const chimePitchSet = [1046.5, 1174.66, 1318.51, 1567.98, 1760.0];
+      setInterval(() => {
+        if (!isPlaying || !toggles.chimes || chimesG.gain.value === 0) return;
+        if (Math.random() > 0.45) return;
+        const pitch = chimePitchSet[Math.floor(Math.random() * chimePitchSet.length)];
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(pitch, audioCtx.currentTime);
+        const g = audioCtx.createGain();
+        const now = audioCtx.currentTime;
+        g.gain.setValueAtTime(0.001, now);
+        g.gain.linearRampToValueAtTime(0.12, now + 0.05);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
+        osc.connect(g);
+        g.connect(chimesG);
+        osc.start(now);
+        osc.stop(now + 2.9);
+      }, 1200);
+
+      // 8. Dungeon Echoes
+      const echoesG = setupGain('echoes', 'echoes-vol');
+      setInterval(() => {
+        if (!isPlaying || !toggles.echoes || echoesG.gain.value === 0) return;
+        if (Math.random() > 0.35) return;
+        const osc = audioCtx.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(140 + Math.random() * 80, audioCtx.currentTime);
+        const g = audioCtx.createGain();
+        const now = audioCtx.currentTime;
+        g.gain.setValueAtTime(0.001, now);
+        g.gain.linearRampToValueAtTime(0.15, now + 0.08);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + 1.8);
+        osc.connect(g);
+        g.connect(echoesG);
+        osc.start(now);
+        osc.stop(now + 1.9);
+      }, 2000);
     }
 
-    // Trigger Distant Thunder
+    // --- Fixed Thunderstorm Trigger & Lighting Effect ---
     function triggerThunder() {
-      if (!audioCtx || !isPlaying) return;
+      ensureAudioContext();
 
+      // Lightning Flash Effect
+      const flash = document.getElementById('flash-overlay');
+      flash.style.opacity = '0.45';
+      setTimeout(() => { flash.style.opacity = '0'; }, 80);
+      setTimeout(() => { flash.style.opacity = '0.25'; }, 160);
+      setTimeout(() => { flash.style.opacity = '0'; }, 280);
+
+      // Synthesize Thunder Audio
+      const now = audioCtx.currentTime;
       const thunderSource = audioCtx.createBufferSource();
-      thunderSource.buffer = createNoiseBuffer(4);
+      thunderSource.buffer = noiseBuffer;
 
       const filter = audioCtx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(120, audioCtx.currentTime);
+      filter.frequency.setValueAtTime(180, now);
+      filter.frequency.exponentialRampToValueAtTime(40, now + 3.5);
 
       const gain = audioCtx.createGain();
-      const now = audioCtx.currentTime;
-      gain.gain.setValueAtTime(0.01, now);
-      gain.gain.linearRampToValueAtTime(0.7, now + 0.3);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 3.8);
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.95, now + 0.12); // Primary Strike
+      gain.gain.linearRampToValueAtTime(0.35, now + 0.5);
+      gain.gain.linearRampToValueAtTime(0.6, now + 1.1);  // Rolling Rumble
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 4.2); // Decay
 
       thunderSource.connect(filter);
       filter.connect(gain);
       gain.connect(masterGain);
-      thunderSource.start();
+      thunderSource.start(now);
     }
 
-    // --- UI Event Listeners ---
+    // --- Master Power Controls ---
     const powerBtn = document.getElementById('power-btn');
     const statusReadout = document.getElementById('status-readout');
 
     powerBtn.addEventListener('click', () => {
       if (!audioCtx) {
-        initAudio();
-        isPlaying = true;
-        powerBtn.classList.add('active');
-        powerBtn.innerText = '⏸ PAUSE SOUND';
-        statusReadout.innerText = 'ACTIVE SANCTUARY';
+        ensureAudioContext();
       } else if (audioCtx.state === 'suspended') {
         audioCtx.resume();
         isPlaying = true;
         powerBtn.classList.add('active');
-        powerBtn.innerText = '⏸ PAUSE SOUND';
-        statusReadout.innerText = 'ACTIVE SANCTUARY';
+        powerBtn.innerText = '⏸ PAUSE ALL SOUNDS';
+        statusReadout.innerText = 'SANCTUARY ACTIVE';
       } else {
         audioCtx.suspend();
         isPlaying = false;
         powerBtn.classList.remove('active');
-        powerBtn.innerText = '▶ INITIALIZE SOUND';
+        powerBtn.innerText = '▶ INITIALIZE ALL SOUNDS';
         statusReadout.innerText = 'PAUSED';
       }
     });
 
-    // Volume Sliders Controls
-    document.getElementById('rain-vol').addEventListener('input', (e) => {
-      if (rainGain) rainGain.gain.setValueAtTime(e.target.value, audioCtx.currentTime);
-    });
-
-    document.getElementById('fire-vol').addEventListener('input', (e) => {
-      if (fireGain) fireGain.gain.setValueAtTime(e.target.value, audioCtx.currentTime);
-    });
-
-    document.getElementById('wind-vol').addEventListener('input', (e) => {
-      if (windGain) windGain.gain.setValueAtTime(e.target.value, audioCtx.currentTime);
-    });
-
-    document.getElementById('drone-vol').addEventListener('input', (e) => {
-      if (droneGain) droneGain.gain.setValueAtTime(e.target.value, audioCtx.currentTime);
-    });
-
-    // Mute Toggles
-    const setupToggle = (btnId, gainNodeGetter, sliderId) => {
-      const btn = document.getElementById(btnId);
-      btn.addEventListener('click', () => {
-        btn.classList.toggle('active');
-        const active = btn.classList.contains('active');
-        btn.innerText = active ? 'ON' : 'OFF';
-        const sliderVal = document.getElementById(sliderId).value;
-        const gain = gainNodeGetter();
-        if (gain) gain.gain.setValueAtTime(active ? sliderVal : 0, audioCtx.currentTime);
+    // --- Dynamic Slider Listeners ---
+    ['rain', 'fire', 'wind', 'insects', 'drone', 'stream', 'chimes', 'echoes'].forEach(key => {
+      const slider = document.getElementById(`${key}-vol`);
+      slider.addEventListener('input', (e) => {
+        if (gains[key] && toggles[key]) {
+          gains[key].gain.setValueAtTime(parseFloat(e.target.value), audioCtx.currentTime);
+        }
       });
-    };
+    });
 
-    setupToggle('rain-toggle', () => rainGain, 'rain-vol');
-    setupToggle('fire-toggle', () => fireGain, 'fire-vol');
-    setupToggle('wind-toggle', () => windGain, 'wind-vol');
-    setupToggle('drone-toggle', () => droneGain, 'drone-vol');
+    // --- Toggle Buttons ---
+    document.querySelectorAll('.toggle-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const channel = btn.getAttribute('data-channel');
+        toggles[channel] = !toggles[channel];
+        btn.classList.toggle('active', toggles[channel]);
+        btn.innerText = toggles[channel] ? 'ON' : 'OFF';
+
+        if (gains[channel]) {
+          const sliderVal = parseFloat(document.getElementById(`${channel}-vol`).value);
+          gains[channel].gain.setValueAtTime(toggles[channel] ? sliderVal : 0, audioCtx.currentTime);
+        }
+      });
+    });
 
     document.getElementById('thunder-btn').addEventListener('click', triggerThunder);
   </script>
