@@ -3,470 +3,428 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Unseen Senses — Biological Perception Simulator</title>
+  <title>AstroForge — 3D Planetary & Orbital Simulator</title>
   <style>
     :root {
       --accent: #00f3ff;
-      --bg-dark: #05070a;
-      --card-bg: rgba(13, 18, 28, 0.82);
+      --bg-dark: #030508;
+      --panel-bg: rgba(10, 15, 26, 0.82);
       --border: rgba(0, 243, 255, 0.25);
     }
 
     * { box-sizing: border-box; }
 
-    body {
-      background-color: var(--bg-dark);
-      color: #e2e8f0;
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    body, html {
       margin: 0;
-      padding: 30px 15px;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      position: relative;
-      overflow-x: hidden;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-dark);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color: #e2e8f0;
+      user-select: none;
     }
 
-    /* Ambient Animated Background Canvas */
-    #bg-canvas {
-      position: fixed;
+    /* 3D Canvas */
+    #webgl-canvas {
+      position: absolute;
       top: 0;
       left: 0;
-      width: 100vw;
-      height: 100vh;
-      z-index: -1;
-      pointer-events: none;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
     }
 
-    /* Header & Titles */
+    /* Top Navigation / Title */
     header {
-      text-align: center;
-      margin-bottom: 25px;
-      z-index: 1;
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 10;
+      pointer-events: none;
     }
 
     .badge {
       background: rgba(0, 243, 255, 0.12);
       color: var(--accent);
       border: 1px solid var(--accent);
-      padding: 4px 14px;
+      padding: 4px 12px;
       border-radius: 20px;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       letter-spacing: 2px;
       text-transform: uppercase;
       font-weight: 700;
     }
 
     h1 {
-      font-size: 2.5rem;
-      margin: 12px 0 6px;
+      font-size: 1.8rem;
+      margin: 8px 0 4px;
       color: #fff;
-      text-shadow: 0 0 25px rgba(0, 243, 255, 0.5);
+      text-shadow: 0 0 20px rgba(0, 243, 255, 0.6);
     }
 
     p.subtitle {
       color: #94a3b8;
       margin: 0;
-      font-size: 0.95rem;
+      font-size: 0.85rem;
     }
 
-    /* Controls Panel */
-    .controls-container {
-      width: 100%;
-      max-width: 920px;
-      background: var(--card-bg);
-      backdrop-filter: blur(14px);
+    /* Right Control Panel */
+    .panel {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 320px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(16px);
       border: 1px solid var(--border);
       border-radius: 16px;
       padding: 20px;
-      margin-bottom: 20px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-      z-index: 1;
+      z-index: 10;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
     }
 
-    .control-label {
+    .panel-title {
       font-size: 0.8rem;
       text-transform: uppercase;
       letter-spacing: 1.5px;
-      color: #64748b;
-      margin-bottom: 8px;
+      color: var(--accent);
       font-weight: 700;
+      margin-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 6px;
+    }
+
+    .control-group {
+      margin-bottom: 14px;
+    }
+
+    .control-group label {
       display: flex;
       justify-content: space-between;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-bottom: 6px;
     }
 
-    .btn-group {
-      display: flex;
-      flex-wrap: wrap;
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .btn-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
       gap: 8px;
-      margin-bottom: 16px;
+      margin-top: 10px;
     }
-
-    .btn-group:last-child { margin-bottom: 0; }
 
     button {
       background: rgba(255, 255, 255, 0.05);
       color: #cbd5e1;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      padding: 8px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 8px;
       border-radius: 8px;
       cursor: pointer;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 600;
       transition: all 0.2s ease;
     }
 
     button:hover {
-      background: rgba(0, 243, 255, 0.15);
+      background: rgba(0, 243, 255, 0.2);
       border-color: var(--accent);
       color: #fff;
     }
 
     button.active {
       background: var(--accent);
-      color: #05070a;
+      color: #030508;
       border-color: var(--accent);
-      box-shadow: 0 0 14px rgba(0, 243, 255, 0.6);
+      box-shadow: 0 0 12px rgba(0, 243, 255, 0.5);
     }
 
-    /* Viewport Frame */
-    .viewport {
-      position: relative;
-      width: 100%;
-      max-width: 920px;
-      height: 500px;
-      border-radius: 16px;
-      overflow: hidden;
-      border: 1px solid var(--border);
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85);
-      cursor: none;
-      z-index: 1;
-    }
-
-    .scene-img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      transition: filter 0.4s ease, transform 0.2s ease;
-    }
-
-    /* Custom Reticle Cursor */
-    #lens-cursor {
-      position: absolute;
-      width: 100px;
-      height: 100px;
-      border: 2px solid var(--accent);
-      border-radius: 50%;
-      pointer-events: none;
-      transform: translate(-50%, -50%);
-      box-shadow: 0 0 20px rgba(0, 243, 255, 0.6), inset 0 0 20px rgba(0, 243, 255, 0.2);
-      display: none;
-      z-index: 10;
-      transition: transform 0.1s ease, width 0.2s, height 0.2s;
-    }
-
-    #lens-cursor::before {
-      content: '';
-      position: absolute;
-      top: 50%; left: -12px; right: -12px; height: 1px;
-      background: var(--accent); transform: translateY(-50%);
-    }
-
-    #lens-cursor::after {
-      content: '';
-      position: absolute;
-      left: 50%; top: -12px; bottom: -12px; width: 1px;
-      background: var(--accent); transform: translateX(-50%);
-    }
-
-    /* Flashlight Torch Surprise Mode */
-    .torch-active {
-      width: 160px !important;
-      height: 160px !important;
-      border-color: #ff0055 !important;
-      box-shadow: 0 0 35px #ff0055, inset 0 0 30px #ff0055 !important;
-    }
-
-    /* Click Sonar Pulse */
-    .sonar-ripple {
-      position: absolute;
-      border: 2px solid var(--accent);
-      border-radius: 50%;
-      pointer-events: none;
-      transform: translate(-50%, -50%);
-      animation: ripple 0.65s ease-out forwards;
-      z-index: 9;
-    }
-
-    @keyframes ripple {
-      0% { width: 0; height: 0; opacity: 1; }
-      100% { width: 280px; height: 280px; opacity: 0; }
-    }
-
-    /* Biological Hotspots */
-    .hotspot {
-      position: absolute;
-      width: 22px;
-      height: 22px;
-      background: rgba(0, 243, 255, 0.3);
-      border: 2px solid var(--accent);
-      border-radius: 50%;
-      cursor: pointer;
-      z-index: 8;
-      animation: pulse 1.8s infinite;
-    }
-
-    @keyframes pulse {
-      0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(0, 243, 255, 0.7); }
-      70% { transform: scale(1.1); box-shadow: 0 0 0 12px rgba(0, 243, 255, 0); }
-      100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(0, 243, 255, 0); }
-    }
-
-    /* Hotspot Fact Popover */
-    #fact-popover {
+    /* Bottom Telemetry Card */
+    .telemetry-card {
       position: absolute;
       bottom: 20px;
       left: 20px;
-      right: 20px;
-      background: rgba(5, 7, 10, 0.9);
-      border: 1px solid var(--accent);
-      border-radius: 10px;
-      padding: 12px 18px;
-      color: #fff;
-      font-size: 0.88rem;
-      display: none;
-      z-index: 12;
-      box-shadow: 0 8px 25px rgba(0,0,0,0.9);
-    }
-
-    /* Vision Filters */
-    .filter-human   { filter: none; }
-    .filter-bee     { filter: hue-rotate(240deg) saturate(3.5) contrast(1.3) brightness(1.1); }
-    .filter-viper   { filter: invert(0.9) hue-rotate(140deg) saturate(4) contrast(2.5); }
-    .filter-bat     { filter: grayscale(1) contrast(5) invert(1); }
-    .filter-shrimp  { filter: hue-rotate(90deg) saturate(5) contrast(1.8) invert(0.1); }
-    .filter-owl     { filter: sepia(0.3) hue-rotate(80deg) brightness(1.6) contrast(1.4); }
-    .filter-dog     { filter: sepia(0.5) hue-rotate(160deg) saturate(1.2); }
-    .filter-torch   { filter: contrast(3) brightness(1.4) saturate(2) hue-rotate(300deg); }
-
-    /* Stats HUD Card */
-    .hud-card {
-      width: 100%;
-      max-width: 920px;
-      margin-top: 20px;
-      background: var(--card-bg);
-      backdrop-filter: blur(14px);
+      width: 360px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(16px);
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 20px;
-      display: grid;
-      grid-template-columns: 2fr 1fr 1fr;
-      gap: 15px;
-      z-index: 1;
+      padding: 16px;
+      z-index: 10;
     }
 
-    .hud-info h3 { margin: 0 0 6px; color: var(--accent); font-size: 1.1rem; }
-    .hud-info p { margin: 0; color: #94a3b8; font-size: 0.9rem; line-height: 1.4; }
+    .telemetry-title {
+      color: var(--accent);
+      font-size: 1.1rem;
+      margin: 0 0 4px;
+      font-weight: 700;
+    }
 
-    .hud-stat {
+    .telemetry-desc {
+      font-size: 0.82rem;
+      color: #94a3b8;
+      margin: 0 0 10px;
+      line-height: 1.3;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .stat-box {
       background: rgba(0, 0, 0, 0.4);
-      padding: 10px 14px;
-      border-radius: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
       border: 1px solid rgba(255, 255, 255, 0.05);
     }
 
-    .hud-stat-title { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
-    .hud-stat-value { font-size: 1.05rem; font-weight: bold; color: #fff; margin-top: 4px; }
+    .stat-lbl { font-size: 0.68rem; color: #64748b; text-transform: uppercase; }
+    .stat-val { font-size: 0.95rem; font-weight: bold; color: #fff; margin-top: 2px; }
 
-    @media (max-width: 768px) {
-      .hud-card { grid-template-columns: 1fr; }
-      .viewport { height: 340px; }
+    /* Hint Overlay */
+    .hint-overlay {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      font-size: 0.75rem;
+      color: #64748b;
+      z-index: 10;
+      pointer-events: none;
     }
   </style>
+
+  <!-- Three.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-  <canvas id="bg-canvas"></canvas>
+  <canvas id="webgl-canvas"></canvas>
 
   <header>
-    <span class="badge">Interactive Perception Sandbox</span>
-    <h1>Unseen Senses</h1>
-    <p class="subtitle">Explore non-human visual spectrums, acoustic sonar, and infrared perception.</p>
+    <span class="badge">Real-Time 3D Engine</span>
+    <h1>AstroForge</h1>
+    <p class="subtitle">Interactive Astrophysical & Orbital Simulator</p>
   </header>
 
-  <div class="controls-container">
-    <div class="control-label">1. Select Environment Scene</div>
-    <div class="btn-group">
-      <button class="scene-btn active" onclick="setScene('https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1200&q=80', this, 15, 60)">🪸 Coral Reef</button>
-      <button class="scene-btn" onclick="setScene('https://images.unsplash.com/photo-1470240731273-7821a6eeb6bd?auto=format&fit=crop&w=1200&q=80', this, 40, 30)">🌸 Flower Meadow</button>
-      <button class="scene-btn" onclick="setScene('https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80', this, 70, 50)">🌲 Pine Forest</button>
-      <button class="scene-btn" onclick="setScene('https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1200&q=80', this, 55, 80)">🏙️ Cyber City</button>
-      <button class="scene-btn" onclick="setScene('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80', this, 30, 40)">🌋 Lava Vent</button>
-      <button class="scene-btn" onclick="setScene('https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=80', this, 80, 20)">🏜️ Desert Night</button>
+  <!-- Control HUD -->
+  <div class="panel">
+    <div class="panel-title">Orbital Controls</div>
+    
+    <div class="control-group">
+      <label><span>Simulation Speed</span> <span id="speed-val">1.0x</span></label>
+      <input type="range" id="speed-slider" min="0" max="3" step="0.1" value="1">
     </div>
 
-    <div class="control-label">
-      <span>2. Select Organism Perception</span>
-      <span>Keys 1-7 Shortcut</span>
+    <div class="control-group">
+      <label><span>Camera Distance</span> <span id="zoom-val">50</span></label>
+      <input type="range" id="zoom-slider" min="20" max="120" value="50">
     </div>
-    <div class="btn-group">
-      <button class="sense-btn active" onclick="setVision('filter-human', 'Standard Human Vision', 'Trichromatic full color spectrum with high spatial clarity.', '380 - 740 nm', '3 Cone Types', this)">👁️ Human (1)</button>
-      <button class="sense-btn" onclick="setVision('filter-bee', 'Honeybee (Ultraviolet)', 'Sees UV nectar guides on petals invisible to human eyes.', '300 - 650 nm (UV)', 'UV, Blue, Green', this)">🐝 Honeybee (2)</button>
-      <button class="sense-btn" onclick="setVision('filter-viper', 'Pit Viper (Thermal IR)', 'Pit organs sense heat signatures emitted by warm prey.', '5,000 - 30,000 nm (Heat)', 'Infrared Pit Organ', this)">🐍 Pit Viper (3)</button>
-      <button class="sense-btn" onclick="setVision('filter-bat', 'Microbat (Echolocation)', 'High-frequency acoustic bounce mapping of physical terrain.', '20 - 120 kHz (Sound)', 'Acoustic Sonar', this)">🦇 Bat Sonar (4)</button>
-      <button class="sense-btn" onclick="setVision('filter-shrimp', 'Mantis Shrimp (Hyper-UV)', 'Possesses 16 photoreceptor types and detects polarized light.', '16-Band Spectrum', '16 Cone Types', this)">🦐 Mantis Shrimp (5)</button>
-      <button class="sense-btn" onclick="setVision('filter-owl', 'Great Horned Owl (Night)', 'Tapetum lucidum layer magnifies low ambient night light.', 'Extreme Low Light', 'High Density Rods', this)">🦉 Owl Vision (6)</button>
-      <button class="sense-btn" onclick="setVision('filter-dog', 'Canine (Dichromatic)', 'Blue-yellow color spectrum. Red/green shades blend into gray.', '430 - 555 nm', '2 Cone Types', this)">🐶 Dog (7)</button>
+
+    <div class="panel-title" style="margin-top: 15px;">Focus Target</div>
+    <div class="btn-grid">
+      <button onclick="focusTarget(0, 'Sol (Central Star)', 'Class-G yellow dwarf star. Generates immense gravitational pull and radiation output.', '1.39M km', '5,778 K')" class="active">☀️ Sun</button>
+      <button onclick="focusTarget(1, 'Terran Prime', 'Rocky terrestrial planet supporting liquid surface oceans and atmosphere.', '12,742 km', '1.00 AU')">🌍 Terran</button>
+      <button onclick="focusTarget(2, 'Aurelia Prime', 'Massive ringed gas giant with a volatile hydrogen-helium atmosphere.', '116,460 km', '5.20 AU')">🪐 Ringed Giant</button>
+      <button onclick="focusTarget(3, 'Pyros IX', 'High-density volcanic dwarf planet with intense geothermal activity.', '6,779 km', '1.52 AU')">🔴 Pyros</button>
     </div>
   </div>
 
-  <div class="viewport" id="viewport">
-    <img id="scene" class="scene-img filter-human" src="https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1200&q=80" alt="Environment Scene">
-    <div id="lens-cursor"></div>
-    <div class="hotspot" id="hotspot" style="top: 30%; left: 45%;" onclick="showFact(event)"></div>
-    <div id="fact-popover">🔍 <b>Hotspot Identified:</b> Biological signal detected! Organisms utilizing this vision mode leverage specialized retinal proteins or wave acoustics to isolate target details from surrounding noise.</div>
+  <!-- Telemetry HUD -->
+  <div class="telemetry-card">
+    <div class="telemetry-title" id="target-name">Sol (Central Star)</div>
+    <div class="telemetry-desc" id="target-desc">Class-G yellow dwarf star. Generates immense gravitational pull and radiation output.</div>
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-lbl">Diameter / Scale</div>
+        <div class="stat-val" id="target-stat1">1.39M km</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-lbl">Orbital Distance / Temp</div>
+        <div class="stat-val" id="target-stat2">5,778 K</div>
+      </div>
+    </div>
   </div>
 
-  <div class="hud-card">
-    <div class="hud-info">
-      <h3 id="hud-title">Standard Human Vision</h3>
-      <p id="hud-desc">Trichromatic full color spectrum with high spatial clarity.</p>
-    </div>
-    <div class="hud-stat">
-      <div class="hud-stat-title">Spectral Range</div>
-      <div class="hud-stat-value" id="hud-range">380 - 740 nm</div>
-    </div>
-    <div class="hud-stat">
-      <div class="hud-stat-title">Receptors / Sensors</div>
-      <div class="hud-stat-value" id="hud-sensors">3 Cone Types</div>
-    </div>
-  </div>
+  <div class="hint-overlay">🖱️ Click & Drag to Rotate Camera | Scroll to Zoom</div>
 
   <script>
-    // Canvas Animated Particle Background
-    const canvas = document.getElementById('bg-canvas');
-    const ctx = canvas.getContext('2d');
-    let particles = [];
+    // --- 3D Scene Initialization ---
+    const canvas = document.getElementById('webgl-canvas');
+    const scene = new THREE.Scene();
+    
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 30, 50);
 
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    // --- Lighting ---
+    const ambientLight = new THREE.AmbientLight(0x222233, 1.2);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.PointLight(0xfff5ea, 2.5, 300);
+    scene.add(sunLight);
+
+    // --- Starfield Background ---
+    const starsGeometry = new THREE.BufferGeometry();
+    const starCount = 3000;
+    const starPositions = new Float32Array(starCount * 3);
+
+    for (let i = 0; i < starCount * 3; i++) {
+      starPositions[i] = (Math.random() - 0.5) * 400;
     }
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
+    starsGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
 
-    for(let i = 0; i < 45; i++) {
-      particles.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        r: Math.random() * 2 + 0.5,
-        dx: (Math.random() - 0.5) * 0.4,
-        dy: (Math.random() - 0.5) * 0.4,
-        o: Math.random() * 0.5 + 0.2
-      });
-    }
+    const starsMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.7, transparent: true, opacity: 0.8 });
+    const starField = new THREE.Points(starsGeometry, starsMaterial);
+    scene.add(starField);
 
-    function animateParticles() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      particles.forEach(p => {
-        p.x += p.dx;
-        p.y += p.dy;
-        if (p.x < 0 || p.x > canvas.width) p.dx *= -1;
-        if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
+    // --- Central Sun ---
+    const sunGeo = new THREE.SphereGeometry(6, 32, 32);
+    const sunMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
+    const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+    scene.add(sunMesh);
 
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(0, 243, 255, ${p.o})`;
-        ctx.fill();
-      });
-      requestAnimationFrame(animateParticles);
-    }
-    animateParticles();
+    // Sun Glow Halo
+    const glowGeo = new THREE.SphereGeometry(6.8, 32, 32);
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0xffdd44, transparent: true, opacity: 0.25 });
+    const glowMesh = new THREE.Mesh(glowGeo, glowMat);
+    scene.add(glowMesh);
 
-    // Mouse Lens & Hold Torch Mode
-    const viewport = document.getElementById('viewport');
-    const lensCursor = document.getElementById('lens-cursor');
-    const sceneImg = document.getElementById('scene');
-    let activeFilter = 'filter-human';
+    // --- Planetary Objects ---
+    const planets = [];
 
-    viewport.addEventListener('mousemove', (e) => {
-      const rect = viewport.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      lensCursor.style.left = `${x}px`;
-      lensCursor.style.top = `${y}px`;
-      lensCursor.style.display = 'block';
-    });
-
-    viewport.addEventListener('mouseleave', () => {
-      lensCursor.style.display = 'none';
-      sceneImg.className = 'scene-img ' + activeFilter;
-      lensCursor.classList.remove('torch-active');
-    });
-
-    viewport.addEventListener('mousedown', () => {
-      lensCursor.classList.add('torch-active');
-      sceneImg.className = 'scene-img filter-torch';
-    });
-
-    viewport.addEventListener('mouseup', () => {
-      lensCursor.classList.remove('torch-active');
-      sceneImg.className = 'scene-img ' + activeFilter;
-    });
-
-    // Click Sonar Ripple
-    viewport.addEventListener('click', (e) => {
-      if(e.target.classList.contains('hotspot')) return;
-      const rect = viewport.getBoundingClientRect();
-      const ripple = document.createElement('div');
-      ripple.className = 'sonar-ripple';
-      ripple.style.left = `${e.clientX - rect.left}px`;
-      ripple.style.top = `${e.clientY - rect.top}px`;
-      viewport.appendChild(ripple);
-      setTimeout(() => ripple.remove(), 650);
-    });
-
-    // Show Fact Popover
-    function showFact(e) {
-      e.stopPropagation();
-      const popover = document.getElementById('fact-popover');
-      popover.style.display = popover.style.display === 'block' ? 'none' : 'block';
-    }
-
-    // Change Scene & Move Hotspot
-    function setScene(imgUrl, btn, hsTop, hsLeft) {
-      sceneImg.src = imgUrl;
-      document.querySelectorAll('.scene-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      
-      const hs = document.getElementById('hotspot');
-      hs.style.top = hsTop + '%';
-      hs.style.left = hsLeft + '%';
-      document.getElementById('fact-popover').style.display = 'none';
-    }
-
-    // Vision Switcher
-    function setVision(filterClass, title, desc, range, sensors, btn) {
-      activeFilter = filterClass;
-      sceneImg.className = 'scene-img ' + filterClass;
-      document.getElementById('hud-title').innerText = title;
-      document.getElementById('hud-desc').innerText = desc;
-      document.getElementById('hud-range').innerText = range;
-      document.getElementById('hud-sensors').innerText = sensors;
-
-      document.querySelectorAll('.sense-btn').forEach(b => b.classList.remove('active'));
-      if(btn) btn.classList.add('active');
-    }
-
-    // Keyboard Shortcuts (Keys 1-7)
-    window.addEventListener('keydown', (e) => {
-      const btns = document.querySelectorAll('.sense-btn');
-      if (e.key >= '1' && e.key <= '7') {
-        const index = parseInt(e.key) - 1;
-        if(btns[index]) btns[index].click();
+    function createOrbitRing(radius) {
+      const ringGeo = new THREE.BufferGeometry();
+      const points = [];
+      for (let i = 0; i <= 64; i++) {
+        const theta = (i / 64) * Math.PI * 2;
+        points.push(new THREE.Vector3(Math.cos(theta) * radius, 0, Math.sin(theta) * radius));
       }
+      ringGeo.setFromPoints(points);
+      const ringMat = new THREE.LineBasicMaterial({ color: 0x00f3ff, transparent: true, opacity: 0.15 });
+      const orbitLine = new THREE.Line(ringGeo, ringMat);
+      scene.add(orbitLine);
+    }
+
+    function addPlanet(color, size, distance, speed, hasRings = false) {
+      createOrbitRing(distance);
+
+      const pivot = new THREE.Group();
+      scene.add(pivot);
+
+      const planetGeo = new THREE.SphereGeometry(size, 32, 32);
+      const planetMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.7, metalness: 0.2 });
+      const planetMesh = new THREE.Mesh(planetGeo, planetMat);
+      planetMesh.position.x = distance;
+      pivot.add(planetMesh);
+
+      // Planetary Rings
+      if (hasRings) {
+        const ringGeo = new THREE.RingGeometry(size * 1.4, size * 2.3, 32);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0xd4af37, side: THREE.DoubleSide, transparent: true, opacity: 0.6 });
+        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+        ringMesh.rotation.x = Math.PI / 2;
+        planetMesh.add(ringMesh);
+      }
+
+      planets.push({ pivot, mesh: planetMesh, distance, speed, size });
+    }
+
+    // Add Solar System Planets
+    addPlanet(0x2b82c5, 2.2, 16, 0.015);               // Terran
+    addPlanet(0xe09f3e, 3.8, 28, 0.008, true);         // Aurelia (Ringed)
+    addPlanet(0xd9381e, 1.6, 38, 0.005);               // Pyros
+
+    // --- Interaction & Controls ---
+    let simSpeed = 1.0;
+    let targetFocus = sunMesh;
+
+    // Mouse Rotation Controls
+    let isMouseDown = false;
+    let mouseX = 0, mouseY = 0;
+    let cameraAngleX = 0, cameraAngleY = 0.5;
+
+    window.addEventListener('mousedown', (e) => {
+      if(e.target.tagName === 'CANVAS') isMouseDown = true;
+    });
+
+    window.addEventListener('mouseup', () => isMouseDown = false);
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isMouseDown) return;
+      cameraAngleX -= e.movementX * 0.005;
+      cameraAngleY += e.movementY * 0.005;
+      cameraAngleY = Math.max(-Math.PI / 2.5, Math.min(Math.PI / 2.5, cameraAngleY));
+    });
+
+    // Zoom Slider
+    const zoomSlider = document.getElementById('zoom-slider');
+    zoomSlider.addEventListener('input', (e) => {
+      document.getElementById('zoom-val').innerText = e.target.value;
+    });
+
+    // Speed Slider
+    document.getElementById('speed-slider').addEventListener('input', (e) => {
+      simSpeed = parseFloat(e.target.value);
+      document.getElementById('speed-val').innerText = simSpeed.toFixed(1) + 'x';
+    });
+
+    // Focus Switcher
+    function focusTarget(index, name, desc, stat1, stat2) {
+      if (index === 0) targetFocus = sunMesh;
+      else targetFocus = planets[index - 1].mesh;
+
+      document.getElementById('target-name').innerText = name;
+      document.getElementById('target-desc').innerText = desc;
+      document.getElementById('target-stat1').innerText = stat1;
+      document.getElementById('target-stat2').innerText = stat2;
+
+      document.querySelectorAll('.btn-grid button').forEach((b, i) => {
+        b.classList.toggle('active', i === index);
+      });
+    }
+
+    // --- Animation Loop ---
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Rotate Planets
+      sunMesh.rotation.y += 0.002;
+      planets.forEach(p => {
+        p.pivot.rotation.y += p.speed * simSpeed;
+        p.mesh.rotation.y += 0.01;
+      });
+
+      // Update Camera Position smoothly around target
+      const dist = parseFloat(zoomSlider.value);
+      const targetPos = new THREE.Vector3();
+      targetFocus.getWorldPosition(targetPos);
+
+      camera.position.x = targetPos.x + dist * Math.sin(cameraAngleX) * Math.cos(cameraAngleY);
+      camera.position.y = targetPos.y + dist * Math.sin(cameraAngleY);
+      camera.position.z = targetPos.z + dist * Math.cos(cameraAngleX) * Math.cos(cameraAngleY);
+      camera.lookAt(targetPos);
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    // Window Resize Handler
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
     });
   </script>
 </body>
