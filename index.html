@@ -28,7 +28,6 @@
       width: 100%; height: 100%; z-index: 1;
     }
 
-    /* Glass Dirt & Vignette Shader Effect */
     .viewport-overlay {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
       z-index: 5; pointer-events: none;
@@ -56,7 +55,6 @@
 
     h1 { font-size: 1.1rem; margin-top: 6px; color: #fff; letter-spacing: 1.5px; }
 
-    /* Radar Sonar Scope */
     .radar-box {
       width: 130px; height: 130px; background: var(--hud-bg);
       border: 1px solid var(--hud-border); border-radius: 50%;
@@ -151,9 +149,18 @@
     const canvas = document.getElementById('render-canvas');
     const scene = new THREE.Scene();
     
-    const depthFogColor = new THREE.Color(0x010c1e);
+    // Softer fog so you can see far ahead
+    const depthFogColor = new THREE.Color(0x021a38);
     scene.background = depthFogColor;
-    scene.fog = new THREE.FogExp2(depthFogColor, 0.015);
+    scene.fog = new THREE.FogExp2(depthFogColor, 0.006);
+
+    // Global Underwater Ambient Lighting
+    const ambientLight = new THREE.AmbientLight(0x1a4575, 2.5);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0x00d2ff, 1.8);
+    sunLight.position.set(0, 100, 0);
+    scene.add(sunLight);
 
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -172,21 +179,18 @@
     function buildRealisticCockpit() {
       const cockpit = new THREE.Group();
 
-      // Hull Cylinder
       const hullGeo = new THREE.CylinderGeometry(2.8, 2.8, 7, 32, 1, true);
       hullGeo.rotateX(Math.PI / 2);
       const hullMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8, side: THREE.BackSide });
       const hull = new THREE.Mesh(hullGeo, hullMat);
       cockpit.add(hull);
 
-      // Porthole Window Bezel
       const bezelGeo = new THREE.TorusGeometry(2.0, 0.15, 16, 48);
       const bezelMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9, roughness: 0.2 });
       const bezel = new THREE.Mesh(bezelGeo, bezelMat);
       bezel.position.set(0, 0, -3.2);
       cockpit.add(bezel);
 
-      // Glass Lens
       const glassGeo = new THREE.CircleGeometry(1.95, 32);
       const glassMat = new THREE.MeshPhysicalMaterial({
         color: 0x00f3ff, transparent: true, opacity: 0.12, transmission: 0.9, roughness: 0.1
@@ -195,7 +199,6 @@
       glass.position.set(0, 0, -3.15);
       cockpit.add(glass);
 
-      // Control Dash
       const dashGeo = new THREE.BoxGeometry(4.2, 1.0, 1.4);
       const dashMat = new THREE.MeshStandardMaterial({ color: 0x020617, roughness: 0.6 });
       const dash = new THREE.Mesh(dashGeo, dashMat);
@@ -203,7 +206,6 @@
       dash.rotation.x = 0.25;
       cockpit.add(dash);
 
-      // Dynamic Gauges & Illuminated Controls
       const colors = [0x00f3ff, 0x00ffaa, 0xff3366, 0xffb700];
       for(let i = 0; i < 16; i++) {
         const btnGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.08, 12);
@@ -214,12 +216,11 @@
         cockpit.add(btn);
       }
 
-      // Interior Ambient Cabin Lights
-      const cabinLight = new THREE.PointLight(0x00f3ff, 1.5, 5);
+      const cabinLight = new THREE.PointLight(0x00f3ff, 2.0, 6);
       cabinLight.position.set(0, 1.5, -0.8);
       cockpit.add(cabinLight);
 
-      // Flask Easter Egg (Kinetically Unified Matter)
+      // Kinetically Unified Matter Bottle
       const flaskGeo = new THREE.CylinderGeometry(0.1, 0.14, 0.5, 16);
       const flaskMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.9, opacity: 0.9 });
       const flask = new THREE.Mesh(flaskGeo, flaskMat);
@@ -230,7 +231,7 @@
       const liquid = new THREE.Mesh(liquidGeo, liquidMat);
       liquid.position.set(1.8, -0.6, -1.8);
 
-      const liquidGlow = new THREE.PointLight(0xffffff, 1.2, 2);
+      const liquidGlow = new THREE.PointLight(0xffffff, 2.0, 3);
       liquidGlow.position.set(1.8, -0.55, -1.8);
 
       cockpit.add(flask); cockpit.add(liquid); cockpit.add(liquidGlow);
@@ -239,13 +240,31 @@
 
     buildRealisticCockpit();
 
-    // Exterior Spotlight
-    const headlight = new THREE.SpotLight(0x00f3ff, 15, 120, Math.PI / 4, 0.4, 1);
+    // High-Power Headlight
+    const headlight = new THREE.SpotLight(0x00f3ff, 40, 200, Math.PI / 3, 0.5, 1);
     headlight.position.set(0, 0, -3.2);
-    headlight.target.position.set(0, 0, -60);
+    headlight.target.position.set(0, 0, -80);
     submarine.add(headlight); submarine.add(headlight.target);
 
-    // --- Ocean Environment (Night Sky, Surface, Seabed) ---
+    // Dynamic Underwater Particles ("Marine Snow" for Motion Feedback)
+    const particleCount = 1500;
+    const particleGeo = new THREE.BufferGeometry();
+    const particlePositions = new Float32Array(particleCount * 3);
+
+    for (let i = 0; i < particleCount * 3; i += 3) {
+      particlePositions[i] = (Math.random() - 0.5) * 160;
+      particlePositions[i + 1] = (Math.random() - 0.5) * 160;
+      particlePositions[i + 2] = (Math.random() - 0.5) * 160;
+    }
+
+    particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+    const particleMat = new THREE.PointsMaterial({
+      color: 0x00ffff, size: 0.35, transparent: true, opacity: 0.6
+    });
+    const particleSystem = new THREE.Points(particleGeo, particleMat);
+    scene.add(particleSystem);
+
+    // --- Ocean Environment ---
     const skyGeo = new THREE.SphereGeometry(800, 32, 32);
     const skyMat = new THREE.MeshBasicMaterial({ color: 0x01040a, side: THREE.BackSide });
     const sky = new THREE.Mesh(skyGeo, skyMat);
@@ -260,7 +279,7 @@
     const waterGeo = new THREE.PlaneGeometry(1000, 1000, 100, 100);
     waterGeo.rotateX(-Math.PI / 2);
     const waterMat = new THREE.MeshStandardMaterial({
-      color: 0x002244, roughness: 0.1, metalness: 0.9, transparent: true, opacity: 0.85
+      color: 0x004477, roughness: 0.1, metalness: 0.9, transparent: true, opacity: 0.85
     });
     const water = new THREE.Mesh(waterGeo, waterMat);
     water.position.y = 2;
@@ -273,23 +292,38 @@
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i); const z = pos.getZ(i);
       const h = Math.sin(x * 0.01) * Math.cos(z * 0.01) * 30 + Math.sin(x * 0.03) * 6;
-      pos.setY(i, h - 140);
+      pos.setY(i, h - 80);
     }
     seabedGeo.computeVertexNormals();
-    const seabedMat = new THREE.MeshStandardMaterial({ color: 0x071526, roughness: 0.9 });
+    const seabedMat = new THREE.MeshStandardMaterial({ color: 0x0f2f52, roughness: 0.8 });
     const seabed = new THREE.Mesh(seabedGeo, seabedMat);
     scene.add(seabed);
 
-    // --- Marine Life (Boids Fish & Predators) ---
+    // Bioluminescent Rocks
+    const rockGroup = new THREE.Group();
+    const rockGeo = new THREE.DodecahedronGeometry(2.5, 1);
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x1a3d61, roughness: 0.8 });
+    for (let i = 0; i < 80; i++) {
+      const rock = new THREE.Mesh(rockGeo, rockMat);
+      const rx = (Math.random() - 0.5) * 600;
+      const rz = (Math.random() - 0.5) * 600;
+      rock.position.set(rx, -75 + Math.random() * 4, rz);
+      rock.scale.set(1 + Math.random() * 2, 1 + Math.random() * 3, 1 + Math.random() * 2);
+      rockGroup.add(rock);
+    }
+    scene.add(rockGroup);
+
+    // Glowing Fish Schools
+    const fishCount = 180;
     const fishGroup = new THREE.InstancedMesh(
-      new THREE.ConeGeometry(0.3, 1.2, 8).rotateX(Math.PI / 2),
-      new THREE.MeshStandardMaterial({ color: 0x00ffaa, roughness: 0.3 }),
-      120
+      new THREE.ConeGeometry(0.4, 1.4, 8).rotateX(Math.PI / 2),
+      new THREE.MeshStandardMaterial({ color: 0x00ffcc, emissive: 0x005544, roughness: 0.2 }),
+      fishCount
     );
     const dummy = new THREE.Object3D();
-    const fishData = Array.from({ length: 120 }, () => ({
-      pos: new THREE.Vector3((Math.random() - 0.5) * 500, -20 - Math.random() * 90, (Math.random() - 0.5) * 500),
-      vel: new THREE.Vector3((Math.random() - 0.5) * 0.2, 0, (Math.random() - 0.5) * 0.2)
+    const fishData = Array.from({ length: fishCount }, () => ({
+      pos: new THREE.Vector3((Math.random() - 0.5) * 400, -10 - Math.random() * 50, (Math.random() - 0.5) * 400),
+      vel: new THREE.Vector3((Math.random() - 0.5) * 0.4, 0, (Math.random() - 0.5) * 0.4)
     }));
     scene.add(fishGroup);
 
@@ -321,22 +355,25 @@
       cameraPivot.rotation.y = THREE.MathUtils.lerp(cameraPivot.rotation.y, targetYaw, 0.08);
       cameraPivot.rotation.x = THREE.MathUtils.lerp(cameraPivot.rotation.x, targetPitch, 0.08);
 
-      // Submarine Controls
-      const fwdSpeed = 24.0 * delta;
-      if (keys['KeyW']) velocity.z = THREE.MathUtils.lerp(velocity.z, -fwdSpeed, 0.04);
-      else if (keys['KeyS']) velocity.z = THREE.MathUtils.lerp(velocity.z, fwdSpeed * 0.5, 0.04);
-      else velocity.z = THREE.MathUtils.lerp(velocity.z, 0, 0.03);
+      // Submarine Movement
+      const fwdSpeed = 30.0 * delta;
+      if (keys['KeyW']) velocity.z = THREE.MathUtils.lerp(velocity.z, -fwdSpeed, 0.05);
+      else if (keys['KeyS']) velocity.z = THREE.MathUtils.lerp(velocity.z, fwdSpeed * 0.5, 0.05);
+      else velocity.z = THREE.MathUtils.lerp(velocity.z, 0, 0.04);
 
-      if (keys['KeyA']) yaw += 1.0 * delta;
-      if (keys['KeyD']) yaw -= 1.0 * delta;
+      if (keys['KeyA']) yaw += 1.2 * delta;
+      if (keys['KeyD']) yaw -= 1.2 * delta;
 
-      if (keys['Space']) velocity.y = THREE.MathUtils.lerp(velocity.y, fwdSpeed * 0.5, 0.04);
-      else if (keys['ShiftLeft'] || keys['ShiftRight']) velocity.y = THREE.MathUtils.lerp(velocity.y, -fwdSpeed * 0.5, 0.04);
-      else velocity.y = THREE.MathUtils.lerp(velocity.y, 0, 0.03);
+      if (keys['Space']) velocity.y = THREE.MathUtils.lerp(velocity.y, fwdSpeed * 0.5, 0.05);
+      else if (keys['ShiftLeft'] || keys['ShiftRight']) velocity.y = THREE.MathUtils.lerp(velocity.y, -fwdSpeed * 0.5, 0.05);
+      else velocity.y = THREE.MathUtils.lerp(velocity.y, 0, 0.04);
 
       submarine.rotation.y = yaw;
       submarine.translateZ(velocity.z);
-      submarine.position.y = Math.max(-125, Math.min(2.5, submarine.position.y + velocity.y));
+      submarine.position.y = Math.max(-70, Math.min(2.5, submarine.position.y + velocity.y));
+
+      // Keep particles relative to submarine position for continuous drift
+      particleSystem.position.copy(submarine.position);
 
       // Wave Motion
       const wPos = waterGeo.attributes.position;
@@ -349,8 +386,8 @@
       // Fish Simulation
       fishData.forEach((f, i) => {
         f.pos.add(f.vel);
-        if(Math.abs(f.pos.x) > 300) f.vel.x *= -1;
-        if(Math.abs(f.pos.z) > 300) f.vel.z *= -1;
+        if(Math.abs(f.pos.x) > 250) f.vel.x *= -1;
+        if(Math.abs(f.pos.z) > 250) f.vel.z *= -1;
         dummy.position.copy(f.pos);
         dummy.rotation.y = Math.atan2(f.vel.x, f.vel.z);
         dummy.updateMatrix();
