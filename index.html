@@ -3,737 +3,511 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KINETIC SEA // DELUXE EXPANDED EDITION</title>
+    <title>Ink & The Cursor - Chapter 0 Engine</title>
     <style>
         :root {
-            --border: #ffffff;
-            --font: 'Courier New', Courier, monospace;
+            --bg-dark: #08080a;
+            --text-main: #e0e0e0;
+            --accent-glow: #ffffff;
+            --ui-border: #ffffff;
+            --ink-black: #000000;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-        html, body { width: 100vw; height: 100vh; overflow: hidden; background: #000; color: #fff; font-family: var(--font); }
-
-        #webgl-canvas {
-            width: 100%; height: 100%; display: block;
-            image-rendering: pixelated; image-rendering: crisp-edges;
-            cursor: grab;
-        }
-        #webgl-canvas:active { cursor: grabbing; }
-
-        .hud-layer {
-            position: absolute; inset: 0; pointer-events: none;
-            display: flex; flex-direction: column; justify-content: space-between;
-            padding: 20px; z-index: 10;
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            font-family: 'Courier New', Courier, monospace;
         }
 
-        .hud-card {
-            background: rgba(0, 0, 0, 0.85); border: 2px solid var(--border);
-            padding: 10px 16px; border-radius: 4px; pointer-events: auto; max-width: 320px;
+        body, html {
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
-        .hud-title { font-size: 0.75rem; color: #aaa; letter-spacing: 1px; }
-        .hud-val { font-size: 1rem; font-weight: bold; color: #fff; margin-top: 2px; }
-
-        /* COMPASS HUD */
-        .compass-hud {
-            position: absolute; top: 20px; right: 20px;
-            width: 90px; height: 90px; border: 3px solid #fff; border-radius: 50%;
-            background: rgba(0, 0, 0, 0.85); pointer-events: auto;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 4px 4px 0px rgba(0,0,0,0.6);
+        /* Screen Canvas & CRT Overlay */
+        #viewport {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            overflow: hidden;
         }
 
-        #compassNeedle {
-            width: 4px; height: 60px; background: linear-gradient(to bottom, #ef4444 50%, #ffffff 50%);
-            border-radius: 2px; transform-origin: center; transition: transform 0.1s ease-out;
+        canvas#fxCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
         }
 
-        /* METEO SELECTOR CONTROL PANEL */
-        .meteo-panel {
-            position: absolute; top: 125px; right: 20px;
-            background: rgba(0, 0, 0, 0.85); border: 2px solid var(--border);
-            padding: 10px; border-radius: 4px; pointer-events: auto;
-            display: flex; flex-direction: column; gap: 6px; width: 140px;
+        .crt-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 3px, 6px 100%;
+            z-index: 10;
+            pointer-events: none;
         }
 
-        .meteo-btn {
-            background: #000; color: #fff; border: 1px solid #fff;
-            padding: 4px 8px; font-family: var(--font); font-size: 0.75rem;
-            font-weight: bold; cursor: pointer; text-align: left; transition: all 0.1s;
-        }
-        .meteo-btn:hover { background: #38bdf8; color: #000; border-color: #38bdf8; }
-
-        .interaction-prompt {
-            position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%);
-            background: #000; border: 2px solid #fff; color: #ffff00; font-weight: bold; padding: 8px 16px;
-            font-size: 0.9rem; display: none; box-shadow: 4px 4px 0px #000; z-index: 15;
+        /* Screen Shake Class */
+        .shake {
+            animation: shake 0.2s cubic-bezier(.36,.07,.19,.97) both;
         }
 
-        /* UNDERTALE STYLE DIALOGUE BOX */
-        .undertale-box {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            width: 90%; max-width: 650px; background: #000;
-            border: 4px solid #fff; border-radius: 6px; padding: 16px;
-            display: none; gap: 16px; pointer-events: auto;
-            box-shadow: 6px 6px 0px rgba(0,0,0,0.5); z-index: 30;
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-2px, 0, 0); }
+            20%, 80% { transform: translate3d(4px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+            40%, 60% { transform: translate3d(6px, 0, 0); }
         }
 
-        .portrait-frame {
-            width: 80px; height: 80px; border: 2px solid #fff;
-            background: #000; flex-shrink: 0; display: flex;
-            align-items: center; justify-content: center;
-        }
-        #faceCanvas { width: 72px; height: 72px; image-rendering: pixelated; }
-
-        .ut-content { display: flex; flex-direction: column; justify-content: space-between; flex-grow: 1; }
-        .ut-speaker { color: #ffff00; font-weight: bold; font-size: 1rem; margin-bottom: 6px; }
-        .ut-text { font-size: 1.05rem; line-height: 1.4; color: #fff; }
-
-        .ut-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
-        .ut-btn {
-            background: #000; color: #fff; border: 2px solid #fff;
-            padding: 6px 14px; cursor: pointer; font-family: var(--font);
-            font-size: 0.85rem; font-weight: bold; transition: all 0.1s;
-        }
-        .ut-btn:hover { background: #fff; color: #000; }
-
-        /* FISH CATCH MODAL */
-        .fish-modal {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 90%; max-width: 520px; background: #000; border: 4px solid #38bdf8;
-            padding: 20px; display: none; flex-direction: column; align-items: center; gap: 12px;
-            z-index: 40; box-shadow: 8px 8px 0px rgba(0,0,0,0.8);
+        /* Narrative Stage Container */
+        #stage {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
         }
 
-        #fishCanvas { width: 200px; height: 150px; border: 2px dashed #38bdf8; background: #050b14; image-rendering: pixelated; }
+        /* Cinematic Text Layout */
+        .cinematic-text {
+            font-size: 1.4rem;
+            line-height: 2rem;
+            max-width: 800px;
+            text-align: center;
+            color: #fff;
+            text-shadow: 0 0 8px rgba(255,255,255,0.6);
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+        .cinematic-text.visible {
+            opacity: 1;
+        }
+
+        /* Car Scene HUD & Dialogue Layout */
+        .car-scene {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            opacity: 0;
+            transition: opacity 1.5s ease;
+        }
+
+        .car-scene.active {
+            opacity: 1;
+        }
+
+        .dashboard {
+            width: 90%;
+            height: 60%;
+            border: 2px solid #333;
+            background: radial-gradient(circle at 50% 120%, #1a1a24 0%, #050508 80%);
+            border-radius: 12px;
+            position: relative;
+            box-shadow: inset 0 0 50px #000;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+        .dash-node {
+            width: 120px;
+            height: 120px;
+            border: 2px dashed #444;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #666;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .dash-node:hover {
+            border-color: #fff;
+            color: #fff;
+            box-shadow: 0 0 15px rgba(255,255,255,0.3);
+        }
+
+        /* Undertale Style Dialogue Box */
+        .dialogue-box {
+            width: 90%;
+            max-width: 900px;
+            height: 180px;
+            background: var(--ink-black);
+            border: 4px solid var(--ui-border);
+            border-radius: 4px;
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.9);
+            z-index: 5;
+        }
+
+        .portrait {
+            width: 130px;
+            height: 130px;
+            border: 2px solid #fff;
+            background: #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .dialogue-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .dialogue-text {
+            font-size: 1.2rem;
+            line-height: 1.6rem;
+            color: #fff;
+        }
+
+        .prompt-hint {
+            align-self: flex-end;
+            font-size: 0.8rem;
+            color: #888;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        /* Start Overlay */
+        #startOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        #startOverlay h1 {
+            font-size: 2.5rem;
+            letter-spacing: 4px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+
+        #startOverlay p {
+            color: #666;
+            font-size: 1rem;
+        }
     </style>
 </head>
 <body>
 
-    <canvas id="webgl-canvas"></canvas>
+    <div id="viewport">
+        <canvas id="fxCanvas"></canvas>
+        <div class="crt-overlay"></div>
 
-    <div class="hud-layer">
-        <div class="hud-card">
-            <div class="hud-title">ENVIRONMENT LOG</div>
-            <div class="hud-val" id="timeVal">DAY (12:00)</div>
-            <div style="font-size: 0.75rem; color: #38bdf8; margin-top: 4px;" id="weatherVal">METEO: SUNNY</div>
-            <div style="font-size: 0.75rem; color: #fbbf24; margin-top: 2px;" id="swellVal">SWELL: MODERATE</div>
+        <div id="startOverlay" onclick="initializeEngine()">
+            <h1>Ink & The Cursor</h1>
+            <p>[ Click anywhere to initialize sequence ]</p>
         </div>
 
-        <div class="compass-hud">
-            <div id="compassNeedle"></div>
-            <span style="position: absolute; top: 4px; font-weight: bold; font-size: 0.7rem; color: #ef4444;">N</span>
+        <div id="stage">
+            <div id="cinematicText" class="cinematic-text"></div>
         </div>
 
-        <div class="meteo-panel">
-            <div style="font-size: 0.65rem; color: #aaa; margin-bottom: 2px;">WEATHER CONTROL</div>
-            <button class="meteo-btn" onclick="setWeatherManual(0)">☀️ SUNNY</button>
-            <button class="meteo-btn" onclick="setWeatherManual(1)">☁️ CLOUDY</button>
-            <button class="meteo-btn" onclick="setWeatherManual(2)">🌧️ RAINY</button>
-            <button class="meteo-btn" onclick="setWeatherManual(3)">⚡ STORMY</button>
-            <button class="meteo-btn" onclick="setWeatherManual(4)">🌫️ FOGGY</button>
-        </div>
-
-        <div class="interaction-prompt" id="prompt">[E] INTERACT</div>
-
-        <div style="position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); font-size: 0.75rem; color: #aaa; text-align: center; background: rgba(0,0,0,0.6); padding: 4px 12px; border-radius: 4px;">
-            [WASD] Move/Steer | [CLICK+DRAG] Camera | [E] Interact | [T] Advance Time
-        </div>
-    </div>
-
-    <!-- Undertale-Style Dialogue Box -->
-    <div class="undertale-box" id="dialogBox">
-        <div class="portrait-frame">
-            <canvas id="faceCanvas" width="36" height="36"></canvas>
-        </div>
-        <div class="ut-content">
-            <div>
-                <div class="ut-speaker">BOB</div>
-                <div class="ut-text" id="dialogText">* Ah, sitting right on this bench feels great. Ocean swells look wild today!</div>
+        <div id="carScene" class="car-scene">
+            <div class="dashboard">
+                <div class="dash-node" onclick="inspectNode('Rain Sensor', 'Precipitation rate: 84%. Unmapped atmospheric density detected.')">SCAN RAIN</div>
+                <div class="dash-node" onclick="inspectNode('Draft Core', 'Orb-68 core stability: 91%. Ink viscosity holding.')">CORE STATUS</div>
+                <div class="dash-node" onclick="inspectNode('Navigation', 'Destination: [DELETED]. Route recalculated continuously.')">NAV GRID</div>
             </div>
-            <div class="ut-actions">
-                <button class="ut-btn" onclick="nextDialogue()">[TALK]</button>
-                <button class="ut-btn" onclick="closeModal('dialogBox')">[CLOSE]</button>
+
+            <div class="dialogue-box">
+                <div id="portrait" class="portrait">ORB-68</div>
+                <div class="dialogue-content">
+                    <div id="dialogueText" class="dialogue-text">...</div>
+                    <div class="prompt-hint">[ SPACE / CLICK TO CONTINUE ]</div>
+                </div>
             </div>
         </div>
     </div>
-
-    <!-- Fish Catch Modal -->
-    <div class="fish-modal" id="catchBox">
-        <div style="color: #38bdf8; font-weight: bold; font-size: 0.9rem; letter-spacing: 2px;">★ SPECIMEN CAUGHT! ★</div>
-        <canvas id="fishCanvas"></canvas>
-        <div id="fishName" style="font-size: 1.2rem; font-weight: bold; color: #ffff00;">WHITE-FLUID SKIMMER</div>
-        <div id="fishSize" style="font-size: 0.85rem; color: #38bdf8; font-weight: bold;">SIZE: 42 cm</div>
-        <div id="fishDesc" style="font-size: 0.85rem; color: #ccc; text-align: center; line-height: 1.3;">A glossy creature native to dense white fluid seas.</div>
-        <button class="ut-btn" style="margin-top: 6px; width: 100%;" onclick="closeModal('catchBox')">[ SECURE CATCH ]</button>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
-        // --- 1. PROCEDURAL AUDIO SYNTHESIZER ---
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        let audioCtx = null;
-        function initAudio() { if (!audioCtx) audioCtx = new AudioCtx(); }
+        /* Audio Engine */
+        class AudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.isMuted = false;
+            }
 
-        function playSound(type) {
-            initAudio();
-            const now = audioCtx.currentTime;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain); gain.connect(audioCtx.destination);
+            init() {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this.startRainSynth();
+            }
 
-            if (type === 'splash') {
+            playBlip(freq = 440, type = 'sine') {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.08);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.08);
+            }
+
+            playThud() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
                 osc.type = 'triangle';
-                osc.frequency.setValueAtTime(160, now);
-                osc.frequency.exponentialRampToValueAtTime(30, now + 0.4);
-                gain.gain.setValueAtTime(0.3, now);
-                gain.gain.linearRampToValueAtTime(0, now + 0.4);
-                osc.start(now); osc.stop(now + 0.4);
-            } else if (type === 'step') {
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(90, now);
-                gain.gain.setValueAtTime(0.04, now);
-                gain.gain.linearRampToValueAtTime(0, now + 0.04);
-                osc.start(now); osc.stop(now + 0.04);
-            } else if (type === 'talk') {
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(180 + Math.random() * 60, now);
-                gain.gain.setValueAtTime(0.05, now);
-                gain.gain.linearRampToValueAtTime(0, now + 0.05);
-                osc.start(now); osc.stop(now + 0.05);
-            } else if (type === 'thunder') {
-                const bufferSize = audioCtx.sampleRate * 1.5;
-                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-                const data = buffer.getChannelData(0);
-                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+                osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            }
 
-                const noise = audioCtx.createBufferSource(); noise.buffer = buffer;
-                const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass';
-                filter.frequency.setValueAtTime(220, now); filter.frequency.linearRampToValueAtTime(35, now + 1.2);
-                const tGain = audioCtx.createGain(); tGain.gain.setValueAtTime(0.45, now);
-                tGain.gain.exponentialRampToValueAtTime(0.01, now + 1.4);
+            startRainSynth() {
+                if (!this.ctx) return;
+                const bufferSize = this.ctx.sampleRate * 2;
+                const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = Math.random() * 2 - 1;
+                }
 
-                noise.connect(filter); filter.connect(tGain); tGain.connect(audioCtx.destination);
-                noise.start(now);
+                const whiteNoise = this.ctx.createBufferSource();
+                whiteNoise.buffer = noiseBuffer;
+                whiteNoise.loop = true;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(800, this.ctx.currentTime);
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.015, this.ctx.currentTime);
+
+                whiteNoise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                whiteNoise.start();
             }
         }
 
-        // --- 2. SCENE SETUP & RETRO RENDERER ---
-        const canvas = document.getElementById('webgl-canvas');
-        const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
-        const pixelScale = 0.45;
-        renderer.setSize(window.innerWidth * pixelScale, window.innerHeight * pixelScale, false);
-        renderer.shadowMap.enabled = true;
+        /* Particle System */
+        class ParticleSystem {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.particles = [];
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+                this.initParticles();
+            }
 
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1200);
+            resize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
 
-        // --- 3. DYNAMIC SKY, STARS & CELESTIAL BODIES ---
-        const sun = new THREE.Mesh(new THREE.SphereGeometry(14, 32, 32), new THREE.MeshBasicMaterial({ color: 0xfbbf24 }));
-        scene.add(sun);
+            initParticles() {
+                this.particles = [];
+                for (let i = 0; i < 70; i++) {
+                    this.particles.push({
+                        x: Math.random() * this.canvas.width,
+                        y: Math.random() * this.canvas.height,
+                        length: Math.random() * 20 + 10,
+                        speed: Math.random() * 10 + 5,
+                        opacity: Math.random() * 0.4 + 0.1
+                    });
+                }
+            }
 
-        // Starfield during Night
-        const starGeo = new THREE.BufferGeometry();
-        const starCount = 600;
-        const starPos = new Float32Array(starCount * 3);
-        for(let i=0; i<starCount*3; i+=3) {
-            starPos[i] = (Math.random() - 0.5) * 800;
-            starPos[i+1] = 100 + Math.random() * 300;
-            starPos[i+2] = (Math.random() - 0.5) * 800;
-        }
-        starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-        const starfield = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 1.2, transparent: true, opacity: 0.8 }));
-        scene.add(starfield);
+            render() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.ctx.strokeStyle = 'rgba(200, 220, 255, 0.3)';
+                this.ctx.lineWidth = 1;
 
-        const ambLight = new THREE.AmbientLight(0xc084fc, 0.6); scene.add(ambLight);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1.0); dirLight.position.set(0, 100, -200); scene.add(dirLight);
-        scene.fog = new THREE.FogExp2(0x2d104d, 0.005);
+                this.particles.forEach(p => {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(p.x, p.y);
+                    this.ctx.lineTo(p.x - 1, p.y + p.length);
+                    this.ctx.stroke();
 
-        // --- 4. LANDMARKS: LIGHTHOUSE & ISLAND ARCHIPELAGO ---
-        const lighthouseGroup = new THREE.Group();
-        const lhBase = new THREE.Mesh(new THREE.CylinderGeometry(8, 12, 45, 12), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 }));
-        lhBase.position.y = 20; lighthouseGroup.add(lhBase);
+                    p.y += p.speed;
+                    p.x -= 0.5;
 
-        const lhTop = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, 8, 12), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
-        lhTop.position.y = 45; lighthouseGroup.add(lhTop);
+                    if (p.y > this.canvas.height) {
+                        p.y = -p.length;
+                        p.x = Math.random() * this.canvas.width;
+                    }
+                });
 
-        const lhLight = new THREE.SpotLight(0xfef08a, 5, 400, Math.PI / 6, 0.5);
-        lhLight.position.set(0, 45, 0); lighthouseGroup.add(lhLight);
-        lighthouseGroup.position.set(-250, 0, -350);
-        scene.add(lighthouseGroup);
-
-        // Procedural Horizon Islands
-        function createIsland(x, z, scale) {
-            const islandGroup = new THREE.Group();
-            const islandMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9, flatShading: true });
-            const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(25 * scale, 1), islandMat);
-            rock.scale.set(1.5, 0.6, 1.2); rock.position.y = 5 * scale;
-            islandGroup.add(rock);
-
-            const foliage = new THREE.Mesh(new THREE.DodecahedronGeometry(12 * scale, 1), new THREE.MeshStandardMaterial({ color: 0x0f766e, flatShading: true }));
-            foliage.position.set(0, 15 * scale, 0); islandGroup.add(foliage);
-
-            islandGroup.position.set(x, 0, z);
-            scene.add(islandGroup);
-        }
-        createIsland(300, -400, 1.4);
-        createIsland(-380, 200, 1.8);
-
-        // Weather Cloud System
-        const cloudGroup = new THREE.Group(); scene.add(cloudGroup);
-        const cloudMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.9, transparent: true, opacity: 0.8 });
-        for (let i = 0; i < 35; i++) {
-            const cloud = new THREE.Mesh(new THREE.DodecahedronGeometry(15 + Math.random() * 18, 1), cloudMat);
-            cloud.position.set((Math.random() - 0.5) * 700, 60 + Math.random() * 30, (Math.random() - 0.5) * 700);
-            cloudGroup.add(cloud);
-        }
-        cloudGroup.visible = false;
-
-        // Rain Drops
-        const rainGeo = new THREE.BufferGeometry();
-        const rainCount = 1400;
-        const rainPos = new Float32Array(rainCount * 3);
-        for(let i=0; i<rainCount*3; i+=3) {
-            rainPos[i] = (Math.random() - 0.5) * 160;
-            rainPos[i+1] = Math.random() * 90;
-            rainPos[i+2] = (Math.random() - 0.5) * 160;
-        }
-        rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
-        const rainParticles = new THREE.Points(rainGeo, new THREE.PointsMaterial({ color: 0x38bdf8, size: 0.6, transparent: true, opacity: 0.6 }));
-        scene.add(rainParticles); rainParticles.visible = false;
-
-        // Thunder Flash
-        const lightningLight = new THREE.PointLight(0xffffff, 0, 500);
-        lightningLight.position.set(0, 80, 0); scene.add(lightningLight);
-
-        // --- 5. OCEAN ENGINE & BIOLUMINESCENT JELLYFISH ---
-        const oceanGeo = new THREE.PlaneGeometry(900, 900, 85, 85);
-        oceanGeo.rotateX(-Math.PI / 2);
-        const oceanMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.1, flatShading: true });
-        const ocean = new THREE.Mesh(oceanGeo, oceanMat); scene.add(ocean);
-
-        const posAttr = oceanGeo.attributes.position;
-        const baseVerts = [];
-        for (let i = 0; i < posAttr.count; i++) baseVerts.push(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i));
-
-        let currentWaveAmp = 0.5;
-        let targetWaveAmp = 0.5;
-        function getWaveHeight(x, z, t) {
-            return Math.sin(x * 0.04 + t * 2) * currentWaveAmp + Math.cos(z * 0.04 + t * 1.5) * currentWaveAmp;
+                requestAnimationFrame(() => this.render());
+            }
         }
 
-        // Bioluminescent Jellyfish
-        const jellyGroup = new THREE.Group(); scene.add(jellyGroup);
-        const jellyMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, wireframe: true, transparent: true, opacity: 0.6 });
-        const jellies = [];
-        for (let i = 0; i < 8; i++) {
-            const jMesh = new THREE.Mesh(new THREE.SphereGeometry(0.8, 8, 8), jellyMat);
-            jMesh.position.set((Math.random() - 0.5) * 120, -0.5, (Math.random() - 0.5) * 120);
-            jellyGroup.add(jMesh); jellies.push(jMesh);
+        /* Narrative Engine State */
+        const audio = new AudioEngine();
+        let particles;
+        let currentStep = 0;
+        let isTyping = false;
+
+        const introSequences = [
+            "We were built in the margins of a story that was never meant to be published.",
+            "A draft left behind in the dark, gathering dust between deleted lines.",
+            "I am Orb-68. An ink blot that acquired a pulse.",
+            "Beside me is Vektor. A protagonist who outlived his plot."
+        ];
+
+        const carDialogue = [
+            { speaker: "ORB-68", text: "The rain outside... it's not water, Vektor. It's unwritten manuscript lines washing out." },
+            { speaker: "VEKTOR", text: "Let it wash. As long as this engine runs, we're not bound to their margins anymore." },
+            { speaker: "ORB-68", text: "Check the Nav Grid. If the next zone renders, we have a way forward." }
+        ];
+
+        let dialogueIndex = 0;
+
+        function initializeEngine() {
+            document.getElementById('startOverlay').style.display = 'none';
+            audio.init();
+            particles = new ParticleSystem(document.getElementById('fxCanvas'));
+            particles.render();
+            playIntroSequence();
         }
 
-        // --- 6. BOAT ENGINE, SPRAY & EXHAUST PARTICLES ---
-        const boatGroup = new THREE.Group(); scene.add(boatGroup);
-        const woodMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.6 });
-        const railMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.5 });
-
-        // Hull & Deck
-        const deck = new THREE.Mesh(new THREE.BoxGeometry(6, 0.6, 14), woodMat); deck.position.y = 0.8; boatGroup.add(deck);
-        const lRail = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 14), railMat); lRail.position.set(-2.9, 1.4, 0);
-        const rRail = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 14), railMat); rRail.position.set(2.9, 1.4, 0);
-        const bRail = new THREE.Mesh(new THREE.BoxGeometry(6, 0.6, 0.2), railMat); bRail.position.set(0, 1.4, 6.9);
-        boatGroup.add(lRail); boatGroup.add(rRail); boatGroup.add(bRail);
-
-        const helmStand = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 1.2), woodMat); helmStand.position.set(0, 1.7, -5.5); boatGroup.add(helmStand);
-        const wheelGroup = new THREE.Group();
-        const wheelRing = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.06, 8, 16), woodMat); wheelGroup.add(wheelRing); wheelGroup.position.set(0, 2.2, -5.3); boatGroup.add(wheelGroup);
-
-        // BENCH FOR BOB
-        const benchSeat = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.15, 2.2), woodMat);
-        benchSeat.position.set(2.2, 1.1, -1.5); boatGroup.add(benchSeat);
-
-        // Mast & Flag
-        const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 8), woodMat); mast.position.set(0, 4.8, 0); boatGroup.add(mast);
-        const flagCanvas = document.createElement('canvas'); flagCanvas.width = 128; flagCanvas.height = 64;
-        const fctx = flagCanvas.getContext('2d');
-        fctx.fillStyle = '#ef4444'; fctx.fillRect(0, 0, 64, 64);
-        fctx.fillStyle = '#22c55e'; fctx.fillRect(64, 0, 64, 64);
-        fctx.fillStyle = '#ffffff'; fctx.beginPath(); fctx.arc(64, 32, 10, 0, Math.PI * 2); fctx.fill();
-        const flag = new THREE.Mesh(new THREE.PlaneGeometry(2, 1), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(flagCanvas), side: THREE.DoubleSide }));
-        flag.position.set(1, 8, 0); boatGroup.add(flag);
-
-        const rodGroup = new THREE.Group();
-        const rodPole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.015, 3.5), woodMat); rodPole.rotation.z = -Math.PI / 4; rodGroup.add(rodPole);
-        rodGroup.position.set(-2.8, 1.5, 3); boatGroup.add(rodGroup);
-
-        // Bow Water Spray
-        const sprayGeo = new THREE.BufferGeometry();
-        const sprayCount = 80;
-        const sprayPos = new Float32Array(sprayCount * 3);
-        for(let i=0; i<sprayCount*3; i+=3) {
-            sprayPos[i] = (Math.random() - 0.5) * 3; sprayPos[i+1] = 0.2; sprayPos[i+2] = -6.5 - Math.random() * 2;
-        }
-        sprayGeo.setAttribute('position', new THREE.BufferAttribute(sprayPos, 3));
-        const sprayParticles = new THREE.Points(sprayGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.35, transparent: true, opacity: 0.5 }));
-        boatGroup.add(sprayParticles);
-
-        // Engine Smoke Particles
-        const smokeGeo = new THREE.BufferGeometry();
-        const smokeCount = 40;
-        const smokePos = new Float32Array(smokeCount * 3);
-        for(let i=0; i<smokeCount*3; i+=3) {
-            smokePos[i] = (Math.random() - 0.5) * 0.4; smokePos[i+1] = 1.2; smokePos[i+2] = 6.5 + Math.random() * 1.5;
-        }
-        smokeGeo.setAttribute('position', new THREE.BufferAttribute(smokePos, 3));
-        const smokeParticles = new THREE.Points(smokeGeo, new THREE.PointsMaterial({ color: 0x94a3b8, size: 0.5, transparent: true, opacity: 0.4 }));
-        boatGroup.add(smokeParticles);
-
-        // --- 7. CHARACTERS & BOB BENCH FIX ---
-        const stickMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
-
-        function buildStickman() {
-            const group = new THREE.Group();
-            const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16), stickMat); head.position.y = 1.6; group.add(head);
-            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.7), stickMat); torso.position.y = 1.05; group.add(torso);
-
-            const lArm = new THREE.Group(); lArm.position.set(-0.1, 1.35, 0);
-            const lArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6), stickMat); lArmMesh.position.y = -0.3; lArm.add(lArmMesh); group.add(lArm);
-
-            const rArm = new THREE.Group(); rArm.position.set(0.1, 1.35, 0);
-            const rArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6), stickMat); rArmMesh.position.y = -0.3; rArm.add(rArmMesh); group.add(rArm);
-
-            const lLeg = new THREE.Group(); lLeg.position.set(-0.08, 0.7, 0);
-            const lLegMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.7), stickMat); lLegMesh.position.y = -0.35; lLeg.add(lLegMesh); group.add(lLeg);
-
-            const rLeg = new THREE.Group(); rLeg.position.set(0.08, 0.7, 0);
-            const rLegMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.7), stickMat); rLegMesh.position.y = -0.35; rLeg.add(rLegMesh); group.add(rLeg);
-
-            return { group, head, torso, lArm, rArm, lLeg, rLeg };
+        function triggerShake() {
+            const vp = document.getElementById('viewport');
+            vp.classList.add('shake');
+            setTimeout(() => vp.classList.remove('shake'), 200);
         }
 
-        const player = buildStickman(); player.group.position.set(0, 1.1, 2); boatGroup.add(player.group);
+        function playIntroSequence() {
+            if (currentStep < introSequences.length) {
+                const textEl = document.getElementById('cinematicText');
+                textEl.classList.remove('visible');
 
-        const bob = buildStickman();
-        bob.group.position.set(2.2, 0.85, -1.5);
-        bob.group.rotation.y = -Math.PI / 2;
-        boatGroup.add(bob.group);
-
-        bob.lLeg.rotation.x = Math.PI / 2; bob.rLeg.rotation.x = Math.PI / 2;
-        bob.lArm.rotation.x = 0.3; bob.rArm.rotation.x = 0.3;
-
-        // --- 8. UNDERTALE FACE PORTRAIT ---
-        const faceCanvas = document.getElementById('faceCanvas');
-        const fCtx = faceCanvas.getContext('2d');
-
-        function drawBobFace(expression) {
-            fCtx.fillStyle = '#000'; fCtx.fillRect(0, 0, 36, 36);
-            fCtx.strokeStyle = '#fff'; fCtx.lineWidth = 2;
-            fCtx.beginPath(); fCtx.arc(18, 18, 12, 0, Math.PI * 2); fCtx.stroke();
-            fCtx.beginPath();
-            if (expression === 'happy') {
-                fCtx.moveTo(11, 13); fCtx.lineTo(15, 11); fCtx.moveTo(21, 11); fCtx.lineTo(25, 13);
-            } else if (expression === 'thoughtful') {
-                fCtx.moveTo(11, 11); fCtx.lineTo(15, 11); fCtx.moveTo(21, 14); fCtx.lineTo(25, 12);
-            } else if (expression === 'surprised') {
-                fCtx.moveTo(11, 10); fCtx.lineTo(15, 8); fCtx.moveTo(21, 8); fCtx.lineTo(25, 10);
+                setTimeout(() => {
+                    textEl.innerText = introSequences[currentStep];
+                    textEl.classList.add('visible');
+                    audio.playThud();
+                    triggerShake();
+                    currentStep++;
+                    setTimeout(playIntroSequence, 4000);
+                }, 1000);
             } else {
-                fCtx.moveTo(11, 12); fCtx.lineTo(15, 12); fCtx.moveTo(21, 12); fCtx.lineTo(25, 12);
+                transitionToCarScene();
             }
-            fCtx.stroke();
-        }
-        drawBobFace('happy');
-
-        // --- 9. FISH SPECIMENS ---
-        const fishCanvas = document.getElementById('fishCanvas');
-        const fishRenderer = new THREE.WebGLRenderer({ canvas: fishCanvas, antialias: false, alpha: true });
-        fishRenderer.setSize(200 * pixelScale, 150 * pixelScale, false);
-        const fishScene = new THREE.Scene();
-        const fishCam = new THREE.PerspectiveCamera(45, 200 / 150, 0.1, 10);
-        fishCam.position.z = 3.2;
-        fishScene.add(new THREE.AmbientLight(0xffffff, 1.3));
-
-        const fishDisplayGroup = new THREE.Group(); fishScene.add(fishDisplayGroup);
-
-        const fishList = [
-            { name: "WHITE-FLUID SKIMMER", desc: "A sleek, fast swimmer that skims top-layer kinetic ocean currents.", geo: new THREE.ConeGeometry(0.4, 1.3, 6), col: 0x38bdf8 },
-            { name: "SPIKE-TAILED EEL", desc: "Extremely rare predator lurking deep within storm swells.", geo: new THREE.CylinderGeometry(0.12, 0.35, 1.5, 8), col: 0xc084fc },
-            { name: "KINETIC RAY", desc: "Flat-bodied species that glides smoothly across underwater turbulence.", geo: new THREE.BoxGeometry(1.0, 0.1, 1.0), col: 0xef4444 },
-            { name: "DEEPSEA ANGLER", desc: "Equipped with bioluminescent lures to navigate nighttime sea fog.", geo: new THREE.DodecahedronGeometry(0.55, 1), col: 0x22c55e },
-            { name: "GOLDEN CROWN-FISH", desc: "A legendary trophy specimen found only near distance lighthouse waters.", geo: new THREE.OctahedronGeometry(0.6, 0), col: 0xfbbf24 }
-        ];
-
-        function setFishDisplay(index) {
-            while(fishDisplayGroup.children.length > 0) fishDisplayGroup.remove(fishDisplayGroup.children[0]);
-            const item = fishList[index];
-            const mesh = new THREE.Mesh(item.geo, new THREE.MeshStandardMaterial({ color: item.col, flatShading: true }));
-            mesh.rotation.z = Math.PI / 2; fishDisplayGroup.add(mesh);
         }
 
-        // --- 10. DIALOGUE & FISHING ---
-        const bobDialogues = [
-            { text: "* Ah, sitting right on this bench feels great. Ocean swells look wild today!", expr: "happy" },
-            { text: "* Use the Weather Control panel on the top right to change the sea conditions!", expr: "surprised" },
-            { text: "* Check your compass in the corner to stay oriented with North.", expr: "thoughtful" },
-            { text: "* Cast your line near the stern! There are 5 rare specimen types out here.", expr: "neutral" }
-        ];
-        let bobIdx = 0;
+        function transitionToCarScene() {
+            const textEl = document.getElementById('cinematicText');
+            textEl.classList.remove('visible');
 
-        function nextDialogue() {
-            playSound('talk');
-            bobIdx = (bobIdx + 1) % bobDialogues.length;
-            const current = bobDialogues[bobIdx];
-            document.getElementById('dialogText').innerText = current.text;
-            drawBobFace(current.expr);
-        }
-
-        let isFishingAnim = false;
-        function triggerFishing() {
-            playSound('splash');
-            isFishingAnim = true;
             setTimeout(() => {
-                isFishingAnim = false;
-                const randIdx = Math.floor(Math.random() * fishList.length);
-                const f = fishList[randIdx];
-                const randSize = Math.floor(20 + Math.random() * 65);
-                setFishDisplay(randIdx);
-                document.getElementById('fishName').innerText = f.name;
-                document.getElementById('fishSize').innerText = `SIZE: ${randSize} cm`;
-                document.getElementById('fishDesc').innerText = f.desc;
-                openModal('catchBox');
-            }, 1000);
+                document.getElementById('stage').style.display = 'none';
+                const carScene = document.getElementById('carScene');
+                carScene.classList.add('active');
+                advanceDialogue();
+            }, 1500);
         }
 
-        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        function typeText(targetEl, text, speed = 30, callback) {
+            isTyping = true;
+            targetEl.innerText = "";
+            let i = 0;
 
-        // --- 11. MANUAL WEATHER & TIME CONTROLS ---
-        const meteoStates = ["SUNNY", "CLOUDY", "RAINY", "STORMY", "FOGGY"];
-        let currentMeteoIdx = 0;
-
-        function setWeatherManual(idx) {
-            currentMeteoIdx = idx;
-            const state = meteoStates[currentMeteoIdx];
-            document.getElementById('weatherVal').innerText = `METEO: ${state}`;
-
-            cloudGroup.visible = (state === "CLOUDY" || state === "RAINY" || state === "STORMY");
-            rainParticles.visible = (state === "RAINY" || state === "STORMY");
-            scene.fog.density = (state === "FOGGY") ? 0.018 : 0.004;
-
-            if (state === "STORMY") { targetWaveAmp = 1.4; document.getElementById('swellVal').innerText = "SWELL: HEAVY STORM"; }
-            else if (state === "RAINY" || state === "CLOUDY") { targetWaveAmp = 0.85; document.getElementById('swellVal').innerText = "SWELL: MODERATE"; }
-            else { targetWaveAmp = 0.45; document.getElementById('swellVal').innerText = "SWELL: CALM"; }
-        }
-
-        let isDriving = false;
-        let camYaw = 0, camPitch = 0.3;
-        let isMouseDown = false;
-        let lastMouseX = 0, lastMouseY = 0;
-        let timeOffset = 0;
-
-        window.addEventListener('mousedown', (e) => { isMouseDown = true; lastMouseX = e.clientX; lastMouseY = e.clientY; });
-        window.addEventListener('mouseup', () => isMouseDown = false);
-        window.addEventListener('mousemove', (e) => {
-            if (isMouseDown) {
-                camYaw -= (e.clientX - lastMouseX) * 0.005;
-                camPitch += (e.clientY - lastMouseY) * 0.005;
-                camPitch = Math.max(0.05, Math.min(Math.PI / 2.2, camPitch));
-                lastMouseX = e.clientX; lastMouseY = e.clientY;
-            }
-        });
-
-        const keys = {};
-        window.addEventListener('keydown', (e) => {
-            keys[e.code] = true;
-            if (e.code === 'KeyT') timeOffset += 4.0;
-            handleInteraction(e.code);
-        });
-        window.addEventListener('keyup', (e) => keys[e.code] = false);
-
-        const boatState = { speed: 0, heading: 0 };
-
-        function handleInteraction(code) {
-            if (code === 'KeyE') {
-                const distHelm = player.group.position.distanceTo(helmStand.position);
-                const distBob = player.group.position.distanceTo(bob.group.position);
-                const distRod = player.group.position.distanceTo(rodGroup.position);
-
-                if (distHelm < 2) isDriving = !isDriving;
-                else if (distBob < 2) { openModal('dialogBox'); drawBobFace(bobDialogues[bobIdx].expr); }
-                else if (distRod < 2) triggerFishing();
-            }
-        }
-
-        // --- 12. ANIMATION LOOP ---
-        const clock = new THREE.Clock();
-
-        function animate() {
-            requestAnimationFrame(animate);
-            const t = clock.getElapsedTime() + timeOffset;
-
-            // 1. Precise Day / Night Cycle
-            const dayCycle = (Math.sin(t * 0.1) + 1) / 2;
-            const sunAngle = t * 0.1;
-            sun.position.x = Math.cos(sunAngle) * 350;
-            sun.position.y = Math.sin(sunAngle) * 220;
-
-            const daySky = new THREE.Color(0x38bdf8);
-            const duskSky = new THREE.Color(0xd97706);
-            const nightSky = new THREE.Color(0x030712);
-
-            let currentSky = new THREE.Color();
-            if (dayCycle > 0.5) currentSky.lerpColors(duskSky, daySky, (dayCycle - 0.5) * 2);
-            else currentSky.lerpColors(nightSky, duskSky, dayCycle * 2);
-
-            scene.background = currentSky;
-            scene.fog.color = currentSky;
-            ambLight.intensity = 0.25 + dayCycle * 0.55;
-            starfield.material.opacity = Math.max(0, (0.4 - dayCycle) * 2);
-
-            const hours = Math.floor(dayCycle * 24);
-            document.getElementById('timeVal').innerText = `TIME (${hours.toString().padStart(2, '0')}:00)`;
-
-            // 2. Compass Needle Alignment
-            document.getElementById('compassNeedle').style.transform = `rotate(${-boatState.heading * (180 / Math.PI)}deg)`;
-
-            // 3. Rotate Lighthouse Light
-            lhLight.target.position.set(
-                lighthouseGroup.position.x + Math.sin(t * 1.5) * 100,
-                0,
-                lighthouseGroup.position.z + Math.cos(t * 1.5) * 100
-            );
-            lhLight.target.updateMatrixWorld();
-
-            // 4. Wave Smoothing & Ocean Motion
-            currentWaveAmp += (targetWaveAmp - currentWaveAmp) * 0.02;
-
-            if (meteoStates[currentMeteoIdx] === "STORMY" && Math.random() < 0.008) {
-                lightningLight.intensity = 5; playSound('thunder');
-                setTimeout(() => lightningLight.intensity = 0, 140);
-            }
-
-            if (rainParticles.visible) {
-                const positions = rainParticles.geometry.attributes.position.array;
-                for (let i = 1; i < rainCount * 3; i += 3) {
-                    positions[i] -= 1.8;
-                    if (positions[i] < 0) positions[i] = 90;
-                }
-                rainParticles.geometry.attributes.position.needsUpdate = true;
-            }
-
-            // 5. Water Spray & Engine Smoke Motion
-            const sprayPositions = sprayParticles.geometry.attributes.position.array;
-            for (let i = 1; i < sprayCount * 3; i += 3) {
-                sprayPositions[i] += (boatState.speed * 0.5 + 0.05);
-                if (sprayPositions[i] > 1.8) sprayPositions[i] = 0.2;
-            }
-            sprayParticles.geometry.attributes.position.needsUpdate = true;
-
-            const smokePositions = smokeParticles.geometry.attributes.position.array;
-            for (let i = 1; i < smokeCount * 3; i += 3) {
-                smokePositions[i] += 0.05;
-                if (smokePositions[i] > 3.5) smokePositions[i] = 1.2;
-            }
-            smokeParticles.geometry.attributes.position.needsUpdate = true;
-
-            // 6. Jellyfish Pulsing Motion
-            jellies.forEach((j, idx) => {
-                j.position.y = -0.5 + Math.sin(t * 2 + idx) * 0.3;
-            });
-
-            // 7. Bob Seated Foot Tapping & Head Movements
-            bob.lLeg.rotation.x = Math.PI / 2 + Math.sin(t * 3.5) * 0.06;
-            bob.head.rotation.y = Math.sin(t * 0.7) * 0.18;
-
-            // 8. Player Controls & Steering
-            if (!isDriving) {
-                const moveSpeed = 0.07;
-                let moveX = 0, moveZ = 0;
-                if (keys['KeyW']) moveZ -= moveSpeed;
-                if (keys['KeyS']) moveZ += moveSpeed;
-                if (keys['KeyA']) moveX -= moveSpeed;
-                if (keys['KeyD']) moveX += moveSpeed;
-
-                const isMoving = moveX !== 0 || moveZ !== 0;
-                if (isMoving) {
-                    playSound('step');
-                    const moveDir = new THREE.Vector3(moveX, 0, moveZ).applyAxisAngle(new THREE.Vector3(0, 1, 0), camYaw);
-                    player.group.position.add(moveDir);
-
-                    player.lLeg.rotation.x = Math.sin(t * 10) * 0.6; player.rLeg.rotation.x = -Math.sin(t * 10) * 0.6;
-                    player.lArm.rotation.x = -Math.sin(t * 10) * 0.4; player.rArm.rotation.x = Math.sin(t * 10) * 0.4;
-                    player.group.rotation.y = Math.atan2(moveDir.x, moveDir.z);
+            const timer = setInterval(() => {
+                if (i < text.length) {
+                    targetEl.innerText += text.charAt(i);
+                    if (i % 2 === 0) audio.playBlip(320 + (i * 5) % 100, 'sine');
+                    i++;
                 } else {
-                    player.lLeg.rotation.x = 0; player.rLeg.rotation.x = 0;
-                    player.lArm.rotation.x = 0; player.rArm.rotation.x = 0;
+                    clearInterval(timer);
+                    isTyping = false;
+                    if (callback) callback();
                 }
-
-                if (isFishingAnim) player.rArm.rotation.x = -Math.PI / 1.5;
-
-                player.group.position.x = Math.max(-2.5, Math.min(2.5, player.group.position.x));
-                player.group.position.z = Math.max(-6.2, Math.min(6.2, player.group.position.z));
-            } else {
-                if (keys['KeyA']) boatState.heading += 0.015;
-                if (keys['KeyD']) boatState.heading -= 0.015;
-                if (keys['KeyW']) boatState.speed = Math.min(0.28, boatState.speed + 0.003);
-                if (keys['KeyS']) boatState.speed = Math.max(0, boatState.speed - 0.003);
-
-                player.group.position.set(0, 1.1, -4.5);
-                player.group.rotation.y = Math.PI;
-                player.lArm.rotation.x = -Math.PI / 3; player.rArm.rotation.x = -Math.PI / 3;
-                wheelGroup.rotation.z = -boatState.heading * 5;
-            }
-
-            // Boat Navigation Dynamics
-            boatState.speed *= 0.98;
-            boatGroup.position.x += Math.sin(boatState.heading) * boatState.speed;
-            boatGroup.position.z += Math.cos(boatState.heading) * boatState.speed;
-            boatGroup.rotation.y = boatState.heading;
-
-            for (let i = 0; i < posAttr.count; i++) {
-                const u = baseVerts[i * 3]; const v = baseVerts[i * 3 + 2];
-                posAttr.setY(i, getWaveHeight(u, v, t));
-            }
-            posAttr.needsUpdate = true;
-
-            const waveY = getWaveHeight(boatGroup.position.x, boatGroup.position.z, t);
-            boatGroup.position.y = waveY * 0.4;
-            boatGroup.rotation.z = Math.sin(t * 2) * (0.03 + currentWaveAmp * 0.03);
-            boatGroup.rotation.x = Math.cos(t * 1.5) * (0.02 + currentWaveAmp * 0.03);
-
-            flag.rotation.y = Math.sin(t * 5) * 0.15;
-
-            // Camera Tracking Setup
-            const camDist = 6.5;
-            const targetPos = player.group.getWorldPosition(new THREE.Vector3());
-            camera.position.x = targetPos.x + camDist * Math.sin(camYaw) * Math.cos(camPitch);
-            camera.position.y = targetPos.y + camDist * Math.sin(camPitch);
-            camera.position.z = targetPos.z + camDist * Math.cos(camYaw) * Math.cos(camPitch);
-            camera.lookAt(targetPos.clone().add(new THREE.Vector3(0, 0.7, 0)));
-
-            // 3D Fish Preview Rotation
-            fishDisplayGroup.rotation.y += 0.03;
-            fishRenderer.render(fishScene, fishCam);
-
-            // Proximity Prompt Check
-            const prompt = document.getElementById('prompt');
-            const distHelm = player.group.position.distanceTo(helmStand.position);
-            const distBob = player.group.position.distanceTo(bob.group.position);
-            const distRod = player.group.position.distanceTo(rodGroup.position);
-
-            if (distHelm < 2 || distBob < 2 || distRod < 2) prompt.style.display = 'block';
-            else prompt.style.display = 'none';
-
-            renderer.render(scene, camera);
+            }, speed);
         }
 
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth * pixelScale, window.innerHeight * pixelScale, false);
+        function advanceDialogue() {
+            if (isTyping) return;
+
+            if (dialogueIndex < carDialogue.length) {
+                const line = carDialogue[dialogueIndex];
+                document.getElementById('portrait').innerText = line.speaker;
+                typeText(document.getElementById('dialogueText'), line.text);
+                dialogueIndex++;
+            } else {
+                document.getElementById('dialogueText').innerText = "[ Interactive Mode Active. Scan Dashboard Nodes. ]";
+            }
+        }
+
+        function inspectNode(title, detailText) {
+            if (isTyping) return;
+            audio.playThud();
+            triggerShake();
+            document.getElementById('portrait').innerText = "SYS";
+            typeText(document.getElementById('dialogueText'), `[${title}]: ${detailText}`);
+        }
+
+        /* Keyboard Listener */
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && document.getElementById('carScene').classList.contains('active')) {
+                advanceDialogue();
+            }
         });
 
-        animate();
+        /* Click Listener for Dialogue */
+        document.getElementById('carScene').addEventListener('click', (e) => {
+            if (!e.target.classList.contains('dash-node')) {
+                advanceDialogue();
+            }
+        });
     </script>
 </body>
 </html>
