@@ -12,6 +12,7 @@
             --accent-green: #00ff66;
             --accent-red: #ff3344;
             --accent-amber: #ffaa00;
+            --accent-blue: #00f3ff;
             --text-bright: #e6edf3;
             --text-dim: #7d8590;
         }
@@ -51,10 +52,17 @@
             opacity: 0.7;
         }
 
-        /* Container */
-        .archive-card {
+        /* Container Layout */
+        .main-wrapper {
             width: 100%;
-            max-width: 900px;
+            max-width: 1200px;
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+            z-index: 1;
+        }
+
+        .archive-card {
             background: var(--panel-bg);
             border: 2px solid var(--border-color);
             border-radius: 6px;
@@ -65,7 +73,82 @@
             gap: 20px;
             padding: 24px;
             position: relative;
-            z-index: 1;
+        }
+
+        /* Favorites Sidebar */
+        .saved-sidebar {
+            background: var(--panel-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-height: 620px;
+        }
+
+        .sidebar-title {
+            font-size: 0.95rem;
+            color: var(--accent-blue);
+            letter-spacing: 1.5px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .saved-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .saved-item {
+            background: #0f141a;
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .saved-item:hover {
+            border-color: var(--accent-blue);
+            background: #161e27;
+        }
+
+        .saved-item-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .saved-id {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        .saved-name {
+            font-size: 0.85rem;
+            color: var(--text-bright);
+            font-weight: bold;
+        }
+
+        .delete-btn {
+            background: transparent;
+            border: none;
+            color: var(--accent-red);
+            font-size: 1rem;
+            cursor: pointer;
+            padding: 2px 6px;
+        }
+
+        .delete-btn:hover {
+            color: #ff0000;
         }
 
         /* Header */
@@ -154,6 +237,11 @@
             align-items: center;
         }
 
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
         .btn {
             background: #121820;
             border: 1px solid var(--border-color);
@@ -175,6 +263,17 @@
             box-shadow: 0 0 12px rgba(0, 255, 102, 0.4);
         }
 
+        .btn-save {
+            color: var(--accent-blue);
+            border-color: var(--accent-blue);
+        }
+
+        .btn-save:hover {
+            background: var(--accent-blue);
+            color: #000;
+            box-shadow: 0 0 12px rgba(0, 243, 255, 0.4);
+        }
+
         .btn-danger {
             color: var(--accent-red);
         }
@@ -186,14 +285,14 @@
         }
 
         /* Responsive */
-        @media (max-width: 768px) {
+        @media (max-width: 950px) {
+            .main-wrapper {
+                grid-template-columns: 1fr;
+            }
             .archive-card {
                 grid-template-columns: 1fr;
             }
-            .visual-panel {
-                grid-column: 1;
-            }
-            .data-panel {
+            .visual-panel, .data-panel {
                 grid-column: 1;
             }
         }
@@ -203,53 +302,66 @@
 
     <div class="scanlines"></div>
 
-    <div class="archive-card">
-        <header>
-            <div class="archive-title">CLASSIFIED ARCHIVE // ENTITY FILE</div>
-            <div id="threat-tag" class="threat-badge">LEVEL 0</div>
-        </header>
+    <div class="main-wrapper">
+        <div class="archive-card">
+            <header>
+                <div class="archive-title">CLASSIFIED ARCHIVE // ENTITY FILE</div>
+                <div id="threat-tag" class="threat-badge">LEVEL 0</div>
+            </header>
 
-        <div class="visual-panel">
-            <div class="canvas-frame">
-                <canvas id="entityCanvas"></canvas>
+            <div class="visual-panel">
+                <div class="canvas-frame">
+                    <canvas id="entityCanvas"></canvas>
+                </div>
+                <div class="field-group">
+                    <span class="field-label">DESIGNATION CODE</span>
+                    <span class="field-value" id="val-id">ENT-0000</span>
+                </div>
+                <div class="field-group">
+                    <span class="field-label">ANOMALOUS CLASS</span>
+                    <span class="field-value" id="val-class">UNKNOWN</span>
+                </div>
             </div>
-            <div class="field-group">
-                <span class="field-label">DESIGNATION CODE</span>
-                <span class="field-value" id="val-id">ENT-0000</span>
+
+            <div class="data-panel">
+                <div class="field-group">
+                    <span class="field-label">COGNOMEN / NAME</span>
+                    <span class="field-value" id="val-name" style="font-size: 1.2rem; color: var(--accent-green);">---</span>
+                </div>
+                <div class="field-group">
+                    <span class="field-label">PHYSICAL MORPHOLOGY</span>
+                    <span class="field-value" id="val-morph">---</span>
+                </div>
+                <div class="field-group">
+                    <span class="field-label">OBSERVED BEHAVIOR & PHENOMENA</span>
+                    <span class="field-value" id="val-behavior">---</span>
+                </div>
+                <div class="field-group">
+                    <span class="field-label">SPECIAL CONTAINMENT PROTOCOLS</span>
+                    <span class="field-value" id="val-containment">---</span>
+                </div>
             </div>
-            <div class="field-group">
-                <span class="field-label">ANOMALOUS CLASS</span>
-                <span class="field-value" id="val-class">UNKNOWN</span>
-            </div>
+
+            <footer>
+                <span style="font-size: 0.75rem; color: var(--text-dim);" id="timestamp">SECURE TERMINAL ONLINE</span>
+                <div class="button-group">
+                    <button class="btn btn-save" id="saveBtn">★ SAVE FILE</button>
+                    <button class="btn btn-danger" id="genBtn">GENERATE NEW</button>
+                </div>
+            </footer>
         </div>
 
-        <div class="data-panel">
-            <div class="field-group">
-                <span class="field-label">COGNOMEN / NAME</span>
-                <span class="field-value" id="val-name" style="font-size: 1.2rem; color: var(--accent-green);">---</span>
-            </div>
-            <div class="field-group">
-                <span class="field-label">PHYSICAL MORPHOLOGY</span>
-                <span class="field-value" id="val-morph">---</span>
-            </div>
-            <div class="field-group">
-                <span class="field-label">OBSERVED BEHAVIOR & PHENOMENA</span>
-                <span class="field-value" id="val-behavior">---</span>
-            </div>
-            <div class="field-group">
-                <span class="field-label">SPECIAL CONTAINMENT PROTOCOLS</span>
-                <span class="field-value" id="val-containment">---</span>
+        <!-- Saved Entries Sidebar -->
+        <div class="saved-sidebar">
+            <div class="sidebar-title">SAVED ENTRIES (<span id="saved-count">0</span>)</div>
+            <div class="saved-list" id="saved-list">
+                <!-- Dynamic Items -->
             </div>
         </div>
-
-        <footer>
-            <span style="font-size: 0.75rem; color: var(--text-dim);" id="timestamp">SECURE TERMINAL ONLINE</span>
-            <button class="btn btn-danger" id="genBtn">GENERATE NEW FILE</button>
-        </footer>
     </div>
 
     <script>
-        // Setup Canvas Engine
+        // Canvas Setup
         const canvas = document.getElementById('entityCanvas');
         const ctx = canvas.getContext('2d');
 
@@ -260,12 +372,11 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        let animFrame;
         let t = 0;
-        let currentSeed = 0;
-        let threatLevel = "HARmless";
+        let currentEntry = {};
+        let savedEntries = JSON.parse(localStorage.getItem('saved_anomalies') || '[]');
 
-        // Procedural Entity Silhouette Generator
+        // Entity Silhouette Renderer
         function renderEntity() {
             t += 0.03;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -273,7 +384,7 @@
             const cx = canvas.width / 2;
             const cy = canvas.height / 2;
 
-            // Background Grid / Radar Scan
+            // Background Radar Grid
             ctx.strokeStyle = 'rgba(0, 255, 102, 0.08)';
             ctx.lineWidth = 1;
             for(let i = 0; i < canvas.width; i += 20) {
@@ -283,7 +394,7 @@
                 ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
             }
 
-            // Radar Scan Line
+            // Radar Scanline
             let scanY = (t * 20) % canvas.height;
             ctx.strokeStyle = 'rgba(0, 255, 102, 0.25)';
             ctx.beginPath();
@@ -291,84 +402,77 @@
             ctx.lineTo(canvas.width, scanY);
             ctx.stroke();
 
-            // Procedural Entity Vector Shapes
-            ctx.save();
-            ctx.translate(cx, cy);
+            if (currentEntry.seed) {
+                ctx.save();
+                ctx.translate(cx, cy);
 
-            let mainColor = '#00ff66';
-            if (threatLevel === 'CRITICAL' || threatLevel === 'APOCALYPTIC') mainColor = '#ff3344';
-            else if (threatLevel === 'HAZARDOUS' || threatLevel === 'SEVERE') mainColor = '#ffaa00';
+                let mainColor = '#00ff66';
+                if (currentEntry.threatLevel === 'CRITICAL' || currentEntry.threatLevel === 'APOCALYPTIC') mainColor = '#ff3344';
+                else if (currentEntry.threatLevel === 'HAZARDOUS') mainColor = '#ffaa00';
 
-            ctx.fillStyle = mainColor;
-            ctx.shadowColor = mainColor;
-            ctx.shadowBlur = 15;
+                ctx.fillStyle = mainColor;
+                ctx.shadowColor = mainColor;
+                ctx.shadowBlur = 15;
 
-            // Draw Central Anomalous Core & Tendrils
-            const numNodes = 6 + (currentSeed % 6);
-            ctx.beginPath();
-            for (let i = 0; i < numNodes; i++) {
-                let angle = (i / numNodes) * Math.PI * 2;
-                let noise = Math.sin(t * 2 + i * currentSeed) * 20 + Math.cos(t * 1.5 + i) * 15;
-                let radius = 45 + noise;
-
-                let x = Math.cos(angle) * radius;
-                let y = Math.sin(angle) * radius;
-
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-
-                // Branching Tendrils
-                if (i % 2 === 0) {
-                    let tx = Math.cos(angle) * (radius + 40 + Math.sin(t * 3 + i) * 15);
-                    let ty = Math.sin(angle) * (radius + 40 + Math.cos(t * 3 + i) * 15);
-                    ctx.lineTo(tx, ty);
-                }
-            }
-            ctx.closePath();
-            ctx.fill();
-
-            // Glowing Floating Orbs / Spores
-            ctx.fillStyle = '#ffffff';
-            for (let i = 0; i < 5; i++) {
-                let ox = Math.sin(t + i + currentSeed) * 70;
-                let oy = Math.cos(t * 1.2 + i) * 70;
+                const numNodes = 6 + (currentEntry.seed % 6);
                 ctx.beginPath();
-                ctx.arc(ox, oy, Math.random() * 3 + 2, 0, Math.PI * 2);
+                for (let i = 0; i < numNodes; i++) {
+                    let angle = (i / numNodes) * Math.PI * 2;
+                    let noise = Math.sin(t * 2 + i * currentEntry.seed) * 20 + Math.cos(t * 1.5 + i) * 15;
+                    let radius = 45 + noise;
+
+                    let x = Math.cos(angle) * radius;
+                    let y = Math.sin(angle) * radius;
+
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+
+                    if (i % 2 === 0) {
+                        let tx = Math.cos(angle) * (radius + 40 + Math.sin(t * 3 + i) * 15);
+                        let ty = Math.sin(angle) * (radius + 40 + Math.cos(t * 3 + i) * 15);
+                        ctx.lineTo(tx, ty);
+                    }
+                }
+                ctx.closePath();
                 ctx.fill();
+
+                ctx.fillStyle = '#ffffff';
+                for (let i = 0; i < 5; i++) {
+                    let ox = Math.sin(t + i + currentEntry.seed) * 70;
+                    let oy = Math.cos(t * 1.2 + i) * 70;
+                    ctx.beginPath();
+                    ctx.arc(ox, oy, Math.random() * 3 + 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.restore();
             }
 
-            ctx.restore();
-
-            animFrame = requestAnimationFrame(renderEntity);
+            requestAnimationFrame(renderEntity);
         }
 
-        // Procedural Text Generator Tables
+        // Procedural Text Data Tables
         const namePrefixes = ["The Void", "The Echoing", "Stanza", "Obsidian", "Sub-Surface", "Spectral", "Kinetic", "Non-Euclidean"];
         const nameNouns = ["Weaver", "Watcher", "Vanguard", "Architect", "Anomaly", "Stalker", "Husk", "Crawler", "Disciple"];
-
         const classes = ["Liminal-Horror", "Biological-Shift", "Spatial-Distortion", "Cognitohazard", "Acoustic-Parasite"];
-
         const threats = [
             { level: "MINIMAL", color: "#00ff66", bg: "rgba(0,255,106,0.15)" },
             { level: "HAZARDOUS", color: "#ffaa00", bg: "rgba(255,170,0,0.15)" },
             { level: "CRITICAL", color: "#ff3344", bg: "rgba(255,51,68,0.15)" },
             { level: "APOCALYPTIC", color: "#ff0055", bg: "rgba(255,0,85,0.25)" }
         ];
-
         const morphologies = [
             "Amorphous mass shifting through non-Euclidean geometry. Displays fluctuating perimeter bounds.",
             "Bipedal skeletal composite encased in dense white liquid energy strands.",
             "Sub-surface crystalline structure emitting localized gravitational dampening waves.",
             "Multi-segmented appendage matrix with shifting bioluminescent eye spots."
         ];
-
         const behaviors = [
             "Remains inert in complete darkness. Actively moves toward radio frequencies and electronic displays.",
             "Distorts structural geometry within a 15-meter radius, causing corridors to loop infinitely.",
             "Emits low-frequency acoustic vibrations that induce mild auditory hallucinations in personnel.",
             "Consumes ambient thermal energy, rapidly freezing surrounding atmosphere upon physical contact."
         ];
-
         const protocols = [
             "Must be kept in a vacuum-sealed chamber lined with acoustic dampening foam at all times.",
             "Requires continuous low-intensity ultraviolet lighting. No electronic screens permitted inside perimeter.",
@@ -377,40 +481,83 @@
         ];
 
         function generateNewArchiveEntry() {
-            currentSeed = Math.floor(Math.random() * 10000);
-
-            // Generate ID & Threat
-            const idCode = "ENT-" + Math.floor(1000 + Math.random() * 9000);
+            const seed = Math.floor(Math.random() * 10000);
             const threatObj = threats[Math.floor(Math.random() * threats.length)];
-            threatLevel = threatObj.level;
 
-            // Generate Text Data
-            const name = namePrefixes[Math.floor(Math.random() * namePrefixes.length)] + " " + nameNouns[Math.floor(Math.random() * nameNouns.length)];
-            const eClass = classes[Math.floor(Math.random() * classes.length)];
-            const morph = morphologies[Math.floor(Math.random() * morphologies.length)];
-            const bhav = behaviors[Math.floor(Math.random() * behaviors.length)];
-            const prot = protocols[Math.floor(Math.random() * protocols.length)];
+            currentEntry = {
+                seed: seed,
+                id: "ENT-" + Math.floor(1000 + Math.random() * 9000),
+                name: namePrefixes[Math.floor(Math.random() * namePrefixes.length)] + " " + nameNouns[Math.floor(Math.random() * nameNouns.length)],
+                eClass: classes[Math.floor(Math.random() * classes.length)],
+                threatLevel: threatObj.level,
+                threatObj: threatObj,
+                morph: morphologies[Math.floor(Math.random() * morphologies.length)],
+                behavior: behaviors[Math.floor(Math.random() * behaviors.length)],
+                containment: protocols[Math.floor(Math.random() * protocols.length)]
+            };
 
-            // Update DOM
-            document.getElementById('val-id').innerText = idCode;
-            document.getElementById('val-name').innerText = name;
-            document.getElementById('val-class').innerText = eClass;
-            document.getElementById('val-morph').innerText = morph;
-            document.getElementById('val-behavior').innerText = bhav;
-            document.getElementById('val-containment').innerText = prot;
+            displayEntry(currentEntry);
+        }
+
+        function displayEntry(entry) {
+            currentEntry = entry;
+            document.getElementById('val-id').innerText = entry.id;
+            document.getElementById('val-name').innerText = entry.name;
+            document.getElementById('val-class').innerText = entry.eClass;
+            document.getElementById('val-morph').innerText = entry.morph;
+            document.getElementById('val-behavior').innerText = entry.behavior;
+            document.getElementById('val-containment').innerText = entry.containment;
 
             const threatTag = document.getElementById('threat-tag');
-            threatTag.innerText = `LEVEL: ${threatObj.level}`;
-            threatTag.style.color = threatObj.color;
-            threatTag.style.border = `1px solid ${threatObj.color}`;
-            threatTag.style.backgroundColor = threatObj.bg;
+            threatTag.innerText = `LEVEL: ${entry.threatLevel}`;
+            threatTag.style.color = entry.threatObj.color;
+            threatTag.style.border = `1px solid ${entry.threatObj.color}`;
+            threatTag.style.backgroundColor = entry.threatObj.bg;
 
-            document.getElementById('timestamp').innerText = `LAST UPDATED: ${new Date().toLocaleTimeString()} // LOG #${currentSeed}`;
+            document.getElementById('timestamp').innerText = `LAST UPDATED: ${new Date().toLocaleTimeString()} // LOG #${entry.seed}`;
+        }
+
+        // Save & LocalStorage System
+        function saveCurrentEntry() {
+            if (savedEntries.some(e => e.id === currentEntry.id)) return;
+            savedEntries.push(currentEntry);
+            localStorage.setItem('saved_anomalies', JSON.stringify(savedEntries));
+            renderSavedList();
+        }
+
+        function deleteEntry(id, event) {
+            event.stopPropagation();
+            savedEntries = savedEntries.filter(e => e.id !== id);
+            localStorage.setItem('saved_anomalies', JSON.stringify(savedEntries));
+            renderSavedList();
+        }
+
+        function renderSavedList() {
+            const listEl = document.getElementById('saved-list');
+            document.getElementById('saved-count').innerText = savedEntries.length;
+            listEl.innerHTML = '';
+
+            savedEntries.forEach(entry => {
+                const item = document.createElement('div');
+                item.className = 'saved-item';
+                item.onclick = () => displayEntry(entry);
+
+                item.innerHTML = `
+                    <div class="saved-item-info">
+                        <span class="saved-id">${entry.id}</span>
+                        <span class="saved-name">${entry.name}</span>
+                    </div>
+                    <button class="delete-btn" onclick="deleteEntry('${entry.id}', event)">✕</button>
+                `;
+                listEl.appendChild(item);
+            });
         }
 
         document.getElementById('genBtn').addEventListener('click', generateNewArchiveEntry);
+        document.getElementById('saveBtn').addEventListener('click', saveCurrentEntry);
 
         // Initialize
+        renderSavedList();
         generateNewArchiveEntry();
         renderEntity();
     </script>
