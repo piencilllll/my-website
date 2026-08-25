@@ -3,29 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KINETIC SEA // VOYAGE PROTOCOL</title>
+    <title>KINETIC SEA // REF SHORE VOYAGE</title>
     <style>
         :root {
             --accent: #ef4444;
             --green: #22c55e;
+            --purple: #a855f7;
             --panel: rgba(15, 23, 42, 0.85);
             --border: rgba(255, 255, 255, 0.15);
             --font: 'Courier New', Courier, monospace;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        html, body { width: 100vw; height: 100vh; overflow: hidden; background: #000; color: #fff; font-family: var(--font); }
 
-        html, body {
-            width: 100vw; height: 100vh; overflow: hidden;
-            background: #000; color: #fff; font-family: var(--font);
-        }
+        #webgl-canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; cursor: crosshair; }
 
-        #webgl-canvas {
-            width: 100%; height: 100%; display: block;
-            image-rendering: pixelated; /* Retro slightly-pixelated 3D aesthetic */
-        }
-
-        /* UI OVERLAYS */
         .hud-layer {
             position: absolute; inset: 0; pointer-events: none;
             display: flex; flex-direction: column; justify-content: space-between;
@@ -47,34 +40,27 @@
             padding: 10px 20px; border-radius: 20px; font-size: 0.8rem; text-align: center;
         }
 
-        /* INTERACTION DIALOG BOX */
-        .dialog-box {
+        .interaction-prompt {
+            position: absolute; top: 60%; left: 50%; transform: translate(-50%, -50%);
+            background: var(--purple); color: #fff; font-weight: bold; padding: 8px 16px;
+            border-radius: 20px; font-size: 0.9rem; display: none; box-shadow: 0 0 15px rgba(168, 85, 247, 0.5);
+        }
+
+        /* DIALOGUE & FISHING MODALS */
+        .modal-box {
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
             width: 90%; max-width: 550px; background: var(--panel);
             border: 2px solid var(--green); border-radius: 10px; padding: 16px;
             display: none; flex-direction: column; gap: 8px; pointer-events: auto;
-            box-shadow: 0 0 30px rgba(34, 197, 94, 0.2);
+            box-shadow: 0 0 30px rgba(34, 197, 94, 0.2); z-index: 20;
         }
-        .dialog-speaker { font-weight: bold; color: var(--green); font-size: 0.9rem; }
-        .dialog-text { font-size: 0.95rem; line-height: 1.4; color: #e5e7eb; }
 
-        /* ACTION BUTTONS */
-        .action-bar {
-            display: flex; gap: 10px; margin-top: 10px;
-        }
         .btn {
             background: #1e293b; color: #fff; border: 1px solid var(--border);
             padding: 8px 16px; border-radius: 6px; cursor: pointer; font-family: var(--font);
             font-size: 0.8rem; font-weight: bold; transition: all 0.2s; pointer-events: auto;
         }
         .btn:hover { background: var(--green); color: #000; }
-
-        .catch-notify {
-            position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9); border: 2px solid var(--accent);
-            padding: 20px 30px; border-radius: 12px; text-align: center;
-            display: none; flex-direction: column; gap: 6px; z-index: 20;
-        }
     </style>
 </head>
 <body>
@@ -84,312 +70,407 @@
     <div class="hud-layer">
         <div style="display: flex; justify-content: space-between; width: 100%;">
             <div class="hud-card">
-                <div class="hud-title">ENVIRONMENT LOG</div>
-                <div class="hud-val" id="timeVal">DAY (CYCLE: 12:00)</div>
+                <div class="hud-title">ENVIRONMENT & METEO</div>
+                <div class="hud-val" id="timeVal">PURPLE DAY</div>
                 <div style="font-size: 0.75rem; color: #38bdf8; margin-top: 4px;" id="weatherVal">CLEAR ATMOSPHERE</div>
             </div>
 
             <div class="hud-card" style="text-align: right;">
-                <div class="hud-title">VESSEL STATUS</div>
-                <div class="hud-val" id="speedVal">0.0 KTS</div>
-                <div style="font-size: 0.75rem; color: var(--green); margin-top: 4px;">HEADING: NORTH</div>
+                <div class="hud-title">LOCATION</div>
+                <div class="hud-val" id="locVal">DECK AREA</div>
+                <div style="font-size: 0.75rem; color: var(--green); margin-top: 4px;" id="speedVal">VESSEL: 0.0 KTS</div>
             </div>
         </div>
 
+        <div class="interaction-prompt" id="prompt">PRESS [E] TO INTERACT</div>
+
         <div class="controls-hint">
-            <strong>[W/S]</strong> Throttle | <strong>[A/D]</strong> Steer | <strong>[E]</strong> Talk to Crewmate | <strong>[F]</strong> Cast Fishing Line
+            <strong>[WASD]</strong> Walk / Steer | <strong>[MOUSE]</strong> Look Around | <strong>[E]</strong> Interact (Bob / Helm / Hatch / Rod)
         </div>
     </div>
 
-    <!-- Stickman Dialog Modal -->
-    <div class="dialog-box" id="dialogBox">
-        <div class="dialog-speaker">CREWMATE // STICKMAN</div>
-        <div class="dialog-text" id="dialogText">"Notice how the fluid glows when the waves break? That's not water, you know."</div>
-        <div class="action-bar">
+    <!-- Dialogue Box -->
+    <div class="modal-box" id="dialogBox">
+        <div style="font-weight: bold; color: var(--green);" id="speakerName">BOB THE KAWMLING</div>
+        <div style="font-size: 0.95rem; line-height: 1.4; color: #e5e7eb;" id="dialogText">"Hey there. Swaying my legs over this white liquid is strangely relaxing."</div>
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
             <button class="btn" onclick="nextDialogue()">TALK MORE</button>
-            <button class="btn" onclick="closeDialogue()">CLOSE</button>
+            <button class="btn" onclick="closeModal('dialogBox')">CLOSE</button>
         </div>
     </div>
 
-    <!-- Fishing Catch Modal -->
-    <div class="catch-notify" id="catchBox">
-        <div style="color: var(--accent); font-size: 0.8rem; font-weight: bold;">SPECIMEN CAUGHT!</div>
-        <div id="fishName" style="font-size: 1.4rem; font-weight: bold; color: #fff;">LUMINESCENT SKIMMER</div>
-        <div id="fishDesc" style="font-size: 0.8rem; color: #9ca3af; max-width: 280px; margin-top: 4px;">A quick, surface-dwelling creature that feeds on dense white fluid particles.</div>
-        <button class="btn" style="margin-top: 12px;" onclick="closeCatch()">SECURE STORAGE</button>
+    <!-- Catch Box -->
+    <div class="modal-box" id="catchBox" style="border-color: var(--accent);">
+        <div style="color: var(--accent); font-weight: bold;">SPECIMEN CAUGHT!</div>
+        <div id="fishName" style="font-size: 1.3rem; font-weight: bold;">LUMINESCENT SKIMMER</div>
+        <div id="fishDesc" style="font-size: 0.85rem; color: #9ca3af;">A glossy creature native to dense white fluid oceans.</div>
+        <button class="btn" style="margin-top: 10px;" onclick="closeModal('catchBox')">KEEP SPECIMEN</button>
     </div>
 
-    <!-- Include Three.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
-        // --- 1. SCENE & RENDERER SETUP ---
+        // --- 1. AUDIO ENGINE (PROCEDURAL SYNTH) ---
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function playSound(type) {
+            if (!audioCtx) audioCtx = new AudioCtx();
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+
+            if (type === 'splash') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(120, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.3);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.3);
+                osc.start(now); osc.stop(now + 0.3);
+            } else if (type === 'step') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(80, now);
+                gain.gain.setValueAtTime(0.05, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.05);
+                osc.start(now); osc.stop(now + 0.05);
+            }
+        }
+
+        // --- 2. SCENE SETUP & RETRO GRAPHICS ---
         const canvas = document.getElementById('webgl-canvas');
         const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(0.6); // Lower pixel ratio for iconic retro/pixelated 3D aesthetic
+        renderer.setPixelRatio(0.65); // Pixelated 3D aesthetic
         renderer.shadowMap.enabled = true;
 
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-        // --- 2. ENVIRONMENT & CELESTIAL ELEMENTS ---
+        // --- 3. CELESTIAL ENVIRONMENT & SKY ---
         const purpleSkyColor = new THREE.Color(0x3b1d5a);
         const nightSkyColor = new THREE.Color(0x05020a);
         scene.background = purpleSkyColor.clone();
-        scene.fog = new THREE.FogExp2(0x3b1d5a, 0.008);
+        scene.fog = new THREE.FogExp2(0x3b1d5a, 0.006);
 
         // Red Dwarf Star
-        const sunGeo = new THREE.SphereGeometry(12, 32, 32);
+        const sunGeo = new THREE.SphereGeometry(14, 32, 32);
         const sunMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
         const sun = new THREE.Mesh(sunGeo, sunMat);
-        sun.position.set(0, 100, -300);
+        sun.position.set(0, 120, -350);
         scene.add(sun);
 
-        // Planetary Ring System
-        const ringGeo = new THREE.RingGeometry(180, 260, 64);
-        const ringMat = new THREE.MeshBasicMaterial({ color: 0xa855f7, side: THREE.DoubleSide, transparent: true, opacity: 0.25 });
+        // Planetary Ring System & Moons
+        const ringGeo = new THREE.RingGeometry(190, 270, 64);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0xa855f7, side: THREE.DoubleSide, transparent: true, opacity: 0.3 });
         const ring = new THREE.Mesh(ringGeo, ringMat);
         ring.rotation.x = Math.PI / 2.3;
-        ring.position.set(0, 200, -400);
+        ring.position.set(0, 200, -450);
         scene.add(ring);
 
-        // Moons
         function createMoon(size, x, y, z, color) {
-            const geo = new THREE.SphereGeometry(size, 16, 16);
-            const mat = new THREE.MeshBasicMaterial({ color });
-            const mesh = new THREE.Mesh(geo, mat);
+            const mesh = new THREE.Mesh(new THREE.SphereGeometry(size, 16, 16), new THREE.MeshBasicMaterial({ color }));
             mesh.position.set(x, y, z);
             scene.add(mesh);
-            return mesh;
         }
-        createMoon(6, -120, 140, -350, 0xe2e8f0);
-        createMoon(3, -90, 160, -320, 0x94a3b8);
-        createMoon(9, 150, 180, -380, 0xc084fc);
+        createMoon(7, -130, 150, -380, 0xe2e8f0);
+        createMoon(4, -95, 170, -340, 0x94a3b8);
 
-        // Lighting
-        const ambientLight = new THREE.AmbientLight(0xd8b4fe, 0.6);
-        scene.add(ambientLight);
+        scene.add(new THREE.AmbientLight(0xd8b4fe, 0.7));
 
-        const sunLight = new THREE.DirectionalLight(0xef4444, 1.2);
-        sunLight.position.set(0, 100, -300);
-        sunLight.castShadow = true;
-        scene.add(sunLight);
-
-        // --- 3. MILKY WHITE OCEAN WITH WAVE PHYSICS ---
+        // --- 4. MILKY OCEAN WAVE ENGINE ---
         const oceanGeo = new THREE.PlaneGeometry(800, 800, 128, 128);
         oceanGeo.rotateX(-Math.PI / 2);
-
-        const oceanMat = new THREE.MeshStandardMaterial({
-            color: 0xf8fafc,
-            roughness: 0.1,
-            metalness: 0.1,
-            flatShading: true
-        });
-
+        const oceanMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.1, flatShading: true });
         const ocean = new THREE.Mesh(oceanGeo, oceanMat);
         scene.add(ocean);
 
-        // Save base vertex positions for wave calculations
         const posAttr = oceanGeo.attributes.position;
         const baseVertices = [];
-        for (let i = 0; i < posAttr.count; i++) {
-            baseVertices.push(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i));
-        }
+        for (let i = 0; i < posAttr.count; i++) baseVertices.push(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i));
 
         function getWaveHeight(x, z, time) {
-            return Math.sin(x * 0.05 + time * 2) * 0.8 + Math.cos(z * 0.05 + time * 1.5) * 0.8;
+            return Math.sin(x * 0.05 + time * 2) * 0.7 + Math.cos(z * 0.05 + time * 1.5) * 0.7;
         }
 
-        function updateOcean(time) {
-            for (let i = 0; i < posAttr.count; i++) {
-                const u = baseVertices[i * 3];
-                const v = baseVertices[i * 3 + 2];
-                posAttr.setY(i, getWaveHeight(u, v, time));
-            }
-            posAttr.needsUpdate = true;
-        }
+        // --- 5. DETAILED BOAT & CABIN CONSTRUCTION ---
+        const vesselGroup = new THREE.Group();
+        scene.add(vesselGroup);
 
-        // --- 4. BOAT & CREWMATE CONSTRUCTION ---
-        const boatGroup = new THREE.Group();
-        scene.add(boatGroup);
+        // Upper Deck Base
+        const deckGeo = new THREE.BoxGeometry(6, 0.4, 14);
+        const woodMat = new THREE.MeshStandardMaterial({ color: 0x5c2b0e, roughness: 0.7 });
+        const deck = new THREE.Mesh(deckGeo, woodMat);
+        deck.position.y = 1.6;
+        vesselGroup.add(deck);
 
-        // Hull
-        const hullGeo = new THREE.BoxGeometry(4, 1.5, 8);
-        const hullMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 });
-        const hull = new THREE.Mesh(hullGeo, hullMat);
-        hull.position.y = 0.5;
-        boatGroup.add(hull);
+        // Outer Hull Sides (Solid bounds)
+        const hullGeo = new THREE.BoxGeometry(6.4, 2, 14.4);
+        const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x3d1c09, roughness: 0.8 });
+        const hull = new THREE.Mesh(hullGeo, darkWoodMat);
+        hull.position.y = 0.8;
+        vesselGroup.add(hull);
 
-        // Mast
-        const mastGeo = new THREE.CylinderGeometry(0.1, 0.1, 6);
-        const mastMat = new THREE.MeshStandardMaterial({ color: 0x451a03 });
-        const mast = new THREE.Mesh(mastGeo, mastMat);
-        mast.position.set(0, 3.5, 1);
-        boatGroup.add(mast);
+        // Interior Cabin (Inside lower hull)
+        const cabinFloorGeo = new THREE.BoxGeometry(5, 0.2, 8);
+        const cabinFloor = new THREE.Mesh(cabinFloorGeo, woodMat);
+        cabinFloor.position.set(0, -0.4, 0);
+        vesselGroup.add(cabinFloor);
 
-        // Custom Flag (Red & Green with Reindeer Symbol)
+        // Cabin Table & Barrels
+        const tableGeo = new THREE.BoxGeometry(2, 0.8, 1.2);
+        const table = new THREE.Mesh(tableGeo, woodMat);
+        table.position.set(-1.2, 0.1, 0);
+        vesselGroup.add(table);
+
+        // Map on Table
+        const mapGeo = new THREE.PlaneGeometry(1, 0.6);
+        mapGeo.rotateX(-Math.PI / 2);
+        const mapMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+        const mapMesh = new THREE.Mesh(mapGeo, mapMat);
+        mapMesh.position.set(-1.2, 0.51, 0);
+        vesselGroup.add(mapMesh);
+
+        // Barrels
+        const barrelGeo = new THREE.CylinderGeometry(0.4, 0.4, 1, 12);
+        const barrelMat = new THREE.MeshStandardMaterial({ color: 0x78350f });
+        const b1 = new THREE.Mesh(barrelGeo, barrelMat); b1.position.set(1.5, 0.1, 2);
+        const b2 = new THREE.Mesh(barrelGeo, barrelMat); b2.position.set(1.6, 0.1, 0.8);
+        vesselGroup.add(b1); vesselGroup.add(b2);
+
+        // Cabin Hatch Trapdoor (Interoperable)
+        const hatchGeo = new THREE.BoxGeometry(1.6, 0.1, 1.6);
+        const hatchMat = new THREE.MeshStandardMaterial({ color: 0x92400e });
+        const hatch = new THREE.Mesh(hatchGeo, hatchMat);
+        hatch.position.set(0, 1.85, 2);
+        vesselGroup.add(hatch);
+
+        // Steering Helm (Front of Deck)
+        const helmStandGeo = new THREE.CylinderGeometry(0.15, 0.15, 1.2);
+        const helmStand = new THREE.Mesh(helmStandGeo, woodMat);
+        helmStand.position.set(0, 2.4, -5.5);
+        vesselGroup.add(helmStand);
+
+        const wheelGeo = new THREE.TorusGeometry(0.5, 0.08, 8, 16);
+        const helmWheel = new THREE.Mesh(wheelGeo, woodMat);
+        helmWheel.position.set(0, 3, -5.3);
+        vesselGroup.add(helmWheel);
+
+        // Custom Flag (Red & Green with Reindeer Icon)
         const flagCanvas = document.createElement('canvas');
         flagCanvas.width = 128; flagCanvas.height = 64;
         const fctx = flagCanvas.getContext('2d');
         fctx.fillStyle = '#ef4444'; fctx.fillRect(0, 0, 64, 64);
         fctx.fillStyle = '#22c55e'; fctx.fillRect(64, 0, 64, 64);
-        // Simple Reindeer Silhouette
-        fctx.fillStyle = '#ffffff';
-        fctx.beginPath();
-        fctx.arc(64, 32, 10, 0, Math.PI * 2);
-        fctx.fill();
-        fctx.fillRect(58, 12, 3, 12); fctx.fillRect(67, 12, 3, 12); // Antlers
+        fctx.fillStyle = '#ffffff'; fctx.beginPath(); fctx.arc(64, 32, 10, 0, Math.PI * 2); fctx.fill();
+        fctx.fillRect(58, 12, 3, 12); fctx.fillRect(67, 12, 3, 12);
 
-        const flagTexture = new THREE.CanvasTexture(flagCanvas);
-        const flagGeo = new THREE.PlaneGeometry(2, 1);
-        const flagMat = new THREE.MeshBasicMaterial({ map: flagTexture, side: THREE.DoubleSide });
-        const flag = new THREE.Mesh(flagGeo, flagMat);
-        flag.position.set(1, 5.8, 1);
-        boatGroup.add(flag);
+        const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 7), woodMat);
+        mast.position.set(0, 5, 0); vesselGroup.add(mast);
 
-        // 3D White Stickman Crewmate (Thicker proportional build)
-        const stickGroup = new THREE.Group();
-        const stickMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+        const flag = new THREE.Mesh(new THREE.PlaneGeometry(2, 1), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(flagCanvas), side: THREE.DoubleSide }));
+        flag.position.set(1, 7.8, 0); vesselGroup.add(flag);
 
-        // Head
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 16), stickMat);
-        head.position.y = 2.3;
-        stickGroup.add(head);
+        // --- 6. BOB THE KAWMLING (ANIMATED CREWMATE) ---
+        const kawmGroup = new THREE.Group();
+        const kawmMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
 
-        // Torso
-        const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 1.1), stickMat);
-        torso.position.y = 1.4;
-        stickGroup.add(torso);
+        const bobHead = new THREE.Mesh(new THREE.SphereGeometry(0.45, 16, 16), kawmMat);
+        bobHead.position.y = 1.3; kawmGroup.add(bobHead);
 
-        // Limbs
-        function createLimb(x, y, z, rx, rz) {
-            const limb = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.9), stickMat);
-            limb.position.set(x, y, z);
-            limb.rotation.x = rx;
-            limb.rotation.z = rz;
-            stickGroup.add(limb);
-        }
-        createLimb(-0.3, 1.5, 0, 0, 0.4); // Left Arm
-        createLimb(0.3, 1.5, 0, 0, -0.4); // Right Arm
-        createLimb(-0.2, 0.5, 0, 0, 0.1); // Left Leg
-        createLimb(0.2, 0.5, 0, 0, -0.1); // Right Leg
+        const bobTorso = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1), kawmMat);
+        bobTorso.position.y = 0.6; kawmGroup.add(bobTorso);
 
-        stickGroup.position.set(-1, 0.8, -1);
-        boatGroup.add(stickGroup);
+        // Animated Legs (Sitting position swinging back & forth)
+        const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.8), kawmMat);
+        const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.8), kawmMat);
+        leftLeg.position.set(-0.15, 0.1, 0.3); leftLeg.rotation.x = Math.PI / 2;
+        rightLeg.position.set(0.15, 0.1, 0.3); rightLeg.rotation.x = Math.PI / 2;
+        kawmGroup.add(leftLeg); kawmGroup.add(rightLeg);
 
-        // --- 5. CONTROLS & PHYSICS STATE ---
-        const boatState = {
-            x: 0, z: 0,
-            speed: 0, maxSpeed: 0.3,
-            heading: 0, steering: 0
+        // Positioned sitting on the deck border looking out
+        kawmGroup.position.set(2.8, 1.8, -2);
+        kawmGroup.rotation.y = -Math.PI / 2;
+        vesselGroup.add(kawmGroup);
+
+        // --- 7. PLAYER CONTROLLER & CAMERA ---
+        const playerGroup = new THREE.Group();
+        const playerMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8 });
+        const playerBody = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 1.4), playerMat);
+        playerBody.position.y = 0.7; playerGroup.add(playerBody);
+
+        playerGroup.position.set(0, 1.8, 3); // Start on deck
+        vesselGroup.add(playerGroup);
+
+        const playerState = {
+            x: 0, z: 3, y: 1.8,
+            rotY: 0, pitch: 0,
+            isSteering: false,
+            inCabin: false
         };
 
-        const keys = {};
-        window.addEventListener('keydown', e => { keys[e.code] = true; handleInteractionKeys(e.code); });
-        window.addEventListener('keyup', e => { keys[e.code] = false; });
-
-        // --- 6. DIALOGUE & FISHING SYSTEMS ---
-        const dialogues = [
-            "Notice how the ocean glows when waves break? It's thick, like liquid energy.",
-            "That red star overhead doesn't set like normal ones. It wobbles on an axis.",
-            "I saw something massive shadow-swimming beneath the white surface earlier...",
-            "If you cast your line out, watch for luminescent ripples. That's where they hide.",
-            "This flag? Red for energy, green for growth. The reindeer keeps us grounded."
-        ];
-        let dialogIdx = 0;
-
-        function handleInteractionKeys(code) {
-            if (code === 'KeyE') {
-                const dialogBox = document.getElementById('dialogBox');
-                dialogBox.style.display = dialogBox.style.display === 'flex' ? 'none' : 'flex';
+        let mouseLook = { yaw: 0, pitch: 0 };
+        document.addEventListener('mousemove', (e) => {
+            if (document.pointerLockElement === canvas) {
+                mouseLook.yaw -= e.movementX * 0.003;
+                mouseLook.pitch -= e.movementY * 0.003;
+                mouseLook.pitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, mouseLook.pitch));
             }
-            if (code === 'KeyF') {
-                triggerFishing();
+        });
+
+        canvas.addEventListener('click', () => { canvas.requestPointerLock(); });
+
+        const keys = {};
+        window.addEventListener('keydown', e => { keys[e.code] = true; handleInteractions(e.code); });
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        // --- 8. VESSEL NAVIGATION & INTERACTIONS ---
+        const boatPhysics = { speed: 0, heading: 0 };
+
+        function handleInteractions(code) {
+            if (code === 'KeyE') {
+                const distToBob = playerGroup.position.distanceTo(kawmGroup.position);
+                const distToHelm = playerGroup.position.distanceTo(helmStand.position);
+                const distToHatch = playerGroup.position.distanceTo(hatch.position);
+
+                if (distToHelm < 2) {
+                    playerState.isSteering = !playerState.isSteering;
+                } else if (distToHatch < 2) {
+                    playerState.inCabin = !playerState.inCabin;
+                    if (playerState.inCabin) {
+                        playerGroup.position.set(0, -0.3, 0); // Move inside
+                    } else {
+                        playerGroup.position.set(0, 1.8, 1); // Move to deck
+                    }
+                    playSound('splash');
+                } else if (distToBob < 2) {
+                    openModal('dialogBox');
+                } else {
+                    // Default action: Fish off side
+                    triggerFishing();
+                }
             }
         }
+
+        const bobDialogues = [
+            "Hey there! Swaying my legs over this white liquid is strangely relaxing.",
+            "This white fluid isn't water, you know. It's rich in Kinetically Unified Matter.",
+            "Underneath that purple sky, the red dwarf star radiates steady thermal rays.",
+            "Have you tried steering at the helm up front? We can explore endless horizons."
+        ];
+        let bobIdx = 0;
 
         function nextDialogue() {
-            dialogIdx = (dialogIdx + 1) % dialogues.length;
-            document.getElementById('dialogText').innerText = `"${dialogues[dialogIdx]}"`;
-        }
-        function closeDialogue() {
-            document.getElementById('dialogBox').style.display = 'none';
+            bobIdx = (bobIdx + 1) % bobDialogues.length;
+            document.getElementById('dialogText').innerText = `"${bobDialogues[bobIdx]}"`;
         }
 
-        const fishSpecies = [
-            { name: "Luminescent Skimmer", desc: "A sleek, surface-dwelling creature that feeds on dense white fluid particles." },
-            { name: "Prismatic Ray", desc: "A flat, broad creature with bioluminescent rings along its spine." },
-            { name: "Kinetically Unified Eel", desc: "A rare, pure white serpentine entity that vibrates at high frequency." },
-            { name: "Orbital Angler", desc: "A deep-liquid predator with a lure that mimics the purple sky star." }
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        const fishList = [
+            { name: "White-Fluid Skimmer", desc: "A sleek, glowing species adapted to thick liquid friction." },
+            { name: "Kawm Orbital Eel", desc: "Serpentine creature with bioluminescent purple stripes." },
+            { name: "Ref City Sunray Fish", desc: "A rare species that absorbs energy directly from red dwarf rays." }
         ];
 
         function triggerFishing() {
-            const catchBox = document.getElementById('catchBox');
-            const chosen = fishSpecies[Math.floor(Math.random() * fishSpecies.length)];
-            document.getElementById('fishName').innerText = chosen.name;
-            document.getElementById('fishDesc').innerText = chosen.desc;
-            catchBox.style.display = 'flex';
-        }
-        function closeCatch() {
-            document.getElementById('catchBox').style.display = 'none';
+            playSound('splash');
+            const fish = fishList[Math.floor(Math.random() * fishList.length)];
+            document.getElementById('fishName').innerText = fish.name;
+            document.getElementById('fishDesc').innerText = fish.desc;
+            openModal('catchBox');
         }
 
-        // --- 7. WEATHER & DAY/NIGHT CYCLES ---
-        let cycleTime = 0;
-        const weatherStates = ["CLEAR ATMOSPHERE", "COVERED NEBULA", "WHITE DUST DRIFT", "HIGH TIDE STORMS"];
-        let currentWeather = weatherStates[0];
-
-        setInterval(() => {
-            currentWeather = weatherStates[Math.floor(Math.random() * weatherStates.length)];
-            document.getElementById('weatherVal').innerText = currentWeather;
-        }, 20000);
-
-        // --- 8. MAIN ANIMATION LOOP ---
+        // --- 9. MAIN GAME LOOP ---
         const clock = new THREE.Clock();
 
         function animate() {
             requestAnimationFrame(animate);
             const time = clock.getElapsedTime();
 
-            // Boat Controls & Physics
-            if (keys['KeyW']) boatState.speed = Math.min(boatState.maxSpeed, boatState.speed + 0.005);
-            else if (keys['KeyS']) boatState.speed = Math.max(-boatState.maxSpeed * 0.5, boatState.speed - 0.005);
-            else boatState.speed *= 0.96; // Friction
+            // Bob Leg Swing Animation
+            leftLeg.rotation.x = Math.PI / 2 + Math.sin(time * 3) * 0.2;
+            rightLeg.rotation.x = Math.PI / 2 + Math.cos(time * 3) * 0.2;
 
-            if (keys['KeyA']) boatState.heading += 0.02;
-            if (keys['KeyD']) boatState.heading -= 0.02;
+            // Player Movement & Deck Boundaries (Prevents falling off)
+            if (!playerState.isSteering) {
+                const moveSpeed = 0.06;
+                let dx = 0, dz = 0;
+                if (keys['KeyW']) dz -= moveSpeed;
+                if (keys['KeyS']) dz += moveSpeed;
+                if (keys['KeyA']) dx -= moveSpeed;
+                if (keys['KeyD']) dx += moveSpeed;
 
-            boatState.x += Math.sin(boatState.heading) * boatState.speed;
-            boatState.z += Math.cos(boatState.heading) * boatState.speed;
+                if (dx !== 0 || dz !== 0) playSound('step');
 
-            boatGroup.position.set(boatState.x, getWaveHeight(boatState.x, boatState.z, time) * 0.5, boatState.z);
-            boatGroup.rotation.y = boatState.heading;
-            boatGroup.rotation.z = Math.sin(time * 2) * 0.05; // Gentle rocking
-            boatGroup.rotation.x = Math.cos(time * 1.5) * 0.03;
+                // Apply relative rotation
+                const moveVector = new THREE.Vector3(dx, 0, dz).applyAxisAngle(new THREE.Vector3(0, 1, 0), mouseLook.yaw);
+                playerGroup.position.add(moveVector);
 
-            // Camera Tracking Behind Boat
-            const camOffset = new THREE.Vector3(0, 8, -16).applyAxisAngle(new THREE.Vector3(0, 1, 0), boatState.heading);
-            camera.position.copy(boatGroup.position).add(camOffset);
-            camera.lookAt(boatGroup.position.clone().add(new THREE.Vector3(0, 2, 0)));
+                // Strictly Enforce Deck & Cabin Clamping Bounds
+                if (playerState.inCabin) {
+                    playerGroup.position.x = Math.max(-2, Math.min(2, playerGroup.position.x));
+                    playerGroup.position.z = Math.max(-3, Math.min(3, playerGroup.position.z));
+                    playerGroup.position.y = -0.3;
+                    document.getElementById('locVal').innerText = "INSIDE CABIN";
+                } else {
+                    playerGroup.position.x = Math.max(-2.5, Math.min(2.5, playerGroup.position.x));
+                    playerGroup.position.z = Math.max(-6, Math.min(6, playerGroup.position.z));
+                    playerGroup.position.y = 1.8;
+                    document.getElementById('locVal').innerText = "UPPER DECK";
+                }
+            } else {
+                document.getElementById('locVal').innerText = "AT THE HELM";
+                // Steering Controls
+                if (keys['KeyA']) boatPhysics.heading += 0.015;
+                if (keys['KeyD']) boatPhysics.heading -= 0.015;
+                if (keys['KeyW']) boatPhysics.speed = Math.min(0.25, boatPhysics.speed + 0.003);
+                if (keys['KeyS']) boatPhysics.speed = Math.max(0, boatPhysics.speed - 0.003);
+            }
 
-            // Update Ocean Wave Mesh
-            updateOcean(time);
-            ocean.position.set(boatState.x, 0, boatState.z); // Infinite ocean visual centering
+            // Boat Propulsion & Motion
+            boatPhysics.speed *= 0.98; // Friction deceleration
+            vesselGroup.position.x += Math.sin(boatPhysics.heading) * boatPhysics.speed;
+            vesselGroup.position.z += Math.cos(boatPhysics.heading) * boatPhysics.speed;
+            vesselGroup.rotation.y = boatPhysics.heading;
 
-            // Flag Wave Motion
-            flag.rotation.y = Math.sin(time * 4) * 0.2;
+            // Ocean Waves Update
+            for (let i = 0; i < posAttr.count; i++) {
+                const u = baseVertices[i * 3];
+                const v = baseVertices[i * 3 + 2];
+                posAttr.setY(i, getWaveHeight(u, v, time));
+            }
+            posAttr.needsUpdate = true;
 
-            // Day / Night Celestial Cycle
-            cycleTime += 0.001;
-            const dayFactor = (Math.sin(cycleTime) + 1) / 2;
-            scene.background.lerpColors(nightSkyColor, purpleSkyColor, dayFactor);
-            scene.fog.color.lerpColors(nightSkyColor, purpleSkyColor, dayFactor);
-            sun.position.y = Math.sin(cycleTime) * 200;
+            // Vessel Wave Swaying
+            const waveH = getWaveHeight(vesselGroup.position.x, vesselGroup.position.z, time);
+            vesselGroup.position.y = waveH * 0.4;
+            vesselGroup.rotation.z = Math.sin(time * 2) * 0.04;
+            vesselGroup.rotation.x = Math.cos(time * 1.5) * 0.03;
 
-            // HUD Data Updates
-            document.getElementById('speedVal').innerText = `${(Math.abs(boatState.speed) * 100).toFixed(1)} KTS`;
-            document.getElementById('timeVal').innerText = `${dayFactor > 0.4 ? 'DAY' : 'NIGHT'} (CYCLE: ${(cycleTime % (Math.PI * 2)).toFixed(1)})`;
+            // Camera Setup
+            playerGroup.rotation.y = mouseLook.yaw;
+            const camWorldPos = new THREE.Vector3();
+            playerGroup.getWorldPosition(camWorldPos);
+
+            camera.position.copy(camWorldPos).add(new THREE.Vector3(0, 1.2, 0));
+            const lookTarget = camWorldPos.clone().add(new THREE.Vector3(
+                Math.sin(mouseLook.yaw) * Math.cos(mouseLook.pitch),
+                Math.sin(mouseLook.pitch),
+                Math.cos(mouseLook.yaw) * Math.cos(mouseLook.pitch)
+            ));
+            camera.lookAt(lookTarget);
+
+            // Interaction Prompt Proximity Check
+            const prompt = document.getElementById('prompt');
+            const distToHelm = playerGroup.position.distanceTo(helmStand.position);
+            const distToBob = playerGroup.position.distanceTo(kawmGroup.position);
+            if (distToHelm < 2 || distToBob < 2) prompt.style.display = 'block';
+            else prompt.style.display = 'none';
+
+            // HUD Stats
+            document.getElementById('speedVal').innerText = `VESSEL: ${(boatPhysics.speed * 100).toFixed(1)} KTS`;
 
             renderer.render(scene, camera);
         }
