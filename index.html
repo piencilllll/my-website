@@ -194,7 +194,7 @@
             );
             baseplate.add(wireframe);
 
-            // --- 4. STICKMAN RIG BUILD ---
+            // --- 4. THICKENED STICKMAN RIG BUILD ---
             const stickmanMaterial = new THREE.MeshStandardMaterial({
                 color: 0xffffff,
                 emissive: 0xffffff,
@@ -229,49 +229,49 @@
                 return group;
             }
 
-            // Torso (Main Body Pivot)
+            // Torso (Slightly Thicker Spine)
             const torsoLength = 0.85;
-            const torsoGroup = createCapsuleLimb(0.08, torsoLength);
+            const torsoGroup = createCapsuleLimb(0.14, torsoLength);
             torsoGroup.position.y = 1.6;
             character.add(torsoGroup);
 
-            // Head (Nested directly inside the top cap of the Torso so it NEVER detaches)
-            const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), stickmanMaterial);
-            headMesh.position.set(0, 0.28, 0); // Sits right on top of the neck joint
+            // Head (Scaled proportionally to the new body thickness)
+            const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 16), stickmanMaterial);
+            headMesh.position.set(0, 0.3, 0);
             headMesh.castShadow = true;
             torsoGroup.add(headMesh);
 
-            // Arms (Attached to Upper Torso)
-            const armLUpper = createCapsuleLimb(0.06, 0.45);
-            armLUpper.position.set(0.16, 1.5, 0);
+            // Arms (Thicker profile & better joint spacing)
+            const armLUpper = createCapsuleLimb(0.09, 0.45);
+            armLUpper.position.set(0.24, 1.55, 0);
             character.add(armLUpper);
 
-            const armLLower = createCapsuleLimb(0.05, 0.45);
+            const armLLower = createCapsuleLimb(0.08, 0.45);
             armLLower.position.set(0, -0.45, 0);
             armLUpper.add(armLLower);
 
-            const armRUpper = createCapsuleLimb(0.06, 0.45);
-            armRUpper.position.set(-0.16, 1.5, 0);
+            const armRUpper = createCapsuleLimb(0.09, 0.45);
+            armRUpper.position.set(-0.24, 1.55, 0);
             character.add(armRUpper);
 
-            const armRLower = createCapsuleLimb(0.05, 0.45);
+            const armRLower = createCapsuleLimb(0.08, 0.45);
             armRLower.position.set(0, -0.45, 0);
             armRUpper.add(armRLower);
 
-            // Legs (Attached to Hip Height)
-            const legLUpper = createCapsuleLimb(0.07, 0.5);
-            legLUpper.position.set(0.1, 0.75, 0);
+            // Legs (Thicker legs for grounded stance)
+            const legLUpper = createCapsuleLimb(0.1, 0.5);
+            legLUpper.position.set(0.16, 0.75, 0);
             character.add(legLUpper);
 
-            const legLLower = createCapsuleLimb(0.06, 0.5);
+            const legLLower = createCapsuleLimb(0.09, 0.5);
             legLLower.position.set(0, -0.5, 0);
             legLUpper.add(legLLower);
 
-            const legRUpper = createCapsuleLimb(0.07, 0.5);
-            legRUpper.position.set(-0.1, 0.75, 0);
+            const legRUpper = createCapsuleLimb(0.1, 0.5);
+            legRUpper.position.set(-0.16, 0.75, 0);
             character.add(legRUpper);
 
-            const legRLower = createCapsuleLimb(0.06, 0.5);
+            const legRLower = createCapsuleLimb(0.09, 0.5);
             legRLower.position.set(0, -0.5, 0);
             legRUpper.add(legRLower);
 
@@ -338,65 +338,90 @@
                 return (1 - amt) * start + amt * end;
             }
 
-            // --- 7. ANIMATIONS ---
+            // --- 7. FLUID ANIMATION SYSTEM ---
             let animTime = 0;
 
             function animateCharacter(delta, moveSpeed, isMoving, isRunning) {
-                animTime += delta * (isRunning ? 16 : (isMoving ? 10 : 3));
+                const animSpeed = isRunning ? 14 : (isMoving ? 9 : 2.5);
+                animTime += delta * animSpeed;
 
-                const cycle = Math.sin(animTime);
+                const sinCycle = Math.sin(animTime);
                 const cosCycle = Math.cos(animTime);
 
-                if (!isGrounded) {
-                    torsoGroup.rotation.x = lerp(torsoGroup.rotation.x, 0.2, 0.2);
-                    armLUpper.rotation.x = lerp(armLUpper.rotation.x, -2.5, 0.2);
-                    armRUpper.rotation.x = lerp(armRUpper.rotation.x, -2.5, 0.2);
-                    armLUpper.rotation.z = lerp(armLUpper.rotation.z, 0.4, 0.2);
-                    armRUpper.rotation.z = lerp(armRUpper.rotation.z, -0.4, 0.2);
+                // Smooth interpolation blend speed
+                const blend = 0.15;
 
-                    legLUpper.rotation.x = lerp(legLUpper.rotation.x, 0.6, 0.2);
-                    legRUpper.rotation.x = lerp(legRUpper.rotation.x, -0.4, 0.2);
-                    legLLower.rotation.x = lerp(legLLower.rotation.x, -0.8, 0.2);
-                    legRLower.rotation.x = lerp(legRLower.rotation.x, -0.3, 0.2);
+                if (!isGrounded) {
+                    // Airborne / Jump pose
+                    torsoGroup.rotation.x = lerp(torsoGroup.rotation.x, 0.15, blend);
+                    torsoGroup.rotation.y = lerp(torsoGroup.rotation.y, 0, blend);
+                    torsoGroup.rotation.z = lerp(torsoGroup.rotation.z, 0, blend);
+
+                    armLUpper.rotation.x = lerp(armLUpper.rotation.x, -2.2, blend);
+                    armRUpper.rotation.x = lerp(armRUpper.rotation.x, -2.2, blend);
+                    armLUpper.rotation.z = lerp(armLUpper.rotation.z, 0.5, blend);
+                    armRUpper.rotation.z = lerp(armRUpper.rotation.z, -0.5, blend);
+
+                    armLLower.rotation.x = lerp(armLLower.rotation.x, -0.4, blend);
+                    armRLower.rotation.x = lerp(armRLower.rotation.x, -0.4, blend);
+
+                    legLUpper.rotation.x = lerp(legLUpper.rotation.x, 0.5, blend);
+                    legRUpper.rotation.x = lerp(legRUpper.rotation.x, -0.5, blend);
+                    legLLower.rotation.x = lerp(legLLower.rotation.x, -0.9, blend);
+                    legRLower.rotation.x = lerp(legRLower.rotation.x, -0.2, blend);
 
                 } else if (isMoving) {
-                    const stride = isRunning ? 1.1 : 0.65;
-                    const bodyTilt = isRunning ? 0.35 : 0.12;
+                    // Locomotion (Walk / Run)
+                    const stride = isRunning ? 1.0 : 0.65;
+                    const bodyTilt = isRunning ? 0.28 : 0.1;
 
-                    torsoGroup.position.y = 1.6 + Math.abs(cosCycle) * (isRunning ? 0.12 : 0.06);
-                    torsoGroup.rotation.x = lerp(torsoGroup.rotation.x, bodyTilt, 0.15);
+                    // Torso dynamics (Bounce, forward lean, and hip rotation sway)
+                    torsoGroup.position.y = lerp(torsoGroup.position.y, 1.6 + Math.abs(cosCycle) * (isRunning ? 0.14 : 0.07), blend);
+                    torsoGroup.rotation.x = lerp(torsoGroup.rotation.x, bodyTilt, blend);
+                    torsoGroup.rotation.y = lerp(torsoGroup.rotation.y, sinCycle * (isRunning ? 0.15 : 0.08), blend);
+                    torsoGroup.rotation.z = lerp(torsoGroup.rotation.z, -sinCycle * (isRunning ? 0.06 : 0.03), blend);
 
-                    legLUpper.rotation.x = cycle * stride;
-                    legRUpper.rotation.x = -cycle * stride;
-                    legLLower.rotation.x = (cycle > 0 ? -cycle * 0.8 : 0);
-                    legRLower.rotation.x = (-cycle > 0 ? cycle * 0.8 : 0);
+                    // Leg rotations with natural knee flex
+                    legLUpper.rotation.x = lerp(legLUpper.rotation.x, sinCycle * stride, blend);
+                    legRUpper.rotation.x = lerp(legRUpper.rotation.x, -sinCycle * stride, blend);
 
-                    armLUpper.rotation.x = -cycle * stride * 0.9;
-                    armRUpper.rotation.x = cycle * stride * 0.9;
-                    armLUpper.rotation.z = lerp(armLUpper.rotation.z, 0.1, 0.1);
-                    armRUpper.rotation.z = lerp(armRUpper.rotation.z, -0.1, 0.1);
+                    const kneeL = sinCycle > 0 ? -sinCycle * (isRunning ? 1.2 : 0.85) : -0.1;
+                    const kneeR = sinCycle < 0 ? sinCycle * (isRunning ? 1.2 : 0.85) : -0.1;
+                    legLLower.rotation.x = lerp(legLLower.rotation.x, kneeL, blend);
+                    legRLower.rotation.x = lerp(legRLower.rotation.x, kneeR, blend);
 
-                    armLLower.rotation.x = -Math.abs(cycle) * 0.5;
-                    armRLower.rotation.x = -Math.abs(cycle) * 0.5;
+                    // Arm swing dynamics with natural elbow bend
+                    armLUpper.rotation.x = lerp(armLUpper.rotation.x, -sinCycle * stride * 0.9, blend);
+                    armRUpper.rotation.x = lerp(armRUpper.rotation.x, sinCycle * stride * 0.9, blend);
+                    armLUpper.rotation.z = lerp(armLUpper.rotation.z, 0.12, blend);
+                    armRUpper.rotation.z = lerp(armRUpper.rotation.z, -0.12, blend);
+
+                    const elbowL = -0.25 - Math.max(0, -sinCycle) * (isRunning ? 0.8 : 0.45);
+                    const elbowR = -0.25 - Math.max(0, sinCycle) * (isRunning ? 0.8 : 0.45);
+                    armLLower.rotation.x = lerp(armLLower.rotation.x, elbowL, blend);
+                    armRLower.rotation.x = lerp(armRLower.rotation.x, elbowR, blend);
 
                 } else {
-                    const breath = Math.sin(animTime) * 0.04;
+                    // Idle (Smooth organic breathing pose)
+                    const breath = Math.sin(animTime) * 0.035;
 
-                    torsoGroup.position.y = lerp(torsoGroup.position.y, 1.6 + breath, 0.1);
-                    torsoGroup.rotation.x = lerp(torsoGroup.rotation.x, 0, 0.1);
+                    torsoGroup.position.y = lerp(torsoGroup.position.y, 1.6 + breath, blend);
+                    torsoGroup.rotation.x = lerp(torsoGroup.rotation.x, 0, blend);
+                    torsoGroup.rotation.y = lerp(torsoGroup.rotation.y, 0, blend);
+                    torsoGroup.rotation.z = lerp(torsoGroup.rotation.z, 0, blend);
 
-                    armLUpper.rotation.x = lerp(armLUpper.rotation.x, 0, 0.1);
-                    armRUpper.rotation.x = lerp(armRUpper.rotation.x, 0, 0.1);
-                    armLUpper.rotation.z = lerp(armLUpper.rotation.z, 0.18 + breath * 0.5, 0.1);
-                    armRUpper.rotation.z = lerp(armRUpper.rotation.z, -0.18 - breath * 0.5, 0.1);
+                    armLUpper.rotation.x = lerp(armLUpper.rotation.x, 0, blend);
+                    armRUpper.rotation.x = lerp(armRUpper.rotation.x, 0, blend);
+                    armLUpper.rotation.z = lerp(armLUpper.rotation.z, 0.18 + breath * 0.4, blend);
+                    armRUpper.rotation.z = lerp(armRUpper.rotation.z, -0.18 - breath * 0.4, blend);
 
-                    armLLower.rotation.x = lerp(armLLower.rotation.x, -0.1, 0.1);
-                    armRLower.rotation.x = lerp(armRLower.rotation.x, -0.1, 0.1);
+                    armLLower.rotation.x = lerp(armLLower.rotation.x, -0.12, blend);
+                    armRLower.rotation.x = lerp(armRLower.rotation.x, -0.12, blend);
 
-                    legLUpper.rotation.x = lerp(legLUpper.rotation.x, 0, 0.1);
-                    legRUpper.rotation.x = lerp(legRUpper.rotation.x, 0, 0.1);
-                    legLLower.rotation.x = lerp(legLLower.rotation.x, 0, 0.1);
-                    legRLower.rotation.x = lerp(legRLower.rotation.x, 0, 0.1);
+                    legLUpper.rotation.x = lerp(legLUpper.rotation.x, 0, blend);
+                    legRUpper.rotation.x = lerp(legRUpper.rotation.x, 0, blend);
+                    legLLower.rotation.x = lerp(legLLower.rotation.x, 0, blend);
+                    legRLower.rotation.x = lerp(legRLower.rotation.x, 0, blend);
                 }
             }
 
