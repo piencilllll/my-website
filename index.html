@@ -194,7 +194,7 @@
             );
             baseplate.add(wireframe);
 
-            // --- 4. ROUNDED STICKMAN BUILD ---
+            // --- 4. STICKMAN RIG BUILD ---
             const stickmanMaterial = new THREE.MeshStandardMaterial({
                 color: 0xffffff,
                 emissive: 0xffffff,
@@ -206,7 +206,6 @@
             const character = new THREE.Group();
             scene.add(character);
 
-            // Helper to build rounded limbs with spherical joint caps
             function createCapsuleLimb(radius, length) {
                 const group = new THREE.Group();
                 const cylGeo = new THREE.CylinderGeometry(radius, radius, length, 12);
@@ -230,50 +229,49 @@
                 return group;
             }
 
-            // Head - Resized to proportional ratio and lowered to connect directly to torso
-            const headGroup = new THREE.Group();
-            const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), stickmanMaterial);
-            headMesh.position.y = 1.95;
-            headMesh.castShadow = true;
-            headGroup.add(headMesh);
-            character.add(headGroup);
-
-            // Torso (Main Spine)
-            const torsoGroup = createCapsuleLimb(0.1, 0.85);
-            torsoGroup.position.y = 1.85;
+            // Torso (Main Body Pivot)
+            const torsoLength = 0.85;
+            const torsoGroup = createCapsuleLimb(0.08, torsoLength);
+            torsoGroup.position.y = 1.6;
             character.add(torsoGroup);
 
-            // Arms
-            const armLUpper = createCapsuleLimb(0.065, 0.45);
-            armLUpper.position.set(0.18, 1.75, 0);
+            // Head (Nested directly inside the top cap of the Torso so it NEVER detaches)
+            const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), stickmanMaterial);
+            headMesh.position.set(0, 0.28, 0); // Sits right on top of the neck joint
+            headMesh.castShadow = true;
+            torsoGroup.add(headMesh);
+
+            // Arms (Attached to Upper Torso)
+            const armLUpper = createCapsuleLimb(0.06, 0.45);
+            armLUpper.position.set(0.16, 1.5, 0);
             character.add(armLUpper);
 
-            const armLLower = createCapsuleLimb(0.055, 0.45);
+            const armLLower = createCapsuleLimb(0.05, 0.45);
             armLLower.position.set(0, -0.45, 0);
             armLUpper.add(armLLower);
 
-            const armRUpper = createCapsuleLimb(0.065, 0.45);
-            armRUpper.position.set(-0.18, 1.75, 0);
+            const armRUpper = createCapsuleLimb(0.06, 0.45);
+            armRUpper.position.set(-0.16, 1.5, 0);
             character.add(armRUpper);
 
-            const armRLower = createCapsuleLimb(0.055, 0.45);
+            const armRLower = createCapsuleLimb(0.05, 0.45);
             armRLower.position.set(0, -0.45, 0);
             armRUpper.add(armRLower);
 
-            // Legs
-            const legLUpper = createCapsuleLimb(0.075, 0.5);
-            legLUpper.position.set(0.12, 1.0, 0);
+            // Legs (Attached to Hip Height)
+            const legLUpper = createCapsuleLimb(0.07, 0.5);
+            legLUpper.position.set(0.1, 0.75, 0);
             character.add(legLUpper);
 
-            const legLLower = createCapsuleLimb(0.065, 0.5);
+            const legLLower = createCapsuleLimb(0.06, 0.5);
             legLLower.position.set(0, -0.5, 0);
             legLUpper.add(legLLower);
 
-            const legRUpper = createCapsuleLimb(0.075, 0.5);
-            legRUpper.position.set(-0.12, 1.0, 0);
+            const legRUpper = createCapsuleLimb(0.07, 0.5);
+            legRUpper.position.set(-0.1, 0.75, 0);
             character.add(legRUpper);
 
-            const legRLower = createCapsuleLimb(0.065, 0.5);
+            const legRLower = createCapsuleLimb(0.06, 0.5);
             legRLower.position.set(0, -0.5, 0);
             legRUpper.add(legRLower);
 
@@ -365,7 +363,7 @@
                     const stride = isRunning ? 1.1 : 0.65;
                     const bodyTilt = isRunning ? 0.35 : 0.12;
 
-                    torsoGroup.position.y = 1.85 + Math.abs(cosCycle) * (isRunning ? 0.15 : 0.08);
+                    torsoGroup.position.y = 1.6 + Math.abs(cosCycle) * (isRunning ? 0.12 : 0.06);
                     torsoGroup.rotation.x = lerp(torsoGroup.rotation.x, bodyTilt, 0.15);
 
                     legLUpper.rotation.x = cycle * stride;
@@ -381,12 +379,10 @@
                     armLLower.rotation.x = -Math.abs(cycle) * 0.5;
                     armRLower.rotation.x = -Math.abs(cycle) * 0.5;
 
-                    headGroup.position.y = 1.95 + Math.sin(animTime * 2) * 0.04;
-
                 } else {
-                    const breath = Math.sin(animTime) * 0.05;
+                    const breath = Math.sin(animTime) * 0.04;
 
-                    torsoGroup.position.y = lerp(torsoGroup.position.y, 1.85 + breath, 0.1);
+                    torsoGroup.position.y = lerp(torsoGroup.position.y, 1.6 + breath, 0.1);
                     torsoGroup.rotation.x = lerp(torsoGroup.rotation.x, 0, 0.1);
 
                     armLUpper.rotation.x = lerp(armLUpper.rotation.x, 0, 0.1);
@@ -401,8 +397,6 @@
                     legRUpper.rotation.x = lerp(legRUpper.rotation.x, 0, 0.1);
                     legLLower.rotation.x = lerp(legLLower.rotation.x, 0, 0.1);
                     legRLower.rotation.x = lerp(legRLower.rotation.x, 0, 0.1);
-
-                    headGroup.position.y = 1.95 + breath * 0.6;
                 }
             }
 
@@ -416,8 +410,6 @@
 
                 let moveX = 0;
                 let moveZ = 0;
-                
-                // Fixed Forward/Backward key mappings: W moves forward (-Z), S moves backward (+Z)
                 if (keys.w) moveZ += 1;
                 if (keys.s) moveZ -= 1;
                 if (keys.a) moveX -= 1;
