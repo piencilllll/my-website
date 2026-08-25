@@ -3,18 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ANOMALY DATABASE // ARCHIVE</title>
+    <title>CLASSIFIED ARCHIVE // ANOMALOUS SPECIMEN DATABASE</title>
     <style>
         :root {
-            --bg-dark: #080a0c;
-            --panel-bg: rgba(15, 20, 26, 0.9);
-            --border-color: #232d38;
+            --bg-dark: #05070a;
+            --panel-bg: rgba(12, 17, 24, 0.85);
+            --border-color: #1e293b;
             --accent-green: #00ff66;
             --accent-red: #ff3344;
             --accent-amber: #ffaa00;
-            --accent-blue: #00f3ff;
-            --text-bright: #e6edf3;
-            --text-dim: #7d8590;
+            --accent-cyan: #00f3ff;
+            --accent-purple: #bc13fe;
+            --text-bright: #f8fafc;
+            --text-dim: #64748b;
         }
 
         * {
@@ -26,13 +27,28 @@
         body {
             background-color: var(--bg-dark);
             color: var(--text-bright);
-            font-family: 'Courier New', Courier, monospace;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
             overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Ambient Dynamic Glow Backdrop */
+        .ambient-bg {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle at 30% 30%, rgba(0, 243, 255, 0.05), transparent 60%),
+                        radial-gradient(circle at 70% 70%, rgba(188, 19, 254, 0.05), transparent 60%);
+            pointer-events: none;
+            z-index: 0;
         }
 
         /* Scanline Overlay */
@@ -43,155 +59,97 @@
                 to bottom,
                 rgba(255,255,255,0),
                 rgba(255,255,255,0) 50%,
-                rgba(0, 0, 0, 0.35) 50%,
-                rgba(0, 0, 0, 0.35)
+                rgba(0, 0, 0, 0.4) 50%,
+                rgba(0, 0, 0, 0.4)
             );
             background-size: 100% 4px;
             pointer-events: none;
             z-index: 100;
-            opacity: 0.7;
+            opacity: 0.6;
         }
 
-        /* Container Layout */
+        /* Layout */
         .main-wrapper {
             width: 100%;
-            max-width: 1200px;
+            max-width: 1280px;
             display: grid;
-            grid-template-columns: 1fr 300px;
+            grid-template-columns: 1fr 320px;
             gap: 20px;
             z-index: 1;
         }
 
         .archive-card {
             background: var(--panel-bg);
-            border: 2px solid var(--border-color);
-            border-radius: 6px;
-            box-shadow: 0 0 30px rgba(0,0,0,0.9), 0 0 15px rgba(0, 255, 102, 0.05);
-            display: grid;
-            grid-template-columns: 320px 1fr;
-            grid-template-rows: auto 1fr auto;
-            gap: 20px;
-            padding: 24px;
-            position: relative;
-        }
-
-        /* Favorites Sidebar */
-        .saved-sidebar {
-            background: var(--panel-bg);
-            border: 2px solid var(--border-color);
-            border-radius: 6px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            max-height: 620px;
-        }
-
-        .sidebar-title {
-            font-size: 0.95rem;
-            color: var(--accent-blue);
-            letter-spacing: 1.5px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 8px;
-            text-transform: uppercase;
-        }
-
-        .saved-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            overflow-y: auto;
-            padding-right: 5px;
-        }
-
-        .saved-item {
-            background: #0f141a;
             border: 1px solid var(--border-color);
-            padding: 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            border-radius: 12px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 20px rgba(0, 243, 255, 0.05);
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            grid-template-rows: auto 1fr auto;
+            gap: 24px;
+            padding: 28px;
+            position: relative;
+            overflow: hidden;
         }
 
-        .saved-item:hover {
-            border-color: var(--accent-blue);
-            background: #161e27;
-        }
-
-        .saved-item-info {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-
-        .saved-id {
-            font-size: 0.75rem;
-            color: var(--text-dim);
-        }
-
-        .saved-name {
-            font-size: 0.85rem;
-            color: var(--text-bright);
-            font-weight: bold;
-        }
-
-        .delete-btn {
-            background: transparent;
-            border: none;
-            color: var(--accent-red);
-            font-size: 1rem;
-            cursor: pointer;
-            padding: 2px 6px;
-        }
-
-        .delete-btn:hover {
-            color: #ff0000;
+        /* Top Accent Status Glow Bar */
+        .archive-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple), var(--accent-green));
+            z-index: 2;
         }
 
         /* Header */
         header {
             grid-column: 1 / -1;
-            border-bottom: 2px solid var(--border-color);
-            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
         .archive-title {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             letter-spacing: 2px;
-            color: var(--accent-green);
+            font-weight: 700;
+            color: var(--accent-cyan);
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .threat-badge {
-            padding: 4px 12px;
-            border-radius: 3px;
-            font-weight: bold;
-            font-size: 0.85rem;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 800;
+            font-size: 0.8rem;
             letter-spacing: 1.5px;
             text-transform: uppercase;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
         }
 
-        /* Left Column - Visual Preview */
+        /* Left Column - Procedural Visual Engine */
         .visual-panel {
             grid-column: 1;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 16px;
         }
 
         .canvas-frame {
             width: 100%;
-            height: 280px;
-            background: #030405;
+            height: 320px;
+            background: #020305;
             border: 1px solid var(--border-color);
-            border-radius: 4px;
+            border-radius: 8px;
             position: relative;
             overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.9);
         }
 
         canvas {
@@ -200,38 +158,116 @@
             display: block;
         }
 
-        /* Right Column - Data Sheet */
+        /* Data Panel */
         .data-panel {
             grid-column: 2;
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 18px;
         }
 
         .field-group {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 6px;
         }
 
         .field-label {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: var(--text-dim);
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
+            font-weight: 700;
         }
 
         .field-value {
             font-size: 0.95rem;
             color: var(--text-bright);
-            line-height: 1.5;
+            line-height: 1.6;
         }
 
-        /* Footer / Actions */
+        /* Sidebar - Saved Archives */
+        .saved-sidebar {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            backdrop-filter: blur(12px);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-height: 680px;
+        }
+
+        .sidebar-title {
+            font-size: 0.85rem;
+            color: var(--accent-cyan);
+            letter-spacing: 1.5px;
+            font-weight: 700;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+            text-transform: uppercase;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .saved-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .saved-item {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .saved-item:hover {
+            border-color: var(--accent-cyan);
+            background: rgba(30, 41, 59, 0.8);
+            transform: translateX(4px);
+        }
+
+        .saved-id {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            font-weight: 600;
+        }
+
+        .saved-name {
+            font-size: 0.85rem;
+            color: var(--text-bright);
+            font-weight: 600;
+        }
+
+        .delete-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            cursor: pointer;
+            padding: 4px;
+            transition: color 0.2s;
+        }
+
+        .delete-btn:hover {
+            color: var(--accent-red);
+        }
+
+        /* Footer & Buttons */
         footer {
             grid-column: 1 / -1;
             border-top: 1px solid var(--border-color);
-            padding-top: 16px;
+            padding-top: 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -239,73 +275,72 @@
 
         .button-group {
             display: flex;
-            gap: 10px;
+            gap: 12px;
         }
 
         .btn {
-            background: #121820;
+            background: #0f172a;
             border: 1px solid var(--border-color);
-            color: var(--accent-green);
-            padding: 10px 18px;
+            color: var(--text-bright);
+            padding: 12px 20px;
             font-family: inherit;
-            font-size: 0.85rem;
-            font-weight: bold;
+            font-size: 0.8rem;
+            font-weight: 700;
             letter-spacing: 1px;
             text-transform: uppercase;
             cursor: pointer;
-            transition: all 0.2s ease;
-            border-radius: 4px;
+            transition: all 0.25s ease;
+            border-radius: 6px;
         }
 
         .btn:hover {
-            background: var(--accent-green);
-            color: #000;
-            box-shadow: 0 0 12px rgba(0, 255, 102, 0.4);
+            border-color: var(--accent-green);
+            color: var(--accent-green);
+            box-shadow: 0 0 15px rgba(0, 255, 102, 0.2);
+            transform: translateY(-2px);
         }
 
         .btn-save {
-            color: var(--accent-blue);
-            border-color: var(--accent-blue);
+            color: var(--accent-cyan);
+            border-color: rgba(0, 243, 255, 0.3);
         }
 
         .btn-save:hover {
-            background: var(--accent-blue);
+            background: var(--accent-cyan);
             color: #000;
-            box-shadow: 0 0 12px rgba(0, 243, 255, 0.4);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.4);
         }
 
         .btn-danger {
             color: var(--accent-red);
+            border-color: rgba(255, 51, 68, 0.3);
         }
 
         .btn-danger:hover {
             background: var(--accent-red);
-            color: #000;
-            box-shadow: 0 0 12px rgba(255, 51, 68, 0.4);
+            color: #fff;
+            box-shadow: 0 0 20px rgba(255, 51, 68, 0.4);
         }
 
-        /* Responsive */
-        @media (max-width: 950px) {
-            .main-wrapper {
-                grid-template-columns: 1fr;
-            }
-            .archive-card {
-                grid-template-columns: 1fr;
-            }
-            .visual-panel, .data-panel {
-                grid-column: 1;
-            }
+        @media (max-width: 1024px) {
+            .main-wrapper { grid-template-columns: 1fr; }
+            .archive-card { grid-template-columns: 1fr; }
+            .visual-panel, .data-panel { grid-column: 1; }
         }
     </style>
 </head>
 <body>
 
+    <div class="ambient-bg"></div>
     <div class="scanlines"></div>
 
     <div class="main-wrapper">
         <div class="archive-card">
             <header>
-                <div class="archive-title">CLASSIFIED ARCHIVE // ENTITY FILE</div>
+                <div class="archive-title">
+                    <span style="display:inline-block; width:8px; height:8px; background:var(--accent-cyan); border-radius:50%; box-shadow: 0 0 10px var(--accent-cyan);"></span>
+                    CENTRAL ARCHIVE // ENTITY Dossier
+                </div>
                 <div id="threat-tag" class="threat-badge">LEVEL 0</div>
             </header>
 
@@ -313,55 +348,56 @@
                 <div class="canvas-frame">
                     <canvas id="entityCanvas"></canvas>
                 </div>
-                <div class="field-group">
-                    <span class="field-label">DESIGNATION CODE</span>
-                    <span class="field-value" id="val-id">ENT-0000</span>
-                </div>
-                <div class="field-group">
-                    <span class="field-label">ANOMALOUS CLASS</span>
-                    <span class="field-value" id="val-class">UNKNOWN</span>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="field-group">
+                        <span class="field-label">INDEX CODE</span>
+                        <span class="field-value" id="val-id" style="font-family: monospace;">ENT-0000</span>
+                    </div>
+                    <div class="field-group">
+                        <span class="field-label">ANOMALOUS CLASS</span>
+                        <span class="field-value" id="val-class">UNKNOWN</span>
+                    </div>
                 </div>
             </div>
 
             <div class="data-panel">
                 <div class="field-group">
-                    <span class="field-label">COGNOMEN / NAME</span>
-                    <span class="field-value" id="val-name" style="font-size: 1.2rem; color: var(--accent-green);">---</span>
+                    <span class="field-label">COGNOMEN / DESIGNATION</span>
+                    <span class="field-value" id="val-name" style="font-size: 1.3rem; font-weight: 800; color: var(--accent-cyan);">---</span>
                 </div>
                 <div class="field-group">
-                    <span class="field-label">PHYSICAL MORPHOLOGY</span>
+                    <span class="field-label">MORPHOLOGICAL PROFILE</span>
                     <span class="field-value" id="val-morph">---</span>
                 </div>
                 <div class="field-group">
-                    <span class="field-label">OBSERVED BEHAVIOR & PHENOMENA</span>
+                    <span class="field-label">BEHAVIORAL PATTERNS & ANOMALIES</span>
                     <span class="field-value" id="val-behavior">---</span>
                 </div>
                 <div class="field-group">
-                    <span class="field-label">SPECIAL CONTAINMENT PROTOCOLS</span>
+                    <span class="field-label">CONTAINMENT DIRECTIVES</span>
                     <span class="field-value" id="val-containment">---</span>
                 </div>
             </div>
 
             <footer>
-                <span style="font-size: 0.75rem; color: var(--text-dim);" id="timestamp">SECURE TERMINAL ONLINE</span>
+                <span style="font-size: 0.75rem; color: var(--text-dim); font-family: monospace;" id="timestamp">TERMINAL READY</span>
                 <div class="button-group">
-                    <button class="btn btn-save" id="saveBtn">★ SAVE FILE</button>
+                    <button class="btn btn-save" id="saveBtn">★ BOOKMARK FILE</button>
                     <button class="btn btn-danger" id="genBtn">GENERATE NEW</button>
                 </div>
             </footer>
         </div>
 
-        <!-- Saved Entries Sidebar -->
         <div class="saved-sidebar">
-            <div class="sidebar-title">SAVED ENTRIES (<span id="saved-count">0</span>)</div>
-            <div class="saved-list" id="saved-list">
-                <!-- Dynamic Items -->
+            <div class="sidebar-title">
+                <span>BOOKMARKED ENTRIES</span>
+                <span id="saved-count" style="color: var(--text-bright);">0</span>
             </div>
+            <div class="saved-list" id="saved-list"></div>
         </div>
     </div>
 
     <script>
-        // Canvas Setup
         const canvas = document.getElementById('entityCanvas');
         const ctx = canvas.getContext('2d');
 
@@ -376,72 +412,84 @@
         let currentEntry = {};
         let savedEntries = JSON.parse(localStorage.getItem('saved_anomalies') || '[]');
 
-        // Entity Silhouette Renderer
+        // Dynamic Procedural Canvas Animation Generator
         function renderEntity() {
-            t += 0.03;
+            t += 0.025;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             const cx = canvas.width / 2;
             const cy = canvas.height / 2;
 
-            // Background Radar Grid
-            ctx.strokeStyle = 'rgba(0, 255, 102, 0.08)';
+            // Background Atmospheric Energy Grid
+            ctx.strokeStyle = 'rgba(0, 243, 255, 0.05)';
             ctx.lineWidth = 1;
-            for(let i = 0; i < canvas.width; i += 20) {
+            for(let i = 0; i < canvas.width; i += 24) {
                 ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
             }
-            for(let i = 0; i < canvas.height; i += 20) {
+            for(let i = 0; i < canvas.height; i += 24) {
                 ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
             }
-
-            // Radar Scanline
-            let scanY = (t * 20) % canvas.height;
-            ctx.strokeStyle = 'rgba(0, 255, 102, 0.25)';
-            ctx.beginPath();
-            ctx.moveTo(0, scanY);
-            ctx.lineTo(canvas.width, scanY);
-            ctx.stroke();
 
             if (currentEntry.seed) {
                 ctx.save();
                 ctx.translate(cx, cy);
 
-                let mainColor = '#00ff66';
-                if (currentEntry.threatLevel === 'CRITICAL' || currentEntry.threatLevel === 'APOCALYPTIC') mainColor = '#ff3344';
-                else if (currentEntry.threatLevel === 'HAZARDOUS') mainColor = '#ffaa00';
+                // Threat Color Palette Selection
+                let colorHex = '#00f3ff';
+                if (currentEntry.threatLevel === 'APOCALYPTIC') colorHex = '#bc13fe';
+                else if (currentEntry.threatLevel === 'CRITICAL') colorHex = '#ff3344';
+                else if (currentEntry.threatLevel === 'HAZARDOUS') colorHex = '#ffaa00';
 
-                ctx.fillStyle = mainColor;
-                ctx.shadowColor = mainColor;
-                ctx.shadowBlur = 15;
+                // Particle Rings
+                ctx.strokeStyle = colorHex;
+                ctx.lineWidth = 1.5;
+                ctx.shadowColor = colorHex;
+                ctx.shadowBlur = 12;
 
-                const numNodes = 6 + (currentEntry.seed % 6);
+                let ringRadius = 60 + Math.sin(t * 1.5) * 8;
                 ctx.beginPath();
-                for (let i = 0; i < numNodes; i++) {
-                    let angle = (i / numNodes) * Math.PI * 2;
-                    let noise = Math.sin(t * 2 + i * currentEntry.seed) * 20 + Math.cos(t * 1.5 + i) * 15;
-                    let radius = 45 + noise;
+                ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+                ctx.stroke();
 
-                    let x = Math.cos(angle) * radius;
-                    let y = Math.sin(angle) * radius;
+                // Animated Procedural Specimen Silhouette Core
+                ctx.fillStyle = colorHex;
+                const numTentacles = 8 + (currentEntry.seed % 8);
+                
+                ctx.beginPath();
+                for (let i = 0; i < numTentacles; i++) {
+                    let angle = (i / numTentacles) * Math.PI * 2 + (t * 0.2);
+                    let pulse = Math.sin(t * 3 + i * currentEntry.seed) * 22;
+                    let rad = 35 + pulse;
+
+                    let x = Math.cos(angle) * rad;
+                    let y = Math.sin(angle) * rad;
 
                     if (i === 0) ctx.moveTo(x, y);
                     else ctx.lineTo(x, y);
 
-                    if (i % 2 === 0) {
-                        let tx = Math.cos(angle) * (radius + 40 + Math.sin(t * 3 + i) * 15);
-                        let ty = Math.sin(angle) * (radius + 40 + Math.cos(t * 3 + i) * 15);
-                        ctx.lineTo(tx, ty);
-                    }
+                    // Secondary Outer Spikes/Tentacles
+                    let tx = Math.cos(angle) * (rad + 35 + Math.sin(t * 4 + i) * 18);
+                    let ty = Math.sin(angle) * (rad + 35 + Math.cos(t * 4 + i) * 18);
+                    ctx.lineTo(tx, ty);
                 }
                 ctx.closePath();
                 ctx.fill();
 
+                // Core Luminescent Orb
                 ctx.fillStyle = '#ffffff';
-                for (let i = 0; i < 5; i++) {
-                    let ox = Math.sin(t + i + currentEntry.seed) * 70;
-                    let oy = Math.cos(t * 1.2 + i) * 70;
+                ctx.beginPath();
+                ctx.arc(0, 0, 12 + Math.sin(t * 4) * 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Floating Orbital Particles
+                for (let i = 0; i < 6; i++) {
+                    let orbitAngle = t * (0.8 + i * 0.1) + i;
+                    let orbitDist = 75 + Math.sin(t + i) * 15;
+                    let px = Math.cos(orbitAngle) * orbitDist;
+                    let py = Math.sin(orbitAngle) * orbitDist;
+
                     ctx.beginPath();
-                    ctx.arc(ox, oy, Math.random() * 3 + 2, 0, Math.PI * 2);
+                    ctx.arc(px, py, 3, 0, Math.PI * 2);
                     ctx.fill();
                 }
 
@@ -451,33 +499,37 @@
             requestAnimationFrame(renderEntity);
         }
 
-        // Procedural Text Data Tables
-        const namePrefixes = ["The Void", "The Echoing", "Stanza", "Obsidian", "Sub-Surface", "Spectral", "Kinetic", "Non-Euclidean"];
-        const nameNouns = ["Weaver", "Watcher", "Vanguard", "Architect", "Anomaly", "Stalker", "Husk", "Crawler", "Disciple"];
-        const classes = ["Liminal-Horror", "Biological-Shift", "Spatial-Distortion", "Cognitohazard", "Acoustic-Parasite"];
+        // Procedural Text Generator Tables
+        const namePrefixes = ["Obsidian", "Non-Euclidean", "The Echoing", "Sub-Surface", "Kinetic", "Stanza", "Cosmic", "Phase-Shifted"];
+        const nameNouns = ["Architect", "Vanguard", "Watcher", "Entity", "Crawler", "Husk", "Spectre", "Weaver"];
+        const classes = ["Liminal-Anomaly", "Biological-Shift", "Spatial-Distortion", "Cognitohazard", "Liquid-State Entity"];
+        
         const threats = [
-            { level: "MINIMAL", color: "#00ff66", bg: "rgba(0,255,106,0.15)" },
-            { level: "HAZARDOUS", color: "#ffaa00", bg: "rgba(255,170,0,0.15)" },
-            { level: "CRITICAL", color: "#ff3344", bg: "rgba(255,51,68,0.15)" },
-            { level: "APOCALYPTIC", color: "#ff0055", bg: "rgba(255,0,85,0.25)" }
+            { level: "MINIMAL", color: "#00ff66", bg: "rgba(0, 255, 106, 0.15)" },
+            { level: "HAZARDOUS", color: "#ffaa00", bg: "rgba(255, 170, 0, 0.15)" },
+            { level: "CRITICAL", color: "#ff3344", bg: "rgba(255, 51, 68, 0.15)" },
+            { level: "APOCALYPTIC", color: "#bc13fe", bg: "rgba(188, 19, 254, 0.2)" }
         ];
+
         const morphologies = [
-            "Amorphous mass shifting through non-Euclidean geometry. Displays fluctuating perimeter bounds.",
-            "Bipedal skeletal composite encased in dense white liquid energy strands.",
-            "Sub-surface crystalline structure emitting localized gravitational dampening waves.",
-            "Multi-segmented appendage matrix with shifting bioluminescent eye spots."
+            "Amorphous mass shifting constantly across non-Euclidean geometry with bioluminescent glow.",
+            "Bipedal skeletal frame integrated with dense white liquid energy channels.",
+            "Sub-surface crystalline core emitting localized gravitational distortion rings.",
+            "Multi-jointed appendage network with fluctuating visual camouflage abilities."
         ];
+
         const behaviors = [
-            "Remains inert in complete darkness. Actively moves toward radio frequencies and electronic displays.",
-            "Distorts structural geometry within a 15-meter radius, causing corridors to loop infinitely.",
-            "Emits low-frequency acoustic vibrations that induce mild auditory hallucinations in personnel.",
-            "Consumes ambient thermal energy, rapidly freezing surrounding atmosphere upon physical contact."
+            "Remains inert in dark environments. Actively maneuvers toward radio frequencies and optical displays.",
+            "Distorts structural geometry within a 20-meter radius, causing corridors to loop recursively.",
+            "Emits acoustic waves that induce vivid auditory responses in nearby observers.",
+            "Absorbs surrounding heat rapidly, freezing local atmospheric moisture upon physical movement."
         ];
+
         const protocols = [
-            "Must be kept in a vacuum-sealed chamber lined with acoustic dampening foam at all times.",
-            "Requires continuous low-intensity ultraviolet lighting. No electronic screens permitted inside perimeter.",
-            "Containment cell walls must be re-anchored weekly using reinforced concrete and liquid coolants.",
-            "Personnel must maintain line-of-sight during maintenance shifts. Never approach without ear defense."
+            "Store inside a vacuum-sealed vault lined with sound-dampening acoustic layers.",
+            "Requires continuous low-intensity ultraviolet illumination. No active screens permitted.",
+            "Re-anchor cell perimeters weekly using reinforced steel alloy and cooling pumps.",
+            "Personnel must maintain continuous line-of-sight during maintenance shifts."
         ];
 
         function generateNewArchiveEntry() {
@@ -514,10 +566,9 @@
             threatTag.style.border = `1px solid ${entry.threatObj.color}`;
             threatTag.style.backgroundColor = entry.threatObj.bg;
 
-            document.getElementById('timestamp').innerText = `LAST UPDATED: ${new Date().toLocaleTimeString()} // LOG #${entry.seed}`;
+            document.getElementById('timestamp').innerText = `SYSTEM SYNC: ${new Date().toLocaleTimeString()} // ID #${entry.seed}`;
         }
 
-        // Save & LocalStorage System
         function saveCurrentEntry() {
             if (savedEntries.some(e => e.id === currentEntry.id)) return;
             savedEntries.push(currentEntry);
@@ -543,7 +594,7 @@
                 item.onclick = () => displayEntry(entry);
 
                 item.innerHTML = `
-                    <div class="saved-item-info">
+                    <div style="display:flex; flex-direction:column; gap:2px;">
                         <span class="saved-id">${entry.id}</span>
                         <span class="saved-name">${entry.name}</span>
                     </div>
@@ -556,7 +607,7 @@
         document.getElementById('genBtn').addEventListener('click', generateNewArchiveEntry);
         document.getElementById('saveBtn').addEventListener('click', saveCurrentEntry);
 
-        // Initialize
+        // Run
         renderSavedList();
         generateNewArchiveEntry();
         renderEntity();
