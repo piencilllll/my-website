@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TERMINAL RECOVERY :: SECTOR 09</title>
+    <title>SHADOW REALM :: COMBAT PROTOCOL</title>
     <style>
         :root {
-            --bg: #04070d;
-            --green: #10b981;
-            --amber: #f59e0b;
+            --bg: #030712;
+            --cyan: #06b6d4;
+            --purple: #a855f7;
             --red: #ef4444;
+            --amber: #f59e0b;
             --font: 'Courier New', Courier, monospace;
         }
 
@@ -27,47 +28,44 @@
             width: 100vw; height: 100vh; max-width: 1000px; max-height: 650px;
             position: relative; background: #000;
             border: 2px solid #1e293b;
-            box-shadow: 0 0 35px rgba(16, 185, 129, 0.15);
+            box-shadow: 0 0 40px rgba(168, 85, 247, 0.2);
             display: flex; flex-direction: column; overflow: hidden;
         }
 
         canvas#gameCanvas { width: 100%; height: 100%; display: block; }
 
-        .hud-overlay {
+        /* HUD OVERLAY */
+        .hud {
             position: absolute; top: 16px; left: 20px; right: 20px;
             display: flex; justify-content: space-between; align-items: flex-start;
             pointer-events: none; z-index: 10;
         }
 
-        .hud-card {
-            background: rgba(6, 75, 52, 0.25); border: 1px solid #059669;
-            padding: 10px 14px; border-radius: 4px; display: flex; flex-direction: column; gap: 4px;
+        .player-stats {
+            display: flex; flex-direction: column; gap: 8px; width: 260px;
+            background: rgba(15, 23, 42, 0.75); border: 1px solid #334155;
+            padding: 12px; border-radius: 6px; backdrop-filter: blur(4px);
+        }
+
+        .char-name { font-size: 0.85rem; font-weight: bold; letter-spacing: 2px; }
+
+        .bar-container { width: 100%; height: 10px; background: #0f172a; border-radius: 3px; overflow: hidden; border: 1px solid #1e293b; }
+        .bar-fill { height: 100%; width: 100%; transition: width 0.1s linear; }
+
+        .hp-fill { background: linear-gradient(90deg, #10b981, #34d399); }
+        .stamina-fill { background: linear-gradient(90deg, #06b6d4, #38bdf8); }
+
+        .mission-card {
+            background: rgba(15, 23, 42, 0.75); border: 1px solid #334155;
+            padding: 12px; border-radius: 6px; text-align: right;
             backdrop-filter: blur(4px);
         }
 
-        .hud-title { font-size: 0.8rem; font-weight: bold; color: var(--green); letter-spacing: 1px; }
-        .hud-sub { font-size: 0.7rem; color: #a7f3d0; }
+        .mission-title { font-size: 0.8rem; color: var(--amber); font-weight: bold; }
+        .mission-sub { font-size: 0.7rem; color: #94a3b8; margin-top: 4px; }
 
-        .dialogue-box {
-            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-            width: 90%; height: 125px;
-            background: rgba(4, 13, 10, 0.95);
-            border: 2px solid var(--green); border-radius: 6px;
-            padding: 14px 18px; display: none; gap: 16px; align-items: center;
-            z-index: 20;
-        }
-
-        .portrait {
-            width: 70px; height: 70px; border: 2px solid var(--green); background: #000;
-            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-        }
-
-        .dialogue-body { display: flex; flex-direction: column; justify-content: space-between; height: 100%; flex: 1; }
-        .speaker { font-size: 0.85rem; font-weight: bold; letter-spacing: 2px; }
-        .text-content { font-size: 0.9rem; line-height: 1.4; color: #ecfdf5; }
-        .prompt { font-size: 0.68rem; color: var(--amber); align-self: flex-end; animation: blink 0.8s infinite alternate; }
-
-        @keyframes blink { from { opacity: 0.2; } to { opacity: 1; } }
+        /* DAMAGE FLOATING NUMBERS */
+        .overlay-layer { position: absolute; inset: 0; pointer-events: none; z-index: 15; }
     </style>
 </head>
 <body>
@@ -75,23 +73,17 @@
     <div class="viewport">
         <canvas id="gameCanvas"></canvas>
 
-        <div class="hud-overlay">
-            <div class="hud-card">
-                <div class="hud-title" id="actTitle">MISSION 1: RECOVERY</div>
-                <div class="hud-sub">[A/D] MOVE | [W/SPACE] JUMP | [E] INTERACT</div>
+        <div class="hud">
+            <div class="player-stats">
+                <div class="char-name" id="charName" style="color: var(--cyan);">KAEL (SWIFT DUAL-BLADES)</div>
+                <div class="bar-container"><div class="bar-fill hp-fill" id="hpBar"></div></div>
+                <div class="bar-container"><div class="bar-fill stamina-fill" id="staminaBar"></div></div>
+                <div style="font-size: 0.65rem; color: #64748b; margin-top: 2px;">[TAB] SWITCH CHARACTER</div>
             </div>
-            <div class="hud-card" style="align-items: flex-end;">
-                <div class="hud-title" style="color: var(--amber);" id="itemTracker">DATA NODES: 0 / 3</div>
-                <div class="hud-sub" id="objectiveText">Find the missing encrypted nodes</div>
-            </div>
-        </div>
 
-        <div class="dialogue-box" id="dialogueBox">
-            <div class="portrait" id="portraitBox"></div>
-            <div class="dialogue-body">
-                <div class="speaker" id="speakerName">...</div>
-                <div class="text-content" id="dialogueText">...</div>
-                <div class="prompt">[PRESS E OR SPACE TO CONTINUE]</div>
+            <div class="mission-card">
+                <div class="mission-title" id="waveTracker">WAVE 1 / 3</div>
+                <div class="mission-sub" id="objectiveText">Defeat all shadow sentinels</div>
             </div>
         </div>
     </div>
@@ -99,12 +91,11 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const dialogueBox = document.getElementById('dialogueBox');
-        const speakerName = document.getElementById('speakerName');
-        const dialogueText = document.getElementById('dialogueText');
-        const portraitBox = document.getElementById('portraitBox');
-        const actTitle = document.getElementById('actTitle');
-        const itemTracker = document.getElementById('itemTracker');
+
+        const hpBar = document.getElementById('hpBar');
+        const staminaBar = document.getElementById('staminaBar');
+        const charName = document.getElementById('charName');
+        const waveTracker = document.getElementById('waveTracker');
         const objectiveText = document.getElementById('objectiveText');
 
         function resize() {
@@ -114,9 +105,10 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // Audio Synthesizer
+        // Web Audio Synthesizer
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx = null;
+
         function playSound(type) {
             if (!audioCtx) audioCtx = new AudioContext();
             const osc = audioCtx.createOscillator();
@@ -124,29 +116,33 @@
             osc.connect(gain); gain.connect(audioCtx.destination);
             const now = audioCtx.currentTime;
 
-            if (type === 'jump') {
-                osc.type = 'sine'; osc.frequency.setValueAtTime(300, now);
-                osc.frequency.exponentialRampToValueAtTime(600, now + 0.12);
-                gain.gain.setValueAtTime(0.06, now); gain.gain.linearRampToValueAtTime(0, now + 0.12);
-                osc.start(now); osc.stop(now + 0.12);
-            } else if (type === 'collect') {
-                osc.type = 'triangle'; osc.frequency.setValueAtTime(440, now);
-                osc.frequency.setValueAtTime(880, now + 0.08);
-                gain.gain.setValueAtTime(0.08, now); gain.gain.linearRampToValueAtTime(0, now + 0.2);
-                osc.start(now); osc.stop(now + 0.2);
-            } else if (type === 'talk') {
-                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(140, now);
-                gain.gain.setValueAtTime(0.03, now); gain.gain.linearRampToValueAtTime(0, now + 0.04);
-                osc.start(now); osc.stop(now + 0.04);
-            } else if (type === 'hit') {
-                osc.type = 'square'; osc.frequency.setValueAtTime(120, now);
+            if (type === 'slash') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(80, now + 0.1);
+                gain.gain.setValueAtTime(0.08, now); gain.gain.linearRampToValueAtTime(0, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
+            } else if (type === 'heavy') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(180, now);
                 osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
                 gain.gain.setValueAtTime(0.12, now); gain.gain.linearRampToValueAtTime(0, now + 0.2);
                 osc.start(now); osc.stop(now + 0.2);
+            } else if (type === 'hit') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(120, now);
+                gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.08);
+                osc.start(now); osc.stop(now + 0.08);
+            } else if (type === 'dash') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(200, now + 0.12);
+                gain.gain.setValueAtTime(0.05, now); gain.gain.linearRampToValueAtTime(0, now + 0.12);
+                osc.start(now); osc.stop(now + 0.12);
             }
         }
 
-        // Mouse Tracker
+        // Custom Mouse Tracker
         const mouse = { x: 0, y: 0 };
         window.addEventListener('mousemove', e => {
             const rect = canvas.getBoundingClientRect();
@@ -156,291 +152,355 @@
         // Key Listeners
         const keys = {};
         window.addEventListener('keydown', e => {
+            if (e.code === 'Tab') {
+                e.preventDefault();
+                switchCharacter();
+                return;
+            }
             keys[e.code] = true;
-            if (e.code === 'KeyE' || e.code === 'Space') handleInteraction();
+            if (e.code === 'KeyJ') triggerAttack('light');
+            if (e.code === 'KeyK') triggerAttack('heavy');
+            if (e.code === 'ShiftLeft' || e.code === 'KeyL') triggerDash();
         });
         window.addEventListener('keyup', e => keys[e.code] = false);
 
-        // Player Physics (Cipher)
-        const cipher = {
-            x: 80, y: 480, vx: 0, vy: 0,
-            radius: 16, grounded: false,
-            scaleX: 1, scaleY: 1, rotation: 0, vRot: 0
+        window.addEventListener('mousedown', e => {
+            if (e.button === 0) triggerAttack('light');
+            if (e.button === 2) triggerAttack('heavy');
+        });
+        window.addEventListener('contextmenu', e => e.preventDefault());
+
+        // Playable Characters Roster
+        const characters = [
+            {
+                id: 'kael', name: 'KAEL (SWIFT DUAL-BLADES)', color: '#06b6d4',
+                maxHp: 100, maxStamina: 100, speed: 5.5, jumpPower: 11.5,
+                lightDmg: 14, heavyDmg: 28, reach: 55, attackSpeed: 180
+            },
+            {
+                id: 'nyx', name: 'NYX (SHADOW SENTINEL)', color: '#a855f7',
+                maxHp: 140, maxStamina: 80, speed: 4.2, jumpPower: 10.5,
+                lightDmg: 22, heavyDmg: 45, reach: 75, attackSpeed: 320
+            }
+        ];
+
+        let activeCharIdx = 0;
+        let char = characters[0];
+
+        // Player Entity State
+        const player = {
+            x: 120, y: 450, vx: 0, vy: 0, w: 26, h: 54,
+            hp: 100, stamina: 100,
+            dir: 1, grounded: false,
+            isAttacking: false, attackType: null, attackTimer: 0,
+            isDashing: false, dashTimer: 0, iFrames: 0
         };
 
-        const GRAVITY = 0.45;
-        const FRICTION = 0.84;
+        function switchCharacter() {
+            activeCharIdx = (activeCharIdx + 1) % characters.length;
+            char = characters[activeCharIdx];
+            charName.innerText = char.name;
+            charName.style.color = char.color;
+            player.hp = Math.min(player.hp, char.maxHp);
+            playSound('dash');
+        }
+
+        // Combat Hitboxes & FX Particles
+        const hitboxes = [];
+        const particles = [];
+        const damageTexts = [];
+
+        function spawnDamageText(x, y, text, color = '#fff') {
+            damageTexts.push({ x, y, text, color, alpha: 1, vy: -1.5 });
+        }
+
+        function triggerAttack(type) {
+            if (player.isAttacking || player.isDashing) return;
+            const staminaCost = type === 'light' ? 12 : 25;
+            if (player.stamina < staminaCost) return;
+
+            player.stamina -= staminaCost;
+            player.isAttacking = true;
+            player.attackType = type;
+            player.attackTimer = char.attackSpeed / 16;
+
+            const dmg = type === 'light' ? char.lightDmg : char.heavyDmg;
+            playSound(type === 'light' ? 'slash' : 'heavy');
+
+            // Spawn Melee Hitbox
+            hitboxes.push({
+                x: player.x + (player.dir === 1 ? player.w : -char.reach),
+                y: player.y + 10,
+                w: char.reach, h: player.h - 20,
+                dmg: dmg, dir: player.dir, duration: 8, active: true
+            });
+        }
+
+        function triggerDash() {
+            if (player.isDashing || player.stamina < 20) return;
+            player.stamina -= 20;
+            player.isDashing = true;
+            player.dashTimer = 12;
+            player.iFrames = 15;
+            player.vx = player.dir * 12;
+            playSound('dash');
+        }
 
         // Level Geometry
         const platforms = [
             { x: 0, y: 550, w: 1000, h: 100 }, // Floor
-            { x: 180, y: 430, w: 150, h: 16 },
-            { x: 400, y: 330, w: 180, h: 16 },
-            { x: 680, y: 240, w: 200, h: 16 },
-            { x: 80, y: 220, w: 140, h: 16 },
-            { x: 440, y: 150, w: 130, h: 16 }
+            { x: 180, y: 420, w: 180, h: 16 },
+            { x: 440, y: 320, w: 200, h: 16 },
+            { x: 720, y: 220, w: 180, h: 16 }
         ];
 
-        // Mission Logic State
-        let currentMission = 1; // 1: Nodes, 2: Terminal Override, 3: Core Stabilized
-        let nodesCollected = 0;
-        let terminalHacked = false;
+        // Enemy AI System
+        let wave = 1;
+        const enemies = [];
 
-        const nodes = [
-            { x: 250, y: 390, collected: false },
-            { x: 740, y: 200, collected: false },
-            { x: 140, y: 180, collected: false }
-        ];
-
-        const terminal = { x: 490, y: 106, w: 30, h: 44 };
-        const unit09 = { x: 840, y: 494, w: 32, h: 56 };
-
-        // Moving Red Anomaly Hazard
-        const hazard = { x: 400, y: 310, vx: 2, minX: 400, maxX: 560 };
-
-        // Dialogue Data
-        let inDialogue = false;
-        let dialogueTree = [];
-        let dialogueIndex = 0;
-
-        const m1Intro = [
-            { speaker: "Unit-09", text: "Cipher, glad your kernel booted up. The grid lost three encrypted Data Nodes.", color: "#f59e0b" },
-            { speaker: "Cipher", text: "* (I can stretch across platforms to retrieve them.)", color: "#10b981" },
-            { speaker: "Unit-09", text: "Collect all 3 Nodes, but avoid the red corrupted anomaly on the middle platform!", color: "#f59e0b" }
-        ];
-
-        const m2Start = [
-            { speaker: "Unit-09", text: "Great job! All 3 Data Nodes recovered. Now reach the top mainframe terminal!", color: "#f59e0b" },
-            { speaker: "Cipher", text: "* (The top platform terminal? I'm on it.)", color: "#10b981" }
-        ];
-
-        const m3Victory = [
-            { speaker: "Unit-09", text: "OVERRIDE COMPLETE! Sector 09 is purged of anomalies. Excellent work, Cipher!", color: "#f59e0b" },
-            { speaker: "Cipher", text: "* (System restored. Ready for standby mode.)", color: "#10b981" }
-        ];
-
-        function triggerDialogue(lines) {
-            inDialogue = true;
-            dialogueTree = lines;
-            dialogueIndex = 0;
-            dialogueBox.style.display = 'flex';
-            renderDialogueStep();
-        }
-
-        function renderDialogueStep() {
-            const current = dialogueTree[dialogueIndex];
-            speakerName.innerText = current.speaker.toUpperCase();
-            speakerName.style.color = current.color;
-            dialogueText.innerText = current.text;
-            playSound('talk');
-
-            portraitBox.innerHTML = current.speaker === 'Unit-09'
-                ? '<div style="width:26px;height:26px;background:#f59e0b;border:2px solid #fff;"></div>'
-                : '<div style="width:24px;height:24px;background:#10b981;border-radius:50%;"></div>';
-        }
-
-        function handleInteraction() {
-            if (inDialogue) {
-                dialogueIndex++;
-                if (dialogueIndex < dialogueTree.length) {
-                    renderDialogueStep();
-                } else {
-                    inDialogue = false;
-                    dialogueBox.style.display = 'none';
-                }
-                return;
+        function spawnWave(count) {
+            enemies.length = 0;
+            for (let i = 0; i < count; i++) {
+                enemies.push({
+                    x: 500 + i * 120, y: 400, w: 30, h: 52,
+                    hp: 60 + wave * 20, maxHp: 60 + wave * 20,
+                    vx: 0, vy: 0, dir: -1, grounded: false,
+                    attackCooldown: 0, isHit: 0, color: '#ef4444'
+                });
             }
-
-            // Check NPC Unit-09 Interaction
-            const dUnit = Math.hypot(cipher.x - (unit09.x + 16), cipher.y - (unit09.y + 28));
-            if (dUnit < 60) {
-                if (currentMission === 1 && nodesCollected < 3) triggerDialogue(m1Intro);
-                if (currentMission === 1 && nodesCollected === 3) {
-                    currentMission = 2;
-                    actTitle.innerText = "MISSION 2: OVERRIDE";
-                    itemTracker.innerText = "TERMINAL: LOCKED";
-                    objectiveText.innerText = "Reach top platform & press [E] on Terminal";
-                    triggerDialogue(m2Start);
-                }
-                if (currentMission === 3) triggerDialogue(m3Victory);
-            }
-
-            // Check Terminal Interaction
-            const dTerm = Math.hypot(cipher.x - (terminal.x + 15), cipher.y - (terminal.y + 22));
-            if (dTerm < 50 && currentMission === 2) {
-                terminalHacked = true;
-                currentMission = 3;
-                playSound('collect');
-                actTitle.innerText = "MISSION 3: RESTORED";
-                itemTracker.innerText = "SECTOR: ONLINE";
-                objectiveText.innerText = "Return to Unit-09 for debrief";
-                triggerDialogue(m3Victory);
-            }
+            waveTracker.innerText = `WAVE ${wave} / 3`;
+            objectiveText.innerText = `Enemies Remaining: ${enemies.length}`;
         }
+        spawnWave(2);
 
-        // Physics Update Loop
+        // Core Physics & Combat Loop
         function updatePhysics() {
-            if (inDialogue) return;
-
-            // Player Movements
-            if (keys['KeyA'] || keys['ArrowLeft']) {
-                cipher.vx -= 0.7; cipher.vRot -= 0.05;
-            }
-            if (keys['KeyD'] || keys['ArrowRight']) {
-                cipher.vx += 0.7; cipher.vRot += 0.05;
+            // Player Movement Controls
+            if (!player.isDashing) {
+                if (keys['KeyA'] || keys['ArrowLeft']) { player.vx = -char.speed; player.dir = -1; }
+                else if (keys['KeyD'] || keys['ArrowRight']) { player.vx = char.speed; player.dir = 1; }
+                else { player.vx *= 0.7; }
             }
 
-            // Jump
-            if ((keys['KeyW'] || keys['Space'] || keys['ArrowUp']) && cipher.grounded) {
-                cipher.vy = -11;
-                cipher.grounded = false;
-                cipher.scaleX = 0.6; cipher.scaleY = 1.4;
-                playSound('jump');
+            if ((keys['KeyW'] || keys['Space'] || keys['ArrowUp']) && player.grounded) {
+                player.vy = -char.jumpPower;
+                player.grounded = false;
             }
 
-            cipher.vy += GRAVITY;
-            cipher.vx *= FRICTION;
-            cipher.x += cipher.vx;
-            cipher.y += cipher.vy;
+            // Stamina Regeneration
+            player.stamina = Math.min(char.maxStamina, player.stamina + 0.35);
 
-            cipher.rotation += cipher.vRot;
-            cipher.vRot *= 0.9;
+            // Timers & iFrames
+            if (player.attackTimer > 0) { player.attackTimer--; if (player.attackTimer <= 0) player.isAttacking = false; }
+            if (player.dashTimer > 0) { player.dashTimer--; if (player.dashTimer <= 0) player.isDashing = false; }
+            if (player.iFrames > 0) player.iFrames--;
 
-            cipher.scaleX += (1 - cipher.scaleX) * 0.12;
-            cipher.scaleY += (1 - cipher.scaleY) * 0.12;
+            // Player Gravity & Collision
+            player.vy += 0.55;
+            player.x += player.vx;
+            player.y += player.vy;
 
-            // Platform Collision
-            cipher.grounded = false;
-            platforms.forEach(plat => {
-                if (cipher.x + cipher.radius > plat.x && cipher.x - cipher.radius < plat.x + plat.w) {
-                    if (cipher.y + cipher.radius >= plat.y && cipher.y - cipher.radius < plat.y + plat.h && cipher.vy > 0) {
-                        cipher.y = plat.y - cipher.radius;
-                        if (cipher.vy > 2) {
-                            cipher.scaleX = 1.35; cipher.scaleY = 0.65;
-                        }
-                        cipher.vy = 0;
-                        cipher.grounded = true;
+            player.grounded = false;
+            platforms.forEach(p => {
+                if (player.x + player.w > p.x && player.x < p.x + p.w) {
+                    if (player.y + player.h >= p.y && player.y + player.h <= p.y + p.h && player.vy > 0) {
+                        player.y = p.y - player.h;
+                        player.vy = 0;
+                        player.grounded = true;
                     }
                 }
             });
+            player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
 
-            cipher.x = Math.max(cipher.radius, Math.min(canvas.width - cipher.radius, cipher.x));
+            // Hitbox Collisions vs Enemies
+            for (let i = hitboxes.length - 1; i >= 0; i--) {
+                const hb = hitboxes[i];
+                hb.duration--;
 
-            // Hazard Physics & Respawn
-            hazard.x += hazard.vx;
-            if (hazard.x < hazard.minX || hazard.x > hazard.maxX) hazard.vx *= -1;
+                enemies.forEach(en => {
+                    if (hb.active && hb.x < en.x + en.w && hb.x + hb.w > en.x && hb.y < en.y + en.h && hb.y + hb.h > en.y) {
+                        en.hp -= hb.dmg;
+                        en.isHit = 8;
+                        en.vx = hb.dir * 6; // Knockback
+                        spawnDamageText(en.x + 10, en.y - 10, `-${hb.dmg}`, char.color);
+                        playSound('hit');
 
-            const dHazard = Math.hypot(cipher.x - hazard.x, cipher.y - hazard.y);
-            if (dHazard < cipher.radius + 12) {
-                playSound('hit');
-                cipher.x = 80; cipher.y = 480; // Respawn at start
-                cipher.vx = 0; cipher.vy = 0;
-            }
-
-            // Node Collection
-            if (currentMission === 1) {
-                nodes.forEach(n => {
-                    if (!n.collected) {
-                        const d = Math.hypot(cipher.x - n.x, cipher.y - n.y);
-                        if (d < cipher.radius + 12) {
-                            n.collected = true;
-                            nodesCollected++;
-                            playSound('collect');
-                            itemTracker.innerText = `DATA NODES: ${nodesCollected} / 3`;
-                            if (nodesCollected === 3) {
-                                objectiveText.innerText = "Return to Unit-09 for next directive";
-                            }
+                        // FX Particles
+                        for(let p=0; p<6; p++) {
+                            particles.push({
+                                x: en.x + en.w/2, y: en.y + en.h/2,
+                                vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8,
+                                color: char.color, life: 12
+                            });
                         }
                     }
                 });
+                hb.active = false;
+                if (hb.duration <= 0) hitboxes.splice(i, 1);
             }
+
+            // Enemy AI & Combat Logic
+            enemies.forEach((en, idx) => {
+                if (en.hp <= 0) return;
+
+                // AI Chasing logic
+                const distToPlayer = player.x - en.x;
+                en.dir = distToPlayer > 0 ? 1 : -1;
+                if (Math.abs(distToPlayer) > 35 && en.isHit <= 0) {
+                    en.vx = en.dir * 2.2;
+                } else {
+                    en.vx *= 0.8;
+                }
+
+                // Enemy Attack
+                if (Math.abs(distToPlayer) <= 40 && en.attackCooldown <= 0 && player.iFrames <= 0) {
+                    player.hp -= 15;
+                    player.iFrames = 20;
+                    player.vx = en.dir * 8; // Player knockback
+                    spawnDamageText(player.x, player.y - 10, '-15', '#ef4444');
+                    playSound('hit');
+                    en.attackCooldown = 80;
+                }
+
+                if (en.attackCooldown > 0) en.attackCooldown--;
+                if (en.isHit > 0) en.isHit--;
+
+                en.vy += 0.55;
+                en.x += en.vx;
+                en.y += en.vy;
+
+                platforms.forEach(p => {
+                    if (en.x + en.w > p.x && en.x < p.x + p.w) {
+                        if (en.y + en.h >= p.y && en.y + en.h <= p.y + p.h && en.vy > 0) {
+                            en.y = p.y - en.h; en.vy = 0;
+                        }
+                    }
+                });
+            });
+
+            // Filter dead enemies
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                if (enemies[i].hp <= 0) enemies.splice(i, 1);
+            }
+
+            objectiveText.innerText = `Enemies Remaining: ${enemies.length}`;
+
+            // Wave Progression
+            if (enemies.length === 0) {
+                wave++;
+                if (wave <= 3) {
+                    spawnWave(wave + 1);
+                } else {
+                    waveTracker.innerText = "VICTORY!";
+                    objectiveText.innerText = "Area Cleared successfully!";
+                }
+            }
+
+            // HUD UI Sync
+            hpBar.style.width = `${Math.max(0, (player.hp / char.maxHp) * 100)}%`;
+            staminaBar.style.width = `${Math.max(0, (player.stamina / char.maxStamina) * 100)}%`;
         }
 
-        // Render Loop
-        let time = 0;
+        // Render Graphics Loop
         function render() {
-            time += 0.04;
-            ctx.fillStyle = '#04070d';
+            ctx.fillStyle = '#030712';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Grid Lines
-            ctx.strokeStyle = 'rgba(16, 185, 129, 0.08)'; ctx.lineWidth = 1;
+            // Arena Background
+            ctx.strokeStyle = 'rgba(51, 65, 85, 0.3)'; ctx.lineWidth = 1;
             for(let x=0; x<canvas.width; x+=40) {
                 ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
             }
 
             // Platforms
             platforms.forEach(p => {
-                ctx.fillStyle = '#064e3b';
+                ctx.fillStyle = '#0f172a';
                 ctx.fillRect(p.x, p.y, p.w, p.h);
-                ctx.strokeStyle = '#059669'; ctx.lineWidth = 2;
+                ctx.strokeStyle = '#334155'; ctx.lineWidth = 2;
                 ctx.strokeRect(p.x, p.y, p.w, p.h);
             });
 
-            // Terminal Machine
-            ctx.fillStyle = terminalHacked ? '#10b981' : '#f59e0b';
-            ctx.fillRect(terminal.x, terminal.y, terminal.w, terminal.h);
-            ctx.fillStyle = '#000'; ctx.fillRect(terminal.x + 4, terminal.y + 6, 22, 16);
-            const dTerm = Math.hypot(cipher.x - (terminal.x + 15), cipher.y - (terminal.y + 22));
-            if (dTerm < 50 && currentMission === 2) {
-                ctx.fillStyle = '#fff'; ctx.font = 'bold 0.75rem "Courier New"'; ctx.textAlign = 'center';
-                ctx.fillText('[E] OVERRIDE', terminal.x + 15, terminal.y - 10);
-            }
-
-            // Nodes
-            nodes.forEach(n => {
-                if (!n.collected) {
-                    ctx.fillStyle = '#10b981';
-                    ctx.shadowColor = '#10b981'; ctx.shadowBlur = 10;
-                    ctx.fillRect(n.x - 6, n.y - 6 + Math.sin(time * 4) * 4, 12, 12);
-                    ctx.shadowBlur = 0;
-                }
+            // Draw Hitbox FX Arc
+            hitboxes.forEach(hb => {
+                ctx.fillStyle = char.color + '44';
+                ctx.fillRect(hb.x, hb.y, hb.w, hb.h);
             });
 
-            // Hazard Entity
-            ctx.fillStyle = '#ef4444';
-            ctx.shadowColor = '#ef4444'; ctx.shadowBlur = 12;
-            ctx.beginPath(); ctx.arc(hazard.x, hazard.y, 12 + Math.sin(time*8)*2, 0, Math.PI*2); ctx.fill();
-            ctx.shadowBlur = 0;
+            // Draw Enemies (Shadow Sentinels)
+            enemies.forEach(en => {
+                ctx.fillStyle = en.isHit > 0 ? '#fff' : en.color;
+                ctx.fillRect(en.x, en.y, en.w, en.h);
 
-            // Unit-09 NPC
-            ctx.fillStyle = '#f59e0b';
-            ctx.fillRect(unit09.x, unit09.y, unit09.w, unit09.h);
-            ctx.fillStyle = '#000';
-            ctx.fillRect(unit09.x + 6, unit09.y + 12, 6, 6);
-            ctx.fillRect(unit09.x + 20, unit09.y + 12, 6, 6);
+                // Enemy Eyes
+                ctx.fillStyle = '#000';
+                const eyeX = en.dir === 1 ? en.x + 18 : en.x + 4;
+                ctx.fillRect(eyeX, en.y + 10, 8, 4);
 
-            const dUnit = Math.hypot(cipher.x - (unit09.x + 16), cipher.y - (unit09.y + 28));
-            if (dUnit < 60) {
-                ctx.fillStyle = '#fff'; ctx.font = 'bold 0.75rem "Courier New"'; ctx.textAlign = 'center';
-                ctx.fillText('[E] TALK', unit09.x + 16, unit09.y - 12);
-            }
+                // Enemy Health Bar Overlay
+                ctx.fillStyle = '#1e293b'; ctx.fillRect(en.x, en.y - 10, en.w, 4);
+                ctx.fillStyle = '#ef4444'; ctx.fillRect(en.x, en.y - 10, (en.hp / en.maxHp) * en.w, 4);
+            });
 
-            // Cipher Player Render
+            // Draw Playable Character (Kael or Nyx)
             ctx.save();
-            ctx.translate(cipher.x, cipher.y);
-            ctx.rotate(cipher.rotation);
-            ctx.scale(cipher.scaleX, cipher.scaleY);
+            if (player.iFrames % 2 === 1) ctx.globalAlpha = 0.5;
 
-            ctx.fillStyle = '#10b981';
-            ctx.shadowColor = '#10b981'; ctx.shadowBlur = 12;
-            ctx.beginPath(); ctx.arc(0, 0, cipher.radius, 0, Math.PI * 2); ctx.fill();
-            ctx.shadowBlur = 0;
+            ctx.fillStyle = char.color;
+            ctx.fillRect(player.x, player.y, player.w, player.h);
 
+            // Character Details (Head/Visor/Weapon Render)
             ctx.fillStyle = '#000';
-            ctx.fillRect(-5, -3, 3, 6); ctx.fillRect(2, -3, 3, 6);
+            const vX = player.dir === 1 ? player.x + 14 : player.x + 2;
+            ctx.fillRect(vX, player.y + 8, 10, 5);
+
+            // Weapon Render
+            ctx.strokeStyle = char.color; ctx.lineWidth = 3;
+            ctx.beginPath();
+            if (char.id === 'kael') { // Dual Blades
+                const wX = player.dir === 1 ? player.x + player.w + 10 : player.x - 10;
+                ctx.moveTo(player.x + player.w/2, player.y + 20);
+                ctx.lineTo(wX, player.y + (player.isAttacking ? 10 : 35));
+            } else { // Scythe
+                const wX = player.dir === 1 ? player.x + player.w + 20 : player.x - 20;
+                ctx.moveTo(player.x + player.w/2, player.y + 45);
+                ctx.lineTo(wX, player.y - 10);
+            }
+            ctx.stroke();
             ctx.restore();
 
-            // Pixel Cursor
-            ctx.fillStyle = '#10b981';
-            ctx.fillRect(mouse.x, mouse.y, 8, 2);
-            ctx.fillRect(mouse.x, mouse.y, 2, 8);
+            // Particles
+            for(let i=particles.length-1; i>=0; i--) {
+                const pt = particles[i];
+                pt.x += pt.vx; pt.y += pt.vy; pt.life--;
+                ctx.fillStyle = pt.color;
+                ctx.fillRect(pt.x, pt.y, 3, 3);
+                if (pt.life <= 0) particles.splice(i, 1);
+            }
+
+            // Floating Damage Text
+            for(let i=damageTexts.length-1; i>=0; i--) {
+                const dt = damageTexts[i];
+                dt.y += dt.vy; dt.alpha -= 0.03;
+                ctx.fillStyle = dt.color;
+                ctx.globalAlpha = Math.max(0, dt.alpha);
+                ctx.font = 'bold 0.85rem "Courier New"';
+                ctx.fillText(dt.text, dt.x, dt.y);
+                ctx.globalAlpha = 1;
+                if (dt.alpha <= 0) damageTexts.splice(i, 1);
+            }
+
+            // Custom Crosshair Cursor
+            ctx.strokeStyle = char.color; ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(mouse.x, mouse.y, 8, 0, Math.PI*2);
+            ctx.moveTo(mouse.x - 12, mouse.y); ctx.lineTo(mouse.x + 12, mouse.y);
+            ctx.moveTo(mouse.x, mouse.y - 12); ctx.lineTo(mouse.x, mouse.y + 12);
+            ctx.stroke();
 
             updatePhysics();
             requestAnimationFrame(render);
         }
 
-        setTimeout(() => triggerDialogue(m1Intro), 500);
         render();
     </script>
 </body>
