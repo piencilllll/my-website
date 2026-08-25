@@ -682,3 +682,567 @@
     </script>
 </body>
 </html>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Far From Home - 3D Sequence</title>
+    <style>
+        :root {
+            --ui-border: #ffffff;
+            --ink-black: #080a0f;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            background-color: #020305;
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        #viewport3d {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        .crt-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.35) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 3px, 6px 100%;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        #uiLayer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 30px;
+            pointer-events: none;
+        }
+
+        .dialogue-box {
+            width: 92%;
+            max-width: 950px;
+            height: 200px;
+            background: var(--ink-black);
+            border: 4px solid var(--ui-border);
+            border-radius: 6px;
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+            box-shadow: 0 0 25px rgba(0,0,0,0.95);
+            pointer-events: auto;
+        }
+
+        .portrait-frame {
+            width: 150px;
+            height: 150px;
+            border: 2px solid #fff;
+            background: #020305;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .portrait-svg {
+            width: 110px;
+            height: 110px;
+        }
+
+        .portrait-label {
+            margin-top: 2px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .dialogue-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
+        }
+
+        .dialogue-text {
+            font-size: 1.15rem;
+            line-height: 1.7rem;
+            color: #fff;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .prompt-hint {
+            align-self: flex-end;
+            font-size: 0.8rem;
+            color: #777;
+            animation: blink 1s infinite;
+        }
+
+        #controlsHUD {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(8, 10, 15, 0.85);
+            border: 2px solid #ffffff;
+            padding: 12px 18px;
+            border-radius: 4px;
+            display: none;
+            z-index: 5;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+        }
+
+        @keyframes blink { 50% { opacity: 0; } }
+    </style>
+
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <div id="viewport3d"></div>
+    <div class="crt-overlay"></div>
+
+    <div id="controlsHUD">
+        [W / UP] ACCELERATE | [A/D / LEFT/RIGHT] STEER KAWM BOAT
+    </div>
+
+    <div id="uiLayer">
+        <div class="dialogue-box" id="dialogueBox">
+            <div class="portrait-frame">
+                <svg id="portraitSVG" class="portrait-svg" viewBox="0 0 100 100"></svg>
+                <div id="portraitLabel" class="portrait-label">SYS</div>
+            </div>
+            <div class="dialogue-content">
+                <div id="dialogueText" class="dialogue-text">Initializing 3D navigation module...</div>
+                <div class="prompt-hint" id="promptHint">[ CLICK / SPACE TO CONTINUE ]</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- PORTRAIT DATA ---
+        const portraits = {
+            MOE: `
+                <circle cx="50" cy="50" r="30" fill="#ffffff" stroke="#000000" stroke-width="3.5"/>
+                <path d="M 18,48 Q 50,14 82,48 Q 50,35 18,48 Z" fill="#111116"/>
+                <path d="M 78,45 Q 92,52 88,70" stroke="#111116" stroke-width="5" fill="none"/>
+                <path d="M 26,45 L 45,53" stroke="#000000" stroke-width="7" stroke-linecap="round"/>
+                <path d="M 55,53 L 74,45" stroke="#000000" stroke-width="7" stroke-linecap="round"/>
+                <circle cx="37" cy="62" r="3.5" fill="#000000"/>
+                <circle cx="63" cy="62" r="3.5" fill="#000000"/>
+            `,
+            MCCRACK: `
+                <circle cx="50" cy="52" r="30" fill="#ffffff" stroke="#000000" stroke-width="3.5"/>
+                <polygon points="12,42 50,8 88,42 70,42 50,26 30,42" fill="#ffffff" stroke="#000000" stroke-width="3.5"/>
+                <line x1="50" y1="8" x2="50" y2="42" stroke="#000000" stroke-width="2.5"/>
+                <path d="M 25,40 Q 35,34 45,40" stroke="#000000" stroke-width="6" fill="none" stroke-linecap="round"/>
+                <path d="M 55,40 Q 65,34 75,40" stroke="#000000" stroke-width="6" fill="none" stroke-linecap="round"/>
+                <circle cx="35" cy="58" r="3.5" fill="#000000"/>
+                <circle cx="65" cy="58" r="3.5" fill="#000000"/>
+            `,
+            SYS: `
+                <rect x="20" y="20" width="60" height="60" fill="none" stroke="#ffffff" stroke-width="3" stroke-dasharray="4"/>
+                <text x="50" y="58" font-size="24" fill="#ffffff" text-anchor="middle" font-weight="bold">S</text>
+            `
+        };
+
+        // --- AUDIO ENGINE ---
+        class AudioEngine {
+            constructor() { this.ctx = null; }
+            init() {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            playBlip(freq = 350) {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.03, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.05);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.05);
+            }
+        }
+
+        const audio = new AudioEngine();
+
+        // --- THREE.JS SCENE SETUP ---
+        const container = document.getElementById('viewport3d');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x120320); // Dark purple atmosphere
+        scene.fog = new THREE.FogExp2(0x1a062d, 0.018);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        // --- LIGHTING ---
+        const ambientLight = new THREE.AmbientLight(0x402060, 1.2);
+        scene.add(ambientLight);
+
+        const purplePointLight = new THREE.PointLight(0x9933ff, 2, 40);
+        purplePointLight.position.set(0, 5, 0);
+        scene.add(purplePointLight);
+
+        // Distant Beacon Light
+        const beaconLight = new THREE.PointLight(0xffffff, 5, 250);
+        beaconLight.position.set(0, 15, -180);
+        scene.add(beaconLight);
+
+        const beaconMesh = new THREE.Mesh(
+            new THREE.SphereGeometry(2, 16, 16),
+            new THREE.MeshBasicMaterial({ color: 0xffffff })
+        );
+        beaconMesh.position.copy(beaconLight.position);
+        scene.add(beaconMesh);
+
+        // --- KAWM OCEAN WATER ---
+        const waterGeo = new THREE.PlaneGeometry(500, 500, 40, 40);
+        const waterMat = new THREE.MeshLambertMaterial({
+            color: 0x080214,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.7
+        });
+        const water = new THREE.Mesh(waterGeo, waterMat);
+        water.rotation.x = -Math.PI / 2;
+        scene.add(water);
+
+        // --- BOAT ASSEMBLY ---
+        const boatGroup = new THREE.Group();
+        scene.add(boatGroup);
+
+        // Hull
+        const hullGeo = new THREE.BoxGeometry(4.5, 1.8, 9);
+        const hullMat = new THREE.MeshLambertMaterial({ color: 0x1a120b });
+        const hull = new THREE.Mesh(hullGeo, hullMat);
+        hull.position.y = 0.5;
+        boatGroup.add(hull);
+
+        // Cabin
+        const cabinGeo = new THREE.BoxGeometry(3.8, 2.2, 4.5);
+        const cabinMat = new THREE.MeshLambertMaterial({ color: 0x0d0d12 });
+        const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+        cabin.position.set(0, 2, -0.5);
+        boatGroup.add(cabin);
+
+        // Wheel (Helm)
+        const wheelGeo = new THREE.TorusGeometry(0.45, 0.05, 8, 16);
+        const wheelMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const helmWheel = new THREE.Mesh(wheelGeo, wheelMat);
+        helmWheel.position.set(0, 2.3, 0.8);
+        boatGroup.add(helmWheel);
+
+        // SYSTEM (S) Terminal Screen & Panel
+        const terminalGeo = new THREE.BoxGeometry(0.9, 0.7, 0.1);
+        const terminalMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+        const terminal = new THREE.Mesh(terminalGeo, terminalMat);
+        terminal.position.set(1.1, 2.4, 0.85);
+        terminal.rotation.y = -0.25;
+        boatGroup.add(terminal);
+
+        // Glowing Screen Face
+        const screenGeo = new THREE.PlaneGeometry(0.8, 0.6);
+        const screenMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const screenMesh = new THREE.Mesh(screenGeo, screenMat);
+        screenMesh.position.set(1.1, 2.4, 0.91);
+        screenMesh.rotation.y = -0.25;
+        boatGroup.add(screenMesh);
+
+        // Interactive Buttons beside wheel
+        for(let i = 0; i < 3; i++) {
+            const btn = new THREE.Mesh(
+                new THREE.BoxGeometry(0.12, 0.12, 0.12),
+                new THREE.MeshBasicMaterial({ color: i === 0 ? 0xff3333 : 0xffffff })
+            );
+            btn.position.set(-0.8 + (i * 0.25), 2.1, 0.85);
+            boatGroup.add(btn);
+        }
+
+        // Chair for McCrack
+        const chairGeo = new THREE.BoxGeometry(1, 0.1, 1);
+        const chairMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+        const chair = new THREE.Mesh(chairGeo, chairMat);
+        chair.position.set(-1.1, 1.8, -1.2);
+        boatGroup.add(chair);
+
+        // --- CHARACTERS (Stylized 3D Kawmlings) ---
+        function createKawmling(isMoe) {
+            const charGroup = new THREE.Group();
+            
+            // Sphere body/head
+            const bodyGeo = new THREE.SphereGeometry(0.55, 16, 16);
+            const bodyMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 0.55;
+            charGroup.add(body);
+
+            if (isMoe) {
+                // Black Durag cap + tail
+                const duragGeo = new THREE.SphereGeometry(0.58, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.55);
+                const duragMat = new THREE.MeshBasicMaterial({ color: 0x050508 });
+                const durag = new THREE.Mesh(duragGeo, duragMat);
+                durag.position.y = 0.56;
+                charGroup.add(durag);
+
+                const tailGeo = new THREE.BoxGeometry(0.2, 0.5, 0.05);
+                const tail = new THREE.Mesh(tailGeo, duragMat);
+                tail.position.set(0, 0.5, -0.55);
+                tail.rotation.x = 0.3;
+                charGroup.add(tail);
+            } else {
+                // McCrack Roof Top Hat Accent
+                const hatGeo = new THREE.ConeGeometry(0.4, 0.5, 4);
+                const hatMat = new THREE.MeshBasicMaterial({ color: 0x050508 });
+                const hat = new THREE.Mesh(hatGeo, hatMat);
+                hat.position.y = 1.1;
+                charGroup.add(hat);
+            }
+
+            return charGroup;
+        }
+
+        const moe3D = createKawmling(true);
+        moe3D.position.set(0, 1.4, 0.3); // At the wheel
+        boatGroup.add(moe3D);
+
+        const mcCrack3D = createKawmling(false);
+        mcCrack3D.position.set(-1.1, 1.8, -1.2); // On chair
+        boatGroup.add(mcCrack3D);
+
+        // --- RAIN PARTICLE SYSTEM ---
+        const rainCount = 1200;
+        const rainGeo = new THREE.BufferGeometry();
+        const rainPos = new Float32Array(rainCount * 3);
+
+        for(let i = 0; i < rainCount * 3; i += 3) {
+            rainPos[i] = (Math.random() - 0.5) * 80;
+            rainPos[i+1] = Math.random() * 40;
+            rainPos[i+2] = (Math.random() - 0.5) * 80;
+        }
+
+        rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
+        const rainMat = new THREE.PointsMaterial({
+            color: 0xccccff,
+            size: 0.15,
+            transparent: true,
+            opacity: 0.6
+        });
+        const rainParticles = new THREE.Points(rainGeo, rainMat);
+        scene.add(rainParticles);
+
+        // --- CINEMATIC SEQUENCE & DIALOGUE DATA ---
+        const cinematicDialogue = [
+            { speaker: "SYS", text: "[ EVALUATING KAWM ENVIRONMENT... RAIN DENSITY: HIGH. VISIBILITY: LOW. ]" },
+            { speaker: "MCCRACK", text: "Moe... the sky turned complete purple. Look over there, past the terminal!" },
+            { speaker: "MOE", text: "I see it. That bright white light floating in the distance..." },
+            { speaker: "MCCRACK", text: "Should we head straight for it? Is SYSTEM done checking the boat?" },
+            { speaker: "SYS", text: "[ EVALUATION COMPLETE. HULL STABLE. DIRECT CONTROL GRANTED TO MOE. ]" },
+            { speaker: "MOE", text: "Hold on tight, McCrack. Taking the wheel now!" }
+        ];
+
+        let dialogueIdx = 0;
+        let isTyping = false;
+        let isCinematic = true;
+
+        // Camera Cut Sequences (Relative to boat)
+        const cameraAngles = [
+            { pos: new THREE.Vector3(0, 6, -8), lookAt: new THREE.Vector3(0, 2, 0) },   // Front Wide Cinematic
+            { pos: new THREE.Vector3(-2.5, 3.2, -2), lookAt: new THREE.Vector3(-1.1, 2.2, -1.2) }, // McCrack
+            { pos: new THREE.Vector3(2.2, 3.2, 1.2), lookAt: new THREE.Vector3(0, 2.2, 0.3) },  // Moe & Wheel
+            { pos: new THREE.Vector3(-2.5, 3.2, -2), lookAt: new THREE.Vector3(-1.1, 2.2, -1.2) }, // McCrack
+            { pos: new THREE.Vector3(1.8, 3.0, 1.5), lookAt: new THREE.Vector3(1.1, 2.4, 0.85) }, // SYSTEM Screen
+            { pos: new THREE.Vector3(0, 3.2, 1.8), lookAt: new THREE.Vector3(0, 2.2, -10) }    // Driving View
+        ];
+
+        function updatePortrait(speaker) {
+            document.getElementById('portraitSVG').innerHTML = portraits[speaker] || portraits.SYS;
+            document.getElementById('portraitLabel').innerText = speaker;
+        }
+
+        function typeDialogue(text) {
+            isTyping = true;
+            const el = document.getElementById('dialogueText');
+            el.innerText = "";
+            let i = 0;
+            const timer = setInterval(() => {
+                if (i < text.length) {
+                    el.innerText += text.charAt(i);
+                    if (i % 2 === 0) audio.playBlip(i % 4 === 0 ? 420 : 320);
+                    i++;
+                } else {
+                    clearInterval(timer);
+                    isTyping = false;
+                }
+            }, 25);
+        }
+
+        function advanceCinematic() {
+            if (isTyping) return;
+
+            if (dialogueIdx < cinematicDialogue.length) {
+                const line = cinematicDialogue[dialogueIdx];
+                updatePortrait(line.speaker);
+                typeDialogue(line.text);
+
+                // Update Camera Angle smoothly
+                const camData = cameraAngles[dialogueIdx];
+                targetCamPos.copy(camData.pos);
+                targetCamLookAt.copy(camData.lookAt);
+
+                dialogueIdx++;
+            } else {
+                // Transition to Driving Gameplay Mode
+                isCinematic = false;
+                document.getElementById('dialogueBox').style.display = 'none';
+                document.getElementById('controlsHUD').style.display = 'block';
+            }
+        }
+
+        // Camera Animation Targets
+        const targetCamPos = cameraAngles[0].pos.clone();
+        const targetCamLookAt = cameraAngles[0].lookAt.clone();
+        const currentCamLookAt = targetCamLookAt.clone();
+
+        // --- BOAT DRIVING CONTROLS ---
+        let boatSpeed = 0;
+        let boatRotation = 0;
+        const keys = { w: false, a: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowRight: false };
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                if (isCinematic) advanceCinematic();
+            }
+            if (keys.hasOwnProperty(e.key) || keys.hasOwnProperty(e.code)) {
+                keys[e.key] = true;
+                keys[e.code] = true;
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (keys.hasOwnProperty(e.key) || keys.hasOwnProperty(e.code)) {
+                keys[e.key] = false;
+                keys[e.code] = false;
+            }
+        });
+
+        document.getElementById('uiLayer').addEventListener('click', () => {
+            audio.init();
+            if (isCinematic) advanceCinematic();
+        });
+
+        // --- MAIN ANIMATION LOOP ---
+        let clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = clock.getElapsedTime();
+
+            // Water Waving Effect
+            const posAttr = waterGeo.attributes.position;
+            for (let i = 0; i < posAttr.count; i++) {
+                const u = posAttr.getX(i);
+                const v = posAttr.getY(i);
+                const z = Math.sin(time * 2 + u * 0.1) * 0.4 + Math.cos(time * 1.5 + v * 0.1) * 0.4;
+                posAttr.setZ(i, z);
+            }
+            waterGeo.computeVertexNormals();
+            posAttr.needsUpdate = true;
+
+            // Rain Particle Fall
+            const rPositions = rainGeo.attributes.position.array;
+            for (let i = 1; i < rainCount * 3; i += 3) {
+                rPositions[i] -= 0.8;
+                if (rPositions[i] < 0) rPositions[i] = 40;
+            }
+            rainGeo.attributes.position.needsUpdate = true;
+
+            // Boat Bobbing Motion
+            const bobY = Math.sin(time * 2) * 0.15;
+            const rollZ = Math.cos(time * 1.5) * 0.04;
+
+            if (isCinematic) {
+                boatGroup.position.y = bobY;
+                boatGroup.rotation.z = rollZ;
+
+                // Interpolate Camera towards cut target
+                camera.position.lerp(boatGroup.position.clone().add(targetCamPos), 0.05);
+                currentCamLookAt.lerp(boatGroup.position.clone().add(targetCamLookAt), 0.05);
+                camera.lookAt(currentCamLookAt);
+            } else {
+                // Driving Controls
+                if (keys.w || keys.ArrowUp) boatSpeed = THREE.MathUtils.lerp(boatSpeed, 0.25, 0.03);
+                else boatSpeed = THREE.MathUtils.lerp(boatSpeed, 0, 0.02);
+
+                if (keys.a || keys.ArrowLeft) boatRotation += 0.015;
+                if (keys.d || keys.ArrowRight) boatRotation -= 0.015;
+
+                boatGroup.rotation.y = boatRotation;
+                helmWheel.rotation.z = -boatRotation * 4;
+
+                boatGroup.translateZ(-boatSpeed);
+                boatGroup.position.y = bobY;
+                boatGroup.rotation.z = rollZ;
+
+                // Follow Camera behind boat
+                const followCamPos = new THREE.Vector3(0, 3.5, 7.5).applyAxisAngle(new THREE.Vector3(0, 1, 0), boatRotation).add(boatGroup.position);
+                camera.position.lerp(followCamPos, 0.08);
+                camera.lookAt(boatGroup.position.clone().add(new THREE.Vector3(0, 2, -5).applyAxisAngle(new THREE.Vector3(0, 1, 0), boatRotation)));
+            }
+
+            // Beacon Glow Pulse
+            beaconLight.intensity = 4 + Math.sin(time * 4) * 1.5;
+
+            renderer.render(scene, camera);
+        }
+
+        // Window Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Initialize First Frame
+        advanceCinematic();
+        animate();
+    </script>
+</body>
+</html>
