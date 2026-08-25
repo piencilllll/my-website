@@ -3,95 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Night Shift at Terminal 7</title>
+    <title>THE BACKROOMS: LEVEL 0</title>
     <style>
         :root {
-            --bg-color: #0d1117;
-            --panel-bg: rgba(22, 27, 34, 0.85);
-            --border-color: #30363d;
-            --text-color: #c9d1d9;
-            --accent-cyan: #58a6ff;
-            --accent-amber: #f0883e;
-            --accent-purple: #bc8cff;
-            --accent-green: #3fb950;
+            --bg-color: #050503;
+            --terminal-bg: rgba(18, 16, 11, 0.92);
+            --border-color: #3a3220;
+            --text-main: #d3c498;
+            --accent-yellow: #e6c641;
+            --accent-red: #d94336;
+            --accent-blue: #4aa3df;
+            --accent-dim: #73694f;
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            font-family: 'Courier New', Courier, monospace;
         }
 
         body {
             background-color: var(--bg-color);
-            color: var(--text-color);
+            color: var(--text-main);
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            padding: 20px;
+            padding: 15px;
+            overflow: hidden;
             background-image: 
-                radial-gradient(circle at 20% 20%, rgba(88, 166, 255, 0.05) 0%, transparent 40%),
-                radial-gradient(circle at 80% 80%, rgba(188, 140, 255, 0.05) 0%, transparent 40%);
+                radial-gradient(circle at 50% 50%, rgba(230, 198, 65, 0.03) 0%, transparent 70%);
         }
 
-        #game-container {
+        /* CRT Overlay Effects */
+        .crt-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 3px, 6px 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        #game-frame {
             width: 100%;
-            max-width: 900px;
-            height: 680px;
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
+            max-width: 950px;
+            height: 720px;
+            background: var(--terminal-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            backdrop-filter: blur(8px);
-            overflow: hidden;
+            box-shadow: 0 0 40px rgba(230, 198, 65, 0.08);
+            position: relative;
         }
 
-        /* Header / Relationship HUD */
-        #hud {
-            background: rgba(13, 17, 23, 0.9);
-            border-bottom: 1px solid var(--border-color);
+        /* Status Header */
+        #vital-bar {
+            background: #0d0c08;
+            border-bottom: 2px solid var(--border-color);
             padding: 12px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-
-        .hud-title {
-            font-size: 14px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            color: var(--accent-cyan);
-            text-transform: uppercase;
-        }
-
-        .relationships {
-            display: flex;
-            gap: 20px;
-        }
-
-        .rel-tracker {
             font-size: 13px;
+        }
+
+        .stat-group {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 10px;
         }
 
-        .rel-name { font-weight: 600; }
-        .rel-val { 
-            font-weight: 700;
-            padding: 2px 6px;
-            border-radius: 4px;
-            background: rgba(255,255,255,0.05);
+        .stat-label {
+            color: var(--accent-dim);
+            font-weight: bold;
         }
 
-        /* Dialogue History Box */
-        #dialogue-container {
+        .bar-container {
+            width: 100px;
+            height: 12px;
+            background: #1c1810;
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .bar-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .fill-sanity { background: var(--accent-yellow); }
+        .fill-stamina { background: var(--accent-blue); }
+
+        /* Log / Sensory Engine */
+        #terminal-display {
             flex: 1;
-            padding: 20px;
+            padding: 24px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
@@ -99,544 +108,322 @@
             scroll-behavior: smooth;
         }
 
-        .msg {
-            display: flex;
-            flex-direction: column;
-            max-width: 85%;
-            animation: fadeIn 0.3s ease-in-out;
+        .log-entry {
+            line-height: 1.6;
+            font-size: 14px;
+            letter-spacing: 0.2px;
+            animation: textFade 0.2s ease-in;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(6px); }
+        @keyframes textFade {
+            from { opacity: 0; transform: translateY(4px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        .msg.narrator {
-            align-self: center;
-            max-width: 95%;
-            text-align: center;
+        .sensory-desc {
+            color: var(--text-main);
+        }
+
+        .ambient-audio {
+            color: var(--accent-yellow);
             font-style: italic;
-            color: #8b949e;
-            font-size: 14px;
-            margin: 8px 0;
-            border-top: 1px solid rgba(255,255,255,0.05);
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            padding: 6px 0;
+            border-left: 2px solid var(--accent-yellow);
+            padding-left: 10px;
+            margin: 4px 0;
         }
 
-        .msg.character { align-self: flex-start; }
-        .msg.player { align-self: flex-end; }
-
-        .speaker-tag {
-            font-size: 12px;
-            font-weight: 700;
-            margin-bottom: 4px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+        .threat-alert {
+            color: var(--accent-red);
+            font-weight: bold;
+            background: rgba(217, 67, 54, 0.1);
+            padding: 8px 12px;
+            border: 1px solid var(--accent-red);
         }
 
-        .bubble {
-            padding: 12px 16px;
-            border-radius: 10px;
-            line-height: 1.5;
-            font-size: 15px;
-            border: 1px solid transparent;
+        /* Action Controls */
+        #action-panel {
+            padding: 18px 24px;
+            background: #0d0c08;
+            border-top: 2px solid var(--border-color);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
         }
 
-        .msg.player .bubble {
-            background: #1f6feb;
-            color: #fff;
-            border-bottom-right-radius: 2px;
-        }
-
-        .msg.character .bubble {
-            background: #21262d;
-            border-color: var(--border-color);
-            border-bottom-left-radius: 2px;
-        }
-
-        /* Character specific colors */
-        .speaker-jax { color: var(--accent-amber); }
-        .speaker-lyra { color: var(--accent-purple); }
-        .speaker-marlo { color: var(--accent-green); }
-
-        /* Choices Area */
-        #choices-container {
-            padding: 16px 20px;
-            background: rgba(13, 17, 23, 0.95);
-            border-top: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .choice-btn {
-            background: #21262d;
+        .btn-action {
+            background: #18150e;
             border: 1px solid var(--border-color);
-            color: var(--text-color);
-            padding: 12px 16px;
-            border-radius: 6px;
-            text-align: left;
-            font-size: 14px;
+            color: var(--text-main);
+            padding: 14px 16px;
+            font-size: 13px;
             cursor: pointer;
-            transition: all 0.2s ease;
+            text-align: left;
+            transition: all 0.15s ease;
         }
 
-        .choice-btn:hover {
-            background: #30363d;
-            border-color: var(--accent-cyan);
-            color: #fff;
-            transform: translateX(4px);
+        .btn-action:hover {
+            background: var(--accent-yellow);
+            color: #000;
+            border-color: var(--accent-yellow);
+            font-weight: bold;
         }
+
+        /* Inventory Sidebar Modal */
+        #inventory-hud {
+            position: absolute;
+            top: 55px; right: 20px;
+            background: #100f0a;
+            border: 1px solid var(--border-color);
+            padding: 10px 14px;
+            font-size: 12px;
+            color: var(--accent-dim);
+            z-index: 10;
+        }
+
+        .inv-item { color: var(--text-main); font-weight: bold; }
 
         /* Custom Scrollbar */
-        #dialogue-container::-webkit-scrollbar { width: 6px; }
-        #dialogue-container::-webkit-scrollbar-track { background: transparent; }
-        #dialogue-container::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+        #terminal-display::-webkit-scrollbar { width: 5px; }
+        #terminal-display::-webkit-scrollbar-track { background: transparent; }
+        #terminal-display::-webkit-scrollbar-thumb { background: var(--border-color); }
     </style>
 </head>
 <body>
 
-<div id="game-container">
-    <div id="hud">
-        <div class="hud-title">Terminal 7: Sub-Level 3</div>
-        <div class="relationships">
-            <div class="rel-tracker"><span class="rel-name speaker-jax">Jax:</span> <span id="rel-jax" class="rel-val">Neutral (0)</span></div>
-            <div class="rel-tracker"><span class="rel-name speaker-lyra">Lyra:</span> <span id="rel-lyra" class="rel-val">Neutral (0)</span></div>
-            <div class="rel-tracker"><span class="rel-name speaker-marlo">Marlo:</span> <span id="rel-marlo" class="rel-val">Neutral (0)</span></div>
+<div class="crt-overlay"></div>
+
+<div id="game-frame">
+    <div id="vital-bar">
+        <div class="stat-group">
+            <span class="stat-label">LOCATION:</span>
+            <span id="loc-display" style="color:var(--accent-yellow)">LEVEL 0 [UNMAPPED]</span>
+        </div>
+        <div class="stat-group">
+            <span class="stat-label">SANITY:</span>
+            <div class="bar-container"><div id="sanity-fill" class="bar-fill fill-sanity" style="width: 100%;"></div></div>
+        </div>
+        <div class="stat-group">
+            <span class="stat-label">STAMINA:</span>
+            <div class="bar-container"><div id="stamina-fill" class="bar-fill fill-stamina" style="width: 100%;"></div></div>
         </div>
     </div>
 
-    <div id="dialogue-container"></div>
+    <div id="inventory-hud">
+        GEAR: <span id="inv-almond" class="inv-item">Almond Water (x1)</span> | <span id="inv-flash" class="inv-item">Flickering Flashlight</span>
+    </div>
 
-    <div id="choices-container"></div>
+    <div id="terminal-display"></div>
+
+    <div id="action-panel"></div>
 </div>
 
 <script>
-    // Game State
-    const state = {
-        relationships: {
-            jax: 0,
-            lyra: 0,
-            marlo: 0
+    // State Tracking
+    const player = {
+        sanity: 100,
+        stamina: 100,
+        almondWater: 1,
+        location: "Level 0 - Room 104",
+        noiseLevel: 0,
+        stepsTaken: 0,
+        entityDistance: 100 // 0 = caught
+    };
+
+    const encounters = {
+        node_start: {
+            text: "You regain consciousness on damp, foul-smelling carpet. The overwhelming stench of old, saturated rag-rug fills your throat. Above, buzzing fluorescent tubes cast a monotonous, nauseating yellow glare across monochrome wallpaper extending endlessly in every direction.",
+            sound: "[ AUDIO: Continuous 60Hz Fluorescent Light Hum - 78 dB ]",
+            actions: [
+                { text: "1. Pick yourself up and inspect your immediate surroundings.", target: "inspect_start" },
+                { text: "2. Sit still and try to ground your thoughts.", target: "rest_start" }
+            ]
+        },
+
+        inspect_start: {
+            text: "You pull yourself up. The wallpaper is peeling in damp corners, exposing decayed plaster underneath. The floorboards beneath the carpet flex unnaturally. You notice faint, dark scuff marks leading around a sharp 90-degree corner to the left.",
+            sound: "[ AUDIO: Low frequency vibration vibrating through floorboards... ]",
+            actions: [
+                { text: "1. Follow the scuff marks around the corner.", target: "walk_marks" },
+                { text: "2. Turn around and head down the long, undisturbed hallway.", target: "walk_long_hall" },
+                { text: "3. Drink Almond Water to steady your rapid pulse.", target: "drink_almond", condition: () => player.almondWater > 0 }
+            ]
+        },
+
+        rest_start: {
+            text: "You lie still, controlling your breathing. The fluorescent lights hum with brutal consistency. Seconds drag into minutes. The claustrophobic yellow walls feel like they're slowly contracting.",
+            sound: "[ AUDIO: Fluorescent Hum grows louder... Buzzing sound pulsing ]",
+            effects: { sanity: -10 },
+            actions: [
+                { text: "1. Stand up immediately. You can't stay here.", target: "inspect_start" }
+            ]
+        },
+
+        walk_marks: {
+            text: "You walk quietly down the narrow corridor. The carpet squeaks underfoot like wet foam. As you clear the corner, you find a dead-end wall—except for a singular, rusted metal fire alarm box mounted at waist height. Someone has scratched words into the yellow wallpaper: 'DONT LOOK AT IT'.",
+            sound: "[ AUDIO: Faint wet squelching sounds... distant, roughly 40 meters away ]",
+            effects: { sanity: -5, noise: 10 },
+            actions: [
+                { text: "1. Pry open the rusted fire alarm box.", target: "box_pry" },
+                { text: "2. Retreat slowly before whatever made that wet sound approaches.", target: "retreat_quiet" }
+            ]
+        },
+
+        walk_long_hall: {
+            text: "You trek forward through identical plaster intersections. The spatial geometry feels broken—you turn four right corners in a row and end up in a brand new, massive open room filled with structural pillars.",
+            sound: "[ AUDIO: Fluorescent hum suddenly CUTS OUT for 2 seconds, then flickers back ]",
+            effects: { stamina: -10, sanity: -5 },
+            actions: [
+                { text: "1. Move between the central pillars.", target: "pillar_room" },
+                { text: "2. Check the dark perimeter walls for doors.", target: "perimeter_dark" }
+            ]
+        },
+
+        drink_almond: {
+            text: "You uncap the vintage glass bottle and take a sip of the sweet, nutty fluid. A cool wave washes over your frayed nerves. Your spatial awareness sharpens.",
+            sound: "[ AUDIO: Gulping sound echoes slightly too loud ]",
+            effects: { sanity: +30, useAlmond: true },
+            actions: [
+                { text: "1. Continue exploring.", target: "inspect_start" }
+            ]
+        },
+
+        box_pry: {
+            text: "The metal door yields with a sharp, high-pitched screech that echoes down the infinite halls. Inside isn't a wiring grid—it's a second bottle of fresh Almond Water and a battery cell.",
+            sound: "[ AUDIO: ECHOING METAL SCREECH - Threat Awareness Increased! ]",
+            effects: { noise: +50, addAlmond: 1 },
+            actions: [
+                { text: "1. Grab the bottle and RUN back toward the main corridor.", target: "run_away" },
+                { text: "2. Hide quietly in the dark alcove beside the box.", target: "hide_alcove" }
+            ]
+        },
+
+        retreat_quiet: {
+            text: "You back away on tip-toe, keeping your weight on your heels. The squelching noise grows closer, then stops... as if whatever is making it has halted to listen.",
+            sound: "[ AUDIO: Total silence except your own heartbeat ]",
+            effects: { stamina: -5 },
+            actions: [
+                { text: "1. Hold your breath and don't move a muscle.", target: "freeze_place" },
+                { text: "2. Sprint in the opposite direction!", target: "run_away" }
+            ]
+        },
+
+        freeze_place: {
+            text: "You freeze. A towering, wire-thin silhouette made of black, twitching tendrils (a Bacteria / Hound entity) glides past the far end of the hallway. Its limbs make a dry click-clack noise against the carpet. It doesn't notice you.",
+            sound: "[ AUDIO: Rapid mechanical clicking... fading away into distance ]",
+            effects: { sanity: -15 },
+            actions: [
+                { text: "1. Slip past into the newly vacated hallway.", target: "walk_long_hall" }
+            ]
+        },
+
+        run_away: {
+            text: "You break into a full sprint! The yellow walls blur together into a disorienting nightmare. Behind you, an inhuman, distorted screech tears through the air. It heard you!",
+            sound: "[ AUDIO: HEAVY LOUD FOOTSTEPS GAINING FAST BEHIND YOU ]",
+            effects: { stamina: -30, sanity: -20 },
+            actions: [
+                { text: "1. Dive under a section of sagging, torn wallpaper into a wall void!", target: "wall_clip_attempt" },
+                { text: "2. Keep running until your lungs burn!", target: "run_exhaustion" }
+            ]
+        },
+
+        wall_clip_attempt: {
+            text: "You hurl your shoulder into the seam between two drywall panels. Instead of crashing, your body glitches through the physical boundary. You fall hard onto cold, damp concrete... The yellow wallpaper is gone. Dark boiler pipes line the ceiling above.",
+            sound: "[ AUDIO: BZZZZT - Glitch noise / System shift ]",
+            effects: { sanity: -10 },
+            actions: [
+                { text: "1. Stand up and assess Level 1: The Zone of Concrete.", target: "level_1_entry" }
+            ]
+        },
+
+        level_1_entry: {
+            text: "YOU HAVE ESCAPED LEVEL 0. Welcome to Level 1. Fog hangs thick in the air. Industrial water drops fall from high pipes. You survived the initial shift.",
+            sound: "[ AUDIO: Deep industrial humming & dripping water ]",
+            actions: [
+                { text: "Play Again (Reset Simulation)", target: "restart" }
+            ]
+        },
+
+        run_exhaustion: {
+            text: "Your legs give out. You collapse onto the saturated carpet. The footsteps behind you stop right over your head. Cold, wet tendrils wrap around your shoulder...",
+            sound: "[ AUDIO: LOUD DISTORTED AUDIO SCREAM ]",
+            effects: { sanity: -100 },
+            actions: [
+                { text: "YOU WERE CONSUMED BY THE BACKROOMS. (Restart)", target: "restart" }
+            ]
         }
     };
 
-    // Story Node Database
-    const story = {
-        start: {
-            narrative: "02:14 AM. Rain hums against the reinforced glass of the monitoring station. You're sitting in the breakroom with Jax, who is lazily spinning a balance coin on the table, and Lyra, who hasn't looked up from her diagnostic tablet in two hours.",
-            dialogue: [
-                { speaker: "Jax", text: "Three years in this pit, and I swear the coffee machine still brews pure motor oil. Hey, rookie. You awake, or are your eyes just open?" }
-            ],
-            choices: [
-                {
-                    text: "I'm wide awake. Just wondering why you haven't fixed the coffee machine yet.",
-                    target: "coffee_joke",
-                    effects: { jax: 2 }
-                },
-                {
-                    text: "Leave me alone, Jax. It's two in the morning.",
-                    target: "jax_snark",
-                    effects: { jax: -2 }
-                },
-                {
-                    text: "[Turn to Lyra] Is he always this noisy during the graveyard shift?",
-                    target: "ask_lyra",
-                    effects: { lyra: 2, jax: -1 }
-                }
-            ]
-        },
+    const termDisplay = document.getElementById('terminal-display');
+    const actionPanel = document.getElementById('action-panel');
 
-        coffee_joke: {
-            dialogue: [
-                { speaker: "Jax", text: "Ha! Direct hit. Look at that, Lyra—our new hire actually has a spine." },
-                { speaker: "Lyra", text: "If they had a brain, they wouldn't be working Sub-Level 3. Keep your voices down. The sector four telemetry is spiking again." }
-            ],
-            choices: [
-                {
-                    text: "Spiking? Is it another false alarm on the perimeter fence?",
-                    target: "telemetry_talk",
-                    effects: { lyra: 1 }
-                },
-                {
-                    text: "Jax, ignore her. What's the real story behind this place?",
-                    target: "ask_station_lore",
-                    effects: { jax: 1, lyra: -1 }
-                }
-            ]
-        },
+    function updateStats() {
+        document.getElementById('sanity-fill').style.width = `${Math.max(0, player.sanity)}%`;
+        document.getElementById('stamina-fill').style.width = `${Math.max(0, player.stamina)}%`;
+        
+        document.getElementById('inv-almond').textContent = `Almond Water (x${player.almondWater})`;
 
-        jax_snark: {
-            dialogue: [
-                { speaker: "Jax", text: "Oof. Touchy. Someone forgot to pack their sense of humor along with their night-shift badge." },
-                { speaker: "Lyra", text: "Can you both stop acting like children? We have five hours left on the shift and the power grid is fluctuating." }
-            ],
-            choices: [
-                {
-                    text: "Sorry, Lyra. What's going on with the grid?",
-                    target: "telemetry_talk",
-                    effects: { lyra: 2 }
-                },
-                {
-                    text: "Let it fluctuate. The whole station is a ruin anyway.",
-                    target: "cynical_path",
-                    effects: { jax: 1, lyra: -2 }
-                }
-            ]
-        },
-
-        ask_lyra: {
-            dialogue: [
-                { speaker: "Lyra", text: "Every single night. He talks to keep himself from realizing how quiet it gets down here." },
-                { speaker: "Jax", text: "Hey! That was a low blow. Silence down here means either nothing's happening, or something went terribly wrong. I prefer noise." }
-            ],
-            choices: [
-                {
-                    text: "Jax has a point. Silence down here is creepy.",
-                    target: "agree_jax",
-                    effects: { jax: 2 }
-                },
-                {
-                    text: "I prefer the quiet. Lets you focus on the work.",
-                    target: "telemetry_talk",
-                    effects: { lyra: 2, jax: -1 }
-                }
-            ]
-        },
-
-        telemetry_talk: {
-            narrative: "Heavy boots echo down the metallic hallway outside. Marlo, the veteran shift lead, steps into the doorway shaking water off his coat.",
-            dialogue: [
-                { speaker: "Marlo", text: "We've got a problem in Sector Four. Primary relay tripped. I need two people down in the maintenance tunnel to reset the manual breaker." },
-                { speaker: "Jax", text: "Not it! Last time I went into the maintenance tunnel, a steam pipe almost took off my eyebrow." },
-                { speaker: "Lyra", text: "I need to stay here and monitor the primary core readings, or we won't know if the grid collapses entirely." }
-            ],
-            choices: [
-                {
-                    text: "I'll go with Marlo. I can handle a manual reset.",
-                    target: "go_marlo",
-                    effects: { marlo: 3, lyra: 1 }
-                },
-                {
-                    text: "Jax, you're coming with me. We're fixing this together.",
-                    target: "go_jax",
-                    effects: { jax: 3, marlo: -1 }
-                },
-                {
-                    text: "Lyra, do you really need to stay behind? You know the grid better than anyone.",
-                    target: "convince_lyra",
-                    effects: { lyra: -1, marlo: -1 }
-                }
-            ]
-        },
-
-        ask_station_lore: {
-            dialogue: [
-                { speaker: "Jax", text: "You really wanna know? Ten years ago, Terminal 7 wasn't a monitoring depot. It was a deep-geothermal research facility. Then one night, they capped the lower shaft and rebranded overnight." },
-                { speaker: "Lyra", text: "Jax, don't fill their head with local campfire stories." },
-                { speaker: "Jax", text: "It's not a story! Ask Marlo if you don't believe me." }
-            ],
-            choices: [
-                {
-                    text: "What happened to the lower shaft?",
-                    target: "deep_lore",
-                    effects: { jax: 2 }
-                },
-                {
-                    text: "Lyra's right. Sounds like typical office rumors.",
-                    target: "telemetry_talk",
-                    effects: { lyra: 2, jax: -1 }
-                }
-            ]
-        },
-
-        cynical_path: {
-            dialogue: [
-                { speaker: "Jax", text: "Damn. Cold as ice. I respect it." },
-                { speaker: "Lyra", text: "That attitude will get you transferred to surface patrol by next month." }
-            ],
-            choices: [
-                {
-                    text: "Maybe I'd prefer the surface.",
-                    target: "telemetry_talk",
-                    effects: {}
-                }
-            ]
-        },
-
-        agree_jax: {
-            dialogue: [
-                { speaker: "Jax", text: "See? The new kid gets it. Thank you!" },
-                { speaker: "Lyra", text: "Great. Now there are two of you." }
-            ],
-            choices: [
-                {
-                    text: "Let's get back to whatever Marlo was working on.",
-                    target: "telemetry_talk",
-                    effects: {}
-                }
-            ]
-        },
-
-        deep_lore: {
-            narrative: "Before Jax can finish, Marlo steps into the room, his face dark.",
-            dialogue: [
-                { speaker: "Marlo", text: "That's enough reminiscing. We've got a breaker trip in Sector Four. I need answers, not ghost stories." }
-            ],
-            choices: [
-                {
-                    text: "Understood, boss. What do you need us to do?",
-                    target: "go_marlo",
-                    effects: { marlo: 2 }
-                }
-            ]
-        },
-
-        go_marlo: {
-            narrative: "You walk down the damp, narrow corridor alongside Marlo. The dim orange emergency lights cast long shadows.",
-            dialogue: [
-                { speaker: "Marlo", text: "You did good back there, stepping up. Jax has talent, but no discipline. Lyra's got discipline, but no courage under pressure. You need a bit of both down here." },
-                { speaker: "Marlo", text: "Tell me something honestly. Why did you take this assignment?" }
-            ],
-            choices: [
-                {
-                    text: "I needed the hazard pay. Simple as that.",
-                    target: "marlo_pay",
-                    effects: { marlo: 1 }
-                },
-                {
-                    text: "I wanted to be somewhere quiet where nobody asks questions about my past.",
-                    target: "marlo_secret",
-                    effects: { marlo: 3 }
-                },
-                {
-                    text: "I wanted to work with people who know what they're doing.",
-                    target: "marlo_respect",
-                    effects: { marlo: 2 }
-                }
-            ]
-        },
-
-        go_jax: {
-            narrative: "You drag a protesting Jax down the service ladder into the warm, clanking maintenance sub-level.",
-            dialogue: [
-                { speaker: "Jax", text: "Unbelievable. I was five minutes away from winning that argument. Now I'm knee-deep in grease." },
-                { speaker: "Jax", text: "Look... thanks for pulling me along though. Marlo gives me the creeps when he gets into his 'serious manager' mode." }
-            ],
-            choices: [
-                {
-                    text: "He's just trying to keep us alive, Jax.",
-                    target: "defend_marlo",
-                    effects: { jax: -1, marlo: 1 }
-                },
-                {
-                    text: "I get it. He acts like he owns the whole station.",
-                    target: "bond_jax",
-                    effects: { jax: 3 }
-                }
-            ]
-        },
-
-        convince_lyra: {
-            dialogue: [
-                { speaker: "Lyra", text: "Fine. But if the main terminal overloads while my back is turned, I'm putting it in my official report that it was your idea." }
-            ],
-            choices: [
-                {
-                    text: "Fair deal. Let's move.",
-                    target: "go_marlo",
-                    effects: { lyra: 1 }
-                }
-            ]
-        },
-
-        marlo_pay: {
-            dialogue: [
-                { speaker: "Marlo", text: "Honest answer. Can't fault a person for wanting a bigger paycheck. Just make sure money isn't the only reason you keep your eyes open down here." }
-            ],
-            choices: [{ text: "[Reach the breaker panel]", target: "climax_node", effects: {} }]
-        },
-
-        marlo_secret: {
-            dialogue: [
-                { speaker: "Marlo", text: "A past, huh? Everyone in Terminal 7 is running from something. I won't pry. As long as you pull your weight, your secrets are safe with me." }
-            ],
-            choices: [{ text: "[Reach the breaker panel]", target: "climax_node", effects: {} }]
-        },
-
-        marlo_respect: {
-            dialogue: [
-                { speaker: "Marlo", text: "Hah! You might want to hold your judgment on whether we know what we're doing until we survive winter." }
-            ],
-            choices: [{ text: "[Reach the breaker panel]", target: "climax_node", effects: {} }]
-        },
-
-        defend_marlo: {
-            dialogue: [
-                { speaker: "Jax", text: "Yeah, yeah. I know. Doesn't mean I have to like the lectures." }
-            ],
-            choices: [{ text: "[Reach the breaker panel]", target: "climax_node", effects: {} }]
-        },
-
-        bond_jax: {
-            dialogue: [
-                { speaker: "Jax", text: "Right?! Exactly! Finally, someone who sees it." }
-            ],
-            choices: [{ text: "[Reach the breaker panel]", target: "climax_node", effects: {} }]
-        },
-
-        climax_node: {
-            narrative: "You reach the heavy iron vault door of Sub-Relay 4. Sparks shower from a junction box overhead. Suddenly, the comms headset buzzes with static—it's Lyra!",
-            dialogue: [
-                { speaker: "Lyra", text: "[Comms] STOP! Don't flip that switch! The telemetry reading was wrong—it's not a short circuit, it's a high-pressure feedback loop! If you engage the manual breaker, it'll blow the main line!" },
-                { speaker: "Marlo", text: "What?! The gauge right in front of me says line pressure is zero!" }
-            ],
-            choices: [
-                {
-                    text: "Trust Lyra! She knows the system data better than the analog gauges!",
-                    target: "trust_lyra_ending",
-                    effects: { lyra: 4, marlo: -1 }
-                },
-                {
-                    text: "Trust Marlo! The manual gauge right here in front of us can't lie!",
-                    target: "trust_marlo_ending",
-                    effects: { marlo: 4, lyra: -2 }
-                },
-                {
-                    text: "Jax, what do your instincts say?",
-                    target: "trust_jax_ending",
-                    effects: { jax: 4 }
-                }
-            ]
-        },
-
-        trust_lyra_ending: {
-            narrative: "You back away from the lever and override the automated safety protocols from your hand-pad based on Lyra's emergency instructions.",
-            dialogue: [
-                { speaker: "Lyra", text: "[Comms] Pressure venting... core temperature stabilizing. It worked! You saved the sector grid!" },
-                { speaker: "Marlo", text: "Well... I'll be damned. Good call listening to her. I guess this old dog still has things to learn." },
-                { speaker: "Jax", text: "That was way too close! Next time, I'm making the coffee." }
-            ],
-            choices: [{ text: "[Shift Concluded - Play Again]", target: "restart", effects: {} }]
-        },
-
-        trust_marlo_ending: {
-            narrative: "You grab the heavy iron lever and yank it down. A deafening metallic THUNK echoes through the shaft.",
-            dialogue: [
-                { speaker: "Marlo", text: "Power restored! See that? Analog never lies." },
-                { speaker: "Lyra", text: "[Comms] ...I stand corrected. The sensor node in my panel was burnt out. Good eye, down there." },
-                { speaker: "Jax", text: "We survived! I'm celebrating with a double ration of bad coffee." }
-            ],
-            choices: [{ text: "[Shift Concluded - Play Again]", target: "restart", effects: {} }]
-        },
-
-        trust_jax_ending: {
-            dialogue: [
-                { speaker: "Jax", text: "My instincts? My instincts say hit the emergency purge valve on the wall instead of touching ANY breaker!" },
-                { speaker: "Marlo", text: "The purge valve? That's crazy—" },
-                { speaker: "Jax", text: "DO IT!" }
-            ],
-            narrative: "You slam your palm onto the red purge button. A massive blast of steam vents into the outer atmosphere. The alarms instantly die down.",
-            dialogue: [
-                { speaker: "Lyra", text: "[Comms] ...That was incredibly reckless. Unorthodox. Dangerous... and completely effective." },
-                { speaker: "Jax", text: "Hah! Who's the rookie now?!" }
-            ],
-            choices: [{ text: "[Shift Concluded - Play Again]", target: "restart", effects: {} }]
+        if (player.sanity <= 0) {
+            renderNode('run_exhaustion');
         }
-    };
-
-    // UI Render Engine
-    const dialogueContainer = document.getElementById('dialogue-container');
-    const choicesContainer = document.getElementById('choices-container');
-
-    function updateHUD() {
-        document.getElementById('rel-jax').textContent = getRelText(state.relationships.jax);
-        document.getElementById('rel-lyra').textContent = getRelText(state.relationships.lyra);
-        document.getElementById('rel-marlo').textContent = getRelText(state.relationships.marlo);
-    }
-
-    function getRelText(val) {
-        if (val >= 4) return `Warm (+${val})`;
-        if (val > 0) return `Friendly (+${val})`;
-        if (val === 0) return `Neutral (0)`;
-        return `Cold (${val})`;
     }
 
     function renderNode(nodeKey) {
         if (nodeKey === 'restart') {
-            state.relationships.jax = 0;
-            state.relationships.lyra = 0;
-            state.relationships.marlo = 0;
-            dialogueContainer.innerHTML = '';
-            updateHUD();
-            renderNode('start');
+            player.sanity = 100;
+            player.stamina = 100;
+            player.almondWater = 1;
+            termDisplay.innerHTML = '';
+            renderNode('node_start');
             return;
         }
 
-        const node = story[nodeKey];
+        const node = encounters[nodeKey];
         if (!node) return;
 
-        // Render Narrative Scene Description
-        if (node.narrative) {
-            const narEl = document.createElement('div');
-            narEl.className = 'msg narrator';
-            narEl.textContent = node.narrative;
-            dialogueContainer.appendChild(narEl);
+        // Apply state changes
+        if (node.effects) {
+            if (node.effects.sanity) player.sanity += node.effects.sanity;
+            if (node.effects.stamina) player.stamina += node.effects.stamina;
+            if (node.effects.useAlmond) player.almondWater--;
+            if (node.effects.addAlmond) player.almondWater += node.effects.addAlmond;
         }
+        
+        // Clamp stats
+        player.sanity = Math.min(100, Math.max(0, player.sanity));
+        player.stamina = Math.min(100, Math.max(0, player.stamina));
 
-        // Render Character Dialogues
-        if (node.dialogue) {
-            node.dialogue.forEach(d => {
-                const msgEl = document.createElement('div');
-                msgEl.className = 'msg character';
+        updateStats();
 
-                const speakerClass = `speaker-${d.speaker.toLowerCase()}`;
-                
-                msgEl.innerHTML = `
-                    <div class="speaker-tag ${speakerClass}">${d.speaker}</div>
-                    <div class="bubble">${d.text}</div>
-                `;
-                dialogueContainer.appendChild(msgEl);
-            });
+        // Render Text Entry
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+
+        let html = `<p class="sensory-desc">${node.text}</p>`;
+        if (node.sound) {
+            html += `<p class="ambient-audio">${node.sound}</p>`;
         }
+        entry.innerHTML = html;
+        termDisplay.appendChild(entry);
 
-        // Scroll to bottom
-        dialogueContainer.scrollTop = dialogueContainer.scrollHeight;
+        termDisplay.scrollTop = termDisplay.scrollHeight;
 
-        // Render Choice Options
-        choicesContainer.innerHTML = '';
-        if (node.choices) {
-            node.choices.forEach(c => {
+        // Render Action Buttons
+        actionPanel.innerHTML = '';
+        if (node.actions) {
+            node.actions.forEach(act => {
+                if (act.condition && !act.condition()) return;
+
                 const btn = document.createElement('button');
-                btn.className = 'choice-btn';
-                btn.textContent = c.text;
-                btn.onclick = () => {
-                    // Render Player Chosen Line
-                    const playerMsg = document.createElement('div');
-                    playerMsg.className = 'msg player';
-                    playerMsg.innerHTML = `<div class="bubble">${c.text}</div>`;
-                    dialogueContainer.appendChild(playerMsg);
-
-                    // Apply Relationship Adjustments
-                    if (c.effects) {
-                        for (let k in c.effects) {
-                            state.relationships[k] += c.effects[k];
-                        }
-                        updateHUD();
-                    }
-
-                    // Progress to Next Scene
-                    renderNode(c.target);
-                };
-                choicesContainer.appendChild(btn);
+                btn.className = 'btn-action';
+                btn.textContent = act.text;
+                btn.onclick = () => renderNode(act.target);
+                actionPanel.appendChild(btn);
             });
         }
     }
 
-    // Launch Game
-    updateHUD();
-    renderNode('start');
+    // Initialize Game
+    renderNode('node_start');
 </script>
 
 </body>
