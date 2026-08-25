@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KINETIC SEA // PIXEL ENHANCED</title>
+    <title>KINETIC SEA // DELUXE PIXEL EDITION</title>
     <style>
         :root {
             --border: #ffffff;
@@ -29,7 +29,7 @@
 
         .hud-card {
             background: rgba(0, 0, 0, 0.85); border: 2px solid var(--border);
-            padding: 10px 16px; border-radius: 4px; pointer-events: auto; max-width: 320px;
+            padding: 10px 16px; border-radius: 4px; pointer-events: auto; max-width: 340px;
         }
 
         .hud-title { font-size: 0.75rem; color: #aaa; letter-spacing: 1px; }
@@ -77,7 +77,7 @@
             z-index: 40; box-shadow: 8px 8px 0px rgba(0,0,0,0.8);
         }
 
-        #fishCanvas { width: 180px; height: 140px; border: 2px dashed #38bdf8; background: #050b14; image-rendering: pixelated; }
+        #fishCanvas { width: 200px; height: 150px; border: 2px dashed #38bdf8; background: #050b14; image-rendering: pixelated; }
     </style>
 </head>
 <body>
@@ -102,8 +102,8 @@
 
         <div class="interaction-prompt" id="prompt">[E] INTERACT</div>
 
-        <div style="position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); font-size: 0.75rem; color: #888;">
-            [WASD] Move/Steer | [CLICK+DRAG] Camera | [E] Interact
+        <div style="position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); font-size: 0.75rem; color: #aaa; text-align: center; background: rgba(0,0,0,0.6); padding: 4px 12px; border-radius: 4px;">
+            [WASD] Move/Steer | [CLICK+DRAG] Camera | [E] Interact | [T] Advance Time
         </div>
     </div>
 
@@ -115,7 +115,7 @@
         <div class="ut-content">
             <div>
                 <div class="ut-speaker">BOB</div>
-                <div class="ut-text" id="dialogText">* Enjoying the waves? The ocean swells are quite dynamic today.</div>
+                <div class="ut-text" id="dialogText">* Ah, sitting right on this bench feels great. Ocean swells look wild today!</div>
             </div>
             <div class="ut-actions">
                 <button class="ut-btn" onclick="nextDialogue()">[TALK]</button>
@@ -128,7 +128,8 @@
     <div class="fish-modal" id="catchBox">
         <div style="color: #38bdf8; font-weight: bold; font-size: 0.9rem; letter-spacing: 2px;">★ SPECIMEN CAUGHT! ★</div>
         <canvas id="fishCanvas"></canvas>
-        <div id="fishName" style="font-size: 1.2rem; font-weight: bold; color: #ffff00;">LUMINESCENT SKIMMER</div>
+        <div id="fishName" style="font-size: 1.2rem; font-weight: bold; color: #ffff00;">WHITE-FLUID SKIMMER</div>
+        <div id="fishSize" style="font-size: 0.85rem; color: #38bdf8; font-weight: bold;">SIZE: 42 cm</div>
         <div id="fishDesc" style="font-size: 0.85rem; color: #ccc; text-align: center; line-height: 1.3;">A glossy creature native to dense white fluid seas.</div>
         <button class="ut-btn" style="margin-top: 6px; width: 100%;" onclick="closeModal('catchBox')">[ SECURE CATCH ]</button>
     </div>
@@ -139,11 +140,8 @@
         // --- 1. PROCEDURAL SOUND SYNTHESIZER ---
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         let audioCtx = null;
-        let rainNode = null;
 
-        function initAudio() {
-            if (!audioCtx) audioCtx = new AudioCtx();
-        }
+        function initAudio() { if (!audioCtx) audioCtx = new AudioCtx(); }
 
         function playSound(type) {
             initAudio();
@@ -167,12 +165,11 @@
                 osc.start(now); osc.stop(now + 0.04);
             } else if (type === 'talk') {
                 osc.type = 'square';
-                osc.frequency.setValueAtTime(180 + Math.random() * 50, now);
+                osc.frequency.setValueAtTime(180 + Math.random() * 60, now);
                 gain.gain.setValueAtTime(0.05, now);
                 gain.gain.linearRampToValueAtTime(0, now + 0.05);
                 osc.start(now); osc.stop(now + 0.05);
             } else if (type === 'thunder') {
-                // Procedural Thunder Sound
                 const bufferSize = audioCtx.sampleRate * 1.5;
                 const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
                 const data = buffer.getChannelData(0);
@@ -183,11 +180,11 @@
 
                 const filter = audioCtx.createBiquadFilter();
                 filter.type = 'lowpass';
-                filter.frequency.setValueAtTime(200, now);
-                filter.frequency.linearRampToValueAtTime(40, now + 1.2);
+                filter.frequency.setValueAtTime(220, now);
+                filter.frequency.linearRampToValueAtTime(35, now + 1.2);
 
                 const tGain = audioCtx.createGain();
-                tGain.gain.setValueAtTime(0.4, now);
+                tGain.gain.setValueAtTime(0.45, now);
                 tGain.gain.exponentialRampToValueAtTime(0.01, now + 1.4);
 
                 noise.connect(filter); filter.connect(tGain); tGain.connect(audioCtx.destination);
@@ -195,10 +192,9 @@
             }
         }
 
-        // --- 2. SCENE SETUP WITH PIXELATION FACTOR ---
+        // --- 2. SCENE SETUP WITH RETRO PIXELATION SCALE ---
         const canvas = document.getElementById('webgl-canvas');
         const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
-        // Scale render target resolution down for a pixelated retro appearance
         const pixelScale = 0.45;
         renderer.setSize(window.innerWidth * pixelScale, window.innerHeight * pixelScale, false);
         renderer.shadowMap.enabled = true;
@@ -206,52 +202,64 @@
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-        // --- 3. DYNAMIC METEO & SKY SETUP ---
-        const sun = new THREE.Mesh(new THREE.SphereGeometry(14, 32, 32), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+        // --- 3. ENVIRONMENT, LIGHTHOUSE & METEO SYSTEMS ---
+        const sun = new THREE.Mesh(new THREE.SphereGeometry(14, 32, 32), new THREE.MeshBasicMaterial({ color: 0xfbbf24 }));
         scene.add(sun);
 
         const ring = new THREE.Mesh(
-            new THREE.RingGeometry(200, 280, 64),
+            new THREE.RingGeometry(220, 300, 64),
             new THREE.MeshBasicMaterial({ color: 0xc084fc, side: THREE.DoubleSide, transparent: true, opacity: 0.35 })
         );
         ring.rotation.x = Math.PI / 2.2; ring.position.set(0, 220, -500); scene.add(ring);
 
         const ambLight = new THREE.AmbientLight(0xc084fc, 0.6); scene.add(ambLight);
-        const dirLight = new THREE.DirectionalLight(0xef4444, 1.0);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
         dirLight.position.set(0, 100, -200); scene.add(dirLight);
 
         scene.fog = new THREE.FogExp2(0x2d104d, 0.005);
 
-        // Clouds Mesh Group
+        // Distance Lighthouse Landmark
+        const lighthouseGroup = new THREE.Group();
+        const lhBase = new THREE.Mesh(new THREE.CylinderGeometry(8, 12, 45, 12), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 }));
+        lhBase.position.y = 20; lighthouseGroup.add(lhBase);
+
+        const lhTop = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, 8, 12), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+        lhTop.position.y = 45; lighthouseGroup.add(lhTop);
+
+        const lhLight = new THREE.SpotLight(0xfef08a, 5, 400, Math.PI / 6, 0.5);
+        lhLight.position.set(0, 45, 0); lighthouseGroup.add(lhLight);
+        lighthouseGroup.position.set(-250, 0, -350);
+        scene.add(lighthouseGroup);
+
+        // Weather Cloud System
         const cloudGroup = new THREE.Group(); scene.add(cloudGroup);
         const cloudMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.9, transparent: true, opacity: 0.8 });
-        for (let i = 0; i < 25; i++) {
+        for (let i = 0; i < 30; i++) {
             const cloud = new THREE.Mesh(new THREE.DodecahedronGeometry(15 + Math.random() * 15, 1), cloudMat);
-            cloud.position.set((Math.random() - 0.5) * 500, 50 + Math.random() * 30, (Math.random() - 0.5) * 500);
+            cloud.position.set((Math.random() - 0.5) * 600, 50 + Math.random() * 30, (Math.random() - 0.5) * 600);
             cloudGroup.add(cloud);
         }
         cloudGroup.visible = false;
 
-        // Rain Drops Particles
+        // Rain Drops System
         const rainGeo = new THREE.BufferGeometry();
-        const rainCount = 1200;
+        const rainCount = 1400;
         const rainPos = new Float32Array(rainCount * 3);
         for(let i=0; i<rainCount*3; i+=3) {
-            rainPos[i] = (Math.random() - 0.5) * 150;
-            rainPos[i+1] = Math.random() * 80;
-            rainPos[i+2] = (Math.random() - 0.5) * 150;
+            rainPos[i] = (Math.random() - 0.5) * 160;
+            rainPos[i+1] = Math.random() * 90;
+            rainPos[i+2] = (Math.random() - 0.5) * 160;
         }
         rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
-        const rainMat = new THREE.PointsMaterial({ color: 0x38bdf8, size: 0.6, transparent: true, opacity: 0.6 });
-        const rainParticles = new THREE.Points(rainGeo, rainMat);
+        const rainParticles = new THREE.Points(rainGeo, new THREE.PointsMaterial({ color: 0x38bdf8, size: 0.6, transparent: true, opacity: 0.6 }));
         scene.add(rainParticles); rainParticles.visible = false;
 
-        // Lightning Overlay Flash Light
+        // Thunder Flash Light
         const lightningLight = new THREE.PointLight(0xffffff, 0, 500);
         lightningLight.position.set(0, 80, 0); scene.add(lightningLight);
 
         // --- 4. OCEAN ENGINE WITH VARIABLE SWELLS ---
-        const oceanGeo = new THREE.PlaneGeometry(800, 800, 80, 80);
+        const oceanGeo = new THREE.PlaneGeometry(900, 900, 85, 85);
         oceanGeo.rotateX(-Math.PI / 2);
         const oceanMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.1, flatShading: true });
         const ocean = new THREE.Mesh(oceanGeo, oceanMat); scene.add(ocean);
@@ -260,18 +268,19 @@
         const baseVerts = [];
         for (let i = 0; i < posAttr.count; i++) baseVerts.push(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i));
 
-        let currentWaveAmp = 0.6;
-        let targetWaveAmp = 0.6;
+        let currentWaveAmp = 0.5;
+        let targetWaveAmp = 0.5;
 
         function getWaveHeight(x, z, t) {
             return Math.sin(x * 0.04 + t * 2) * currentWaveAmp + Math.cos(z * 0.04 + t * 1.5) * currentWaveAmp;
         }
 
-        // --- 5. BOAT & ADJUSTED BENCH PLACEMENT ---
+        // --- 5. BOAT ENGINE & SPRAY PARTICLES ---
         const boatGroup = new THREE.Group(); scene.add(boatGroup);
         const woodMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.6 });
         const railMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.5 });
 
+        // Hull & Deck Deck
         const deck = new THREE.Mesh(new THREE.BoxGeometry(6, 0.6, 14), woodMat); deck.position.y = 0.8; boatGroup.add(deck);
 
         const lRail = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 14), railMat); lRail.position.set(-2.9, 1.4, 0);
@@ -283,9 +292,9 @@
         const wheelGroup = new THREE.Group();
         const wheelRing = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.06, 8, 16), woodMat); wheelGroup.add(wheelRing); wheelGroup.position.set(0, 2.2, -5.3); boatGroup.add(wheelGroup);
 
-        // BENCH FOR BOB (Height lowered so Bob sits directly on top)
+        // BENCH FOR BOB (Deck level = Y 0.8, Seat surface = Y 1.1)
         const benchSeat = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.15, 2.2), woodMat);
-        benchSeat.position.set(2.2, 1.15, -1.5); boatGroup.add(benchSeat);
+        benchSeat.position.set(2.2, 1.1, -1.5); boatGroup.add(benchSeat);
         const benchLeg1 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.3, 0.1), woodMat); benchLeg1.position.set(2.2, 0.95, -2.4); boatGroup.add(benchLeg1);
         const benchLeg2 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.3, 0.1), woodMat); benchLeg2.position.set(2.2, 0.95, -0.6); boatGroup.add(benchLeg2);
 
@@ -303,7 +312,20 @@
         const rodPole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.015, 3.5), woodMat); rodPole.rotation.z = -Math.PI / 4; rodGroup.add(rodPole);
         rodGroup.position.set(-2.8, 1.5, 3); boatGroup.add(rodGroup);
 
-        // --- 6. STICKMAN CREATION & BOB POSITION FIX ---
+        // Bow Water Spray Particle System
+        const sprayGeo = new THREE.BufferGeometry();
+        const sprayCount = 80;
+        const sprayPos = new Float32Array(sprayCount * 3);
+        for(let i=0; i<sprayCount*3; i+=3) {
+            sprayPos[i] = (Math.random() - 0.5) * 3;
+            sprayPos[i+1] = 0.2;
+            sprayPos[i+2] = -6.5 - Math.random() * 2;
+        }
+        sprayGeo.setAttribute('position', new THREE.BufferAttribute(sprayPos, 3));
+        const sprayParticles = new THREE.Points(sprayGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.35, transparent: true, opacity: 0.5 }));
+        boatGroup.add(sprayParticles);
+
+        // --- 6. STICKMAN BUILDER & FIXED SEATING LOGIC ---
         const stickMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
 
         function buildStickman() {
@@ -327,12 +349,14 @@
         }
 
         const player = buildStickman(); player.group.position.set(0, 1.1, 2); boatGroup.add(player.group);
+
+        // BOB PLACEMENT FIX: Position lowered to Y=0.85 so hips rest directly on top of the seat surface (no floating!)
         const bob = buildStickman();
-        // Exact bench seating positioning (Y=1.23 aligns torso perfectly onto the seat surface)
-        bob.group.position.set(2.2, 1.23, -1.5);
+        bob.group.position.set(2.2, 0.85, -1.5);
         bob.group.rotation.y = -Math.PI / 2;
         boatGroup.add(bob.group);
 
+        // Sit legs forward over the bench front edge
         bob.lLeg.rotation.x = Math.PI / 2; bob.rLeg.rotation.x = Math.PI / 2;
         bob.lArm.rotation.x = 0.3; bob.rArm.rotation.x = 0.3;
 
@@ -345,8 +369,7 @@
             fCtx.strokeStyle = '#fff'; fCtx.lineWidth = 2;
             fCtx.beginPath(); fCtx.arc(18, 18, 12, 0, Math.PI * 2); fCtx.stroke();
 
-            fCtx.lineWidth = 2;
-            fCtx.beginPath();
+            fCtx.lineWidth = 2; fCtx.beginPath();
             if (expression === 'happy') {
                 fCtx.moveTo(11, 13); fCtx.lineTo(15, 11);
                 fCtx.moveTo(21, 11); fCtx.lineTo(25, 13);
@@ -362,37 +385,49 @@
             }
             fCtx.stroke();
         }
-        drawBobFace('neutral');
+        drawBobFace('happy');
 
-        // --- 8. MULTI-FISH 3D PREVIEW SETUP ---
+        // --- 8. ENHANCED FISH SPECIMEN 3D PREVIEW ---
         const fishCanvas = document.getElementById('fishCanvas');
         const fishRenderer = new THREE.WebGLRenderer({ canvas: fishCanvas, antialias: false, alpha: true });
-        fishRenderer.setSize(180 * pixelScale, 140 * pixelScale, false);
+        fishRenderer.setSize(200 * pixelScale, 150 * pixelScale, false);
         const fishScene = new THREE.Scene();
-        const fishCam = new THREE.PerspectiveCamera(45, 180 / 140, 0.1, 10);
-        fishCam.position.z = 3;
-        fishScene.add(new THREE.AmbientLight(0xffffff, 1.2));
+        const fishCam = new THREE.PerspectiveCamera(45, 200 / 150, 0.1, 10);
+        fishCam.position.z = 3.2;
+        fishScene.add(new THREE.AmbientLight(0xffffff, 1.3));
 
         const fishDisplayGroup = new THREE.Group(); fishScene.add(fishDisplayGroup);
 
         const fishList = [
             {
                 name: "WHITE-FLUID SKIMMER",
-                desc: "A sleek, glowing species adapted to high-density fluid friction.",
-                geo: new THREE.ConeGeometry(0.4, 1.2, 6),
+                desc: "A sleek, fast swimmer that skims top-layer kinetic ocean currents.",
+                geo: new THREE.ConeGeometry(0.4, 1.3, 6),
                 col: 0x38bdf8
             },
             {
                 name: "SPIKE-TAILED EEL",
                 desc: "Extremely rare predator lurking deep within storm swells.",
-                geo: new THREE.CylinderGeometry(0.15, 0.35, 1.4, 8),
+                geo: new THREE.CylinderGeometry(0.12, 0.35, 1.5, 8),
                 col: 0xc084fc
             },
             {
                 name: "KINETIC RAY",
-                desc: "Flat-bodied aquatic swimmer that feeds on energy ocean currents.",
-                geo: new THREE.BoxGeometry(0.9, 0.1, 0.9),
+                desc: "Flat-bodied species that glides smoothly across underwater turbulence.",
+                geo: new THREE.BoxGeometry(1.0, 0.1, 1.0),
                 col: 0xef4444
+            },
+            {
+                name: "DEEPSEA ANGLER",
+                desc: "Equipped with bioluminescent lures to navigate nighttime sea fog.",
+                geo: new THREE.DodecahedronGeometry(0.55, 1),
+                col: 0x22c55e
+            },
+            {
+                name: "GOLDEN CROWN-FISH",
+                desc: "A legendary trophy specimen found only near distance lighthouse waters.",
+                geo: new THREE.OctahedronGeometry(0.6, 0),
+                col: 0xfbbf24
             }
         ];
 
@@ -406,10 +441,10 @@
 
         // --- 9. DIALOGUE SYSTEM ---
         const bobDialogues = [
-            { text: "* Enjoying the waves? The ocean swells are quite dynamic today.", expr: "neutral" },
-            { text: "* When storms hit, keep a firm grip on the steering helm!", expr: "thoughtful" },
-            { text: "* Notice the sky shifts from daylight to deep purple dark over time.", expr: "happy" },
-            { text: "* Want to fish? Walk over to the fishing rod and press [E]!", expr: "surprised" }
+            { text: "* Ah, sitting right on this bench feels great. Ocean swells look wild today!", expr: "happy" },
+            { text: "* See that lighthouse out in the distance? That keeps our heading safe.", expr: "thoughtful" },
+            { text: "* Press [T] whenever you want to fast-forward the day/night cycle!", expr: "surprised" },
+            { text: "* Cast your line near the stern! There are 5 rare specimen types out here.", expr: "neutral" }
         ];
         let bobIdx = 0;
 
@@ -429,8 +464,10 @@
                 isFishingAnim = false;
                 const randIdx = Math.floor(Math.random() * fishList.length);
                 const f = fishList[randIdx];
+                const randSize = Math.floor(20 + Math.random() * 65);
                 setFishDisplay(randIdx);
                 document.getElementById('fishName').innerText = f.name;
+                document.getElementById('fishSize').innerText = `SIZE: ${randSize} cm`;
                 document.getElementById('fishDesc').innerText = f.desc;
                 openModal('catchBox');
             }, 1000);
@@ -439,11 +476,12 @@
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-        // --- 10. CONTROLS ---
+        // --- 10. CONTROLS & MANUAL TIME OVERRIDE ---
         let isDriving = false;
         let camYaw = 0, camPitch = 0.3;
         let isMouseDown = false;
         let lastMouseX = 0, lastMouseY = 0;
+        let timeOffset = 0;
 
         window.addEventListener('mousedown', (e) => { isMouseDown = true; lastMouseX = e.clientX; lastMouseY = e.clientY; });
         window.addEventListener('mouseup', () => isMouseDown = false);
@@ -457,7 +495,11 @@
         });
 
         const keys = {};
-        window.addEventListener('keydown', (e) => { keys[e.code] = true; handleInteraction(e.code); });
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (e.code === 'KeyT') timeOffset += 4.0; // Fast forward time
+            handleInteraction(e.code);
+        });
         window.addEventListener('keyup', (e) => keys[e.code] = false);
 
         const boatState = { speed: 0, heading: 0 };
@@ -480,7 +522,7 @@
             }
         }
 
-        // --- 11. DYNAMIC WEATHER & DAY-NIGHT MANAGER ---
+        // --- 11. METEO MANAGER ---
         const meteoStates = ["SUNNY", "CLOUDY", "RAINY", "STORMY", "FOGGY"];
         let currentMeteoIdx = 0;
 
@@ -489,77 +531,91 @@
             const state = meteoStates[currentMeteoIdx];
             document.getElementById('weatherVal').innerText = `METEO: ${state}`;
 
-            // Visual Adjustments for Weather
             cloudGroup.visible = (state === "CLOUDY" || state === "RAINY" || state === "STORMY");
             rainParticles.visible = (state === "RAINY" || state === "STORMY");
-            scene.fog.density = (state === "FOGGY") ? 0.02 : 0.004;
+            scene.fog.density = (state === "FOGGY") ? 0.018 : 0.004;
 
-            // Swell Intensity Shifts
             if (state === "STORMY") {
                 targetWaveAmp = 1.4;
                 document.getElementById('swellVal').innerText = "SWELL: HEAVY STORM";
             } else if (state === "RAINY" || state === "CLOUDY") {
-                targetWaveAmp = 0.9;
+                targetWaveAmp = 0.85;
                 document.getElementById('swellVal').innerText = "SWELL: MODERATE";
             } else {
-                targetWaveAmp = 0.4;
+                targetWaveAmp = 0.45;
                 document.getElementById('swellVal').innerText = "SWELL: CALM";
             }
         }, 12000);
 
-        // --- 12. ANIMATION & RENDER LOOP ---
+        // --- 12. ANIMATION & MAIN RENDER LOOP ---
         const clock = new THREE.Clock();
 
         function animate() {
             requestAnimationFrame(animate);
-            const t = clock.getElapsedTime();
+            const t = clock.getElapsedTime() + timeOffset;
 
-            // 1. Day & Night Cycle Engine
-            const dayCycle = (Math.sin(t * 0.1) + 1) / 2; // Smooth 0..1 transition
+            // 1. Precise Day / Dusk / Night Transitions
+            const dayCycle = (Math.sin(t * 0.1) + 1) / 2;
             const sunAngle = t * 0.1;
             sun.position.x = Math.cos(sunAngle) * 350;
-            sun.position.y = Math.sin(sunAngle) * 200;
+            sun.position.y = Math.sin(sunAngle) * 220;
 
             const daySky = new THREE.Color(0x38bdf8);
-            const duskSky = new THREE.Color(0x2d104d);
-            const nightSkyColor = new THREE.Color(0x030712);
+            const duskSky = new THREE.Color(0xd97706);
+            const nightSky = new THREE.Color(0x030712);
 
             let currentSky = new THREE.Color();
             if (dayCycle > 0.5) currentSky.lerpColors(duskSky, daySky, (dayCycle - 0.5) * 2);
-            else currentSky.lerpColors(nightSkyColor, duskSky, dayCycle * 2);
+            else currentSky.lerpColors(nightSky, duskSky, dayCycle * 2);
 
             scene.background = currentSky;
             scene.fog.color = currentSky;
-            ambLight.intensity = 0.2 + dayCycle * 0.6;
+            ambLight.intensity = 0.25 + dayCycle * 0.55;
 
             const hours = Math.floor(dayCycle * 24);
             document.getElementById('timeVal').innerText = `TIME (${hours.toString().padStart(2, '0')}:00)`;
 
-            // 2. Wave Height Interpolation
+            // 2. Rotate Lighthouse Beam
+            lhLight.target.position.set(
+                lighthouseGroup.position.x + Math.sin(t * 1.5) * 100,
+                0,
+                lighthouseGroup.position.z + Math.cos(t * 1.5) * 100
+            );
+            lhLight.target.updateMatrixWorld();
+
+            // 3. Wave Height Smoothing
             currentWaveAmp += (targetWaveAmp - currentWaveAmp) * 0.02;
 
-            // 3. Lightning Flashes in Storm Mode
+            // 4. Storm Lightning Flashes
             if (meteoStates[currentMeteoIdx] === "STORMY" && Math.random() < 0.008) {
                 lightningLight.intensity = 5;
                 playSound('thunder');
-                setTimeout(() => lightningLight.intensity = 0, 150);
+                setTimeout(() => lightningLight.intensity = 0, 140);
             }
 
-            // 4. Rain Particles Downward Motion
+            // 5. Rain Particle Motion
             if (rainParticles.visible) {
                 const positions = rainParticles.geometry.attributes.position.array;
                 for (let i = 1; i < rainCount * 3; i += 3) {
                     positions[i] -= 1.8;
-                    if (positions[i] < 0) positions[i] = 80;
+                    if (positions[i] < 0) positions[i] = 90;
                 }
                 rainParticles.geometry.attributes.position.needsUpdate = true;
             }
 
-            // 5. Bob Foot Tapping Animation
-            bob.lLeg.rotation.x = Math.PI / 2 + Math.sin(t * 4) * 0.08;
-            bob.head.rotation.y = Math.sin(t * 0.8) * 0.2;
+            // 6. Water Spray Particle Motion
+            const sprayPositions = sprayParticles.geometry.attributes.position.array;
+            for (let i = 0; i < sprayCount * 3; i += 3) {
+                sprayPositions[i+1] += (boatState.speed * 0.5 + 0.05);
+                if (sprayPositions[i+1] > 1.8) sprayPositions[i+1] = 0.2;
+            }
+            sprayParticles.geometry.attributes.position.needsUpdate = true;
 
-            // 6. Player Control & Walk Animations
+            // 7. Bob Seated Foot Tapping & Relaxed Animations
+            bob.lLeg.rotation.x = Math.PI / 2 + Math.sin(t * 3.5) * 0.06;
+            bob.head.rotation.y = Math.sin(t * 0.7) * 0.18;
+
+            // 8. Player Controls & Character Walk Cycle
             if (!isDriving) {
                 const moveSpeed = 0.07;
                 let moveX = 0, moveZ = 0;
@@ -586,13 +642,13 @@
 
                 if (isFishingAnim) player.rArm.rotation.x = -Math.PI / 1.5;
 
-                // Deck Clamping
+                // Restrict Player Movement inside Deck Boundaries
                 player.group.position.x = Math.max(-2.5, Math.min(2.5, player.group.position.x));
                 player.group.position.z = Math.max(-6.2, Math.min(6.2, player.group.position.z));
             } else {
                 if (keys['KeyA']) boatState.heading += 0.015;
                 if (keys['KeyD']) boatState.heading -= 0.015;
-                if (keys['KeyW']) boatState.speed = Math.min(0.25, boatState.speed + 0.003);
+                if (keys['KeyW']) boatState.speed = Math.min(0.28, boatState.speed + 0.003);
                 if (keys['KeyS']) boatState.speed = Math.max(0, boatState.speed - 0.003);
 
                 player.group.position.set(0, 1.1, -4.5);
@@ -601,7 +657,7 @@
                 wheelGroup.rotation.z = -boatState.heading * 5;
             }
 
-            // Boat Propulsion & Ocean Waves Simulation
+            // Boat Navigation Dynamics & Wave Simulation
             boatState.speed *= 0.98;
             boatGroup.position.x += Math.sin(boatState.heading) * boatState.speed;
             boatGroup.position.z += Math.cos(boatState.heading) * boatState.speed;
@@ -621,7 +677,7 @@
 
             flag.rotation.y = Math.sin(t * 5) * 0.15;
 
-            // Orbit Camera
+            // Camera Orbit Setup
             const camDist = 6.5;
             const targetPos = player.group.getWorldPosition(new THREE.Vector3());
             camera.position.x = targetPos.x + camDist * Math.sin(camYaw) * Math.cos(camPitch);
@@ -633,7 +689,7 @@
             fishDisplayGroup.rotation.y += 0.03;
             fishRenderer.render(fishScene, fishCam);
 
-            // Proximity HUD Prompt Logic
+            // Proximity HUD Prompt Check
             const prompt = document.getElementById('prompt');
             const distHelm = player.group.position.distanceTo(helmStand.position);
             const distBob = player.group.position.distanceTo(bob.group.position);
