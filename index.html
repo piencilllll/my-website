@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KINETIC SEA // DELUXE PIXEL EDITION</title>
+    <title>KINETIC SEA // DELUXE EXPANDED EDITION</title>
     <style>
         :root {
             --border: #ffffff;
@@ -13,7 +13,6 @@
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
         html, body { width: 100vw; height: 100vh; overflow: hidden; background: #000; color: #fff; font-family: var(--font); }
 
-        /* Pixelated Canvas Rendering */
         #webgl-canvas {
             width: 100%; height: 100%; display: block;
             image-rendering: pixelated; image-rendering: crisp-edges;
@@ -29,11 +28,40 @@
 
         .hud-card {
             background: rgba(0, 0, 0, 0.85); border: 2px solid var(--border);
-            padding: 10px 16px; border-radius: 4px; pointer-events: auto; max-width: 340px;
+            padding: 10px 16px; border-radius: 4px; pointer-events: auto; max-width: 320px;
         }
 
         .hud-title { font-size: 0.75rem; color: #aaa; letter-spacing: 1px; }
         .hud-val { font-size: 1rem; font-weight: bold; color: #fff; margin-top: 2px; }
+
+        /* COMPASS HUD */
+        .compass-hud {
+            position: absolute; top: 20px; right: 20px;
+            width: 90px; height: 90px; border: 3px solid #fff; border-radius: 50%;
+            background: rgba(0, 0, 0, 0.85); pointer-events: auto;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.6);
+        }
+
+        #compassNeedle {
+            width: 4px; height: 60px; background: linear-gradient(to bottom, #ef4444 50%, #ffffff 50%);
+            border-radius: 2px; transform-origin: center; transition: transform 0.1s ease-out;
+        }
+
+        /* METEO SELECTOR CONTROL PANEL */
+        .meteo-panel {
+            position: absolute; top: 125px; right: 20px;
+            background: rgba(0, 0, 0, 0.85); border: 2px solid var(--border);
+            padding: 10px; border-radius: 4px; pointer-events: auto;
+            display: flex; flex-direction: column; gap: 6px; width: 140px;
+        }
+
+        .meteo-btn {
+            background: #000; color: #fff; border: 1px solid #fff;
+            padding: 4px 8px; font-family: var(--font); font-size: 0.75rem;
+            font-weight: bold; cursor: pointer; text-align: left; transition: all 0.1s;
+        }
+        .meteo-btn:hover { background: #38bdf8; color: #000; border-color: #38bdf8; }
 
         .interaction-prompt {
             position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%);
@@ -41,7 +69,7 @@
             font-size: 0.9rem; display: none; box-shadow: 4px 4px 0px #000; z-index: 15;
         }
 
-        /* UNDERTALE / DELTARUNE STYLE DIALOGUE BOX */
+        /* UNDERTALE STYLE DIALOGUE BOX */
         .undertale-box {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
             width: 90%; max-width: 650px; background: #000;
@@ -85,19 +113,25 @@
     <canvas id="webgl-canvas"></canvas>
 
     <div class="hud-layer">
-        <div style="display: flex; justify-content: space-between; width: 100%;">
-            <div class="hud-card">
-                <div class="hud-title">ENVIRONMENT LOG</div>
-                <div class="hud-val" id="timeVal">DAY (12:00)</div>
-                <div style="font-size: 0.75rem; color: #38bdf8; margin-top: 4px;" id="weatherVal">METEO: SUNNY</div>
-                <div style="font-size: 0.75rem; color: #fbbf24; margin-top: 2px;" id="swellVal">SWELL: MODERATE</div>
-            </div>
+        <div class="hud-card">
+            <div class="hud-title">ENVIRONMENT LOG</div>
+            <div class="hud-val" id="timeVal">DAY (12:00)</div>
+            <div style="font-size: 0.75rem; color: #38bdf8; margin-top: 4px;" id="weatherVal">METEO: SUNNY</div>
+            <div style="font-size: 0.75rem; color: #fbbf24; margin-top: 2px;" id="swellVal">SWELL: MODERATE</div>
+        </div>
 
-            <div class="hud-card" style="text-align: right;">
-                <div class="hud-title">VESSEL TELEMETRY</div>
-                <div class="hud-val" id="speedVal">0.0 KTS</div>
-                <div style="font-size: 0.75rem; color: #22c55e; margin-top: 4px;" id="modeVal">MODE: DECK WALK</div>
-            </div>
+        <div class="compass-hud">
+            <div id="compassNeedle"></div>
+            <span style="position: absolute; top: 4px; font-weight: bold; font-size: 0.7rem; color: #ef4444;">N</span>
+        </div>
+
+        <div class="meteo-panel">
+            <div style="font-size: 0.65rem; color: #aaa; margin-bottom: 2px;">WEATHER CONTROL</div>
+            <button class="meteo-btn" onclick="setWeatherManual(0)">☀️ SUNNY</button>
+            <button class="meteo-btn" onclick="setWeatherManual(1)">☁️ CLOUDY</button>
+            <button class="meteo-btn" onclick="setWeatherManual(2)">🌧️ RAINY</button>
+            <button class="meteo-btn" onclick="setWeatherManual(3)">⚡ STORMY</button>
+            <button class="meteo-btn" onclick="setWeatherManual(4)">🌫️ FOGGY</button>
         </div>
 
         <div class="interaction-prompt" id="prompt">[E] INTERACT</div>
@@ -137,10 +171,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
-        // --- 1. PROCEDURAL SOUND SYNTHESIZER ---
+        // --- 1. PROCEDURAL AUDIO SYNTHESIZER ---
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         let audioCtx = null;
-
         function initAudio() { if (!audioCtx) audioCtx = new AudioCtx(); }
 
         function playSound(type) {
@@ -175,16 +208,10 @@
                 const data = buffer.getChannelData(0);
                 for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
 
-                const noise = audioCtx.createBufferSource();
-                noise.buffer = buffer;
-
-                const filter = audioCtx.createBiquadFilter();
-                filter.type = 'lowpass';
-                filter.frequency.setValueAtTime(220, now);
-                filter.frequency.linearRampToValueAtTime(35, now + 1.2);
-
-                const tGain = audioCtx.createGain();
-                tGain.gain.setValueAtTime(0.45, now);
+                const noise = audioCtx.createBufferSource(); noise.buffer = buffer;
+                const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(220, now); filter.frequency.linearRampToValueAtTime(35, now + 1.2);
+                const tGain = audioCtx.createGain(); tGain.gain.setValueAtTime(0.45, now);
                 tGain.gain.exponentialRampToValueAtTime(0.01, now + 1.4);
 
                 noise.connect(filter); filter.connect(tGain); tGain.connect(audioCtx.destination);
@@ -192,7 +219,7 @@
             }
         }
 
-        // --- 2. SCENE SETUP WITH RETRO PIXELATION SCALE ---
+        // --- 2. SCENE SETUP & RETRO RENDERER ---
         const canvas = document.getElementById('webgl-canvas');
         const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
         const pixelScale = 0.45;
@@ -200,25 +227,30 @@
         renderer.shadowMap.enabled = true;
 
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1200);
 
-        // --- 3. ENVIRONMENT, LIGHTHOUSE & METEO SYSTEMS ---
+        // --- 3. DYNAMIC SKY, STARS & CELESTIAL BODIES ---
         const sun = new THREE.Mesh(new THREE.SphereGeometry(14, 32, 32), new THREE.MeshBasicMaterial({ color: 0xfbbf24 }));
         scene.add(sun);
 
-        const ring = new THREE.Mesh(
-            new THREE.RingGeometry(220, 300, 64),
-            new THREE.MeshBasicMaterial({ color: 0xc084fc, side: THREE.DoubleSide, transparent: true, opacity: 0.35 })
-        );
-        ring.rotation.x = Math.PI / 2.2; ring.position.set(0, 220, -500); scene.add(ring);
+        // Starfield during Night
+        const starGeo = new THREE.BufferGeometry();
+        const starCount = 600;
+        const starPos = new Float32Array(starCount * 3);
+        for(let i=0; i<starCount*3; i+=3) {
+            starPos[i] = (Math.random() - 0.5) * 800;
+            starPos[i+1] = 100 + Math.random() * 300;
+            starPos[i+2] = (Math.random() - 0.5) * 800;
+        }
+        starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        const starfield = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 1.2, transparent: true, opacity: 0.8 }));
+        scene.add(starfield);
 
         const ambLight = new THREE.AmbientLight(0xc084fc, 0.6); scene.add(ambLight);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
-        dirLight.position.set(0, 100, -200); scene.add(dirLight);
-
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.0); dirLight.position.set(0, 100, -200); scene.add(dirLight);
         scene.fog = new THREE.FogExp2(0x2d104d, 0.005);
 
-        // Distance Lighthouse Landmark
+        // --- 4. LANDMARKS: LIGHTHOUSE & ISLAND ARCHIPELAGO ---
         const lighthouseGroup = new THREE.Group();
         const lhBase = new THREE.Mesh(new THREE.CylinderGeometry(8, 12, 45, 12), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 }));
         lhBase.position.y = 20; lighthouseGroup.add(lhBase);
@@ -231,17 +263,34 @@
         lighthouseGroup.position.set(-250, 0, -350);
         scene.add(lighthouseGroup);
 
+        // Procedural Horizon Islands
+        function createIsland(x, z, scale) {
+            const islandGroup = new THREE.Group();
+            const islandMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9, flatShading: true });
+            const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(25 * scale, 1), islandMat);
+            rock.scale.set(1.5, 0.6, 1.2); rock.position.y = 5 * scale;
+            islandGroup.add(rock);
+
+            const foliage = new THREE.Mesh(new THREE.DodecahedronGeometry(12 * scale, 1), new THREE.MeshStandardMaterial({ color: 0x0f766e, flatShading: true }));
+            foliage.position.set(0, 15 * scale, 0); islandGroup.add(foliage);
+
+            islandGroup.position.set(x, 0, z);
+            scene.add(islandGroup);
+        }
+        createIsland(300, -400, 1.4);
+        createIsland(-380, 200, 1.8);
+
         // Weather Cloud System
         const cloudGroup = new THREE.Group(); scene.add(cloudGroup);
         const cloudMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.9, transparent: true, opacity: 0.8 });
-        for (let i = 0; i < 30; i++) {
-            const cloud = new THREE.Mesh(new THREE.DodecahedronGeometry(15 + Math.random() * 15, 1), cloudMat);
-            cloud.position.set((Math.random() - 0.5) * 600, 50 + Math.random() * 30, (Math.random() - 0.5) * 600);
+        for (let i = 0; i < 35; i++) {
+            const cloud = new THREE.Mesh(new THREE.DodecahedronGeometry(15 + Math.random() * 18, 1), cloudMat);
+            cloud.position.set((Math.random() - 0.5) * 700, 60 + Math.random() * 30, (Math.random() - 0.5) * 700);
             cloudGroup.add(cloud);
         }
         cloudGroup.visible = false;
 
-        // Rain Drops System
+        // Rain Drops
         const rainGeo = new THREE.BufferGeometry();
         const rainCount = 1400;
         const rainPos = new Float32Array(rainCount * 3);
@@ -254,11 +303,11 @@
         const rainParticles = new THREE.Points(rainGeo, new THREE.PointsMaterial({ color: 0x38bdf8, size: 0.6, transparent: true, opacity: 0.6 }));
         scene.add(rainParticles); rainParticles.visible = false;
 
-        // Thunder Flash Light
+        // Thunder Flash
         const lightningLight = new THREE.PointLight(0xffffff, 0, 500);
         lightningLight.position.set(0, 80, 0); scene.add(lightningLight);
 
-        // --- 4. OCEAN ENGINE WITH VARIABLE SWELLS ---
+        // --- 5. OCEAN ENGINE & BIOLUMINESCENT JELLYFISH ---
         const oceanGeo = new THREE.PlaneGeometry(900, 900, 85, 85);
         oceanGeo.rotateX(-Math.PI / 2);
         const oceanMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.1, flatShading: true });
@@ -270,19 +319,27 @@
 
         let currentWaveAmp = 0.5;
         let targetWaveAmp = 0.5;
-
         function getWaveHeight(x, z, t) {
             return Math.sin(x * 0.04 + t * 2) * currentWaveAmp + Math.cos(z * 0.04 + t * 1.5) * currentWaveAmp;
         }
 
-        // --- 5. BOAT ENGINE & SPRAY PARTICLES ---
+        // Bioluminescent Jellyfish
+        const jellyGroup = new THREE.Group(); scene.add(jellyGroup);
+        const jellyMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, wireframe: true, transparent: true, opacity: 0.6 });
+        const jellies = [];
+        for (let i = 0; i < 8; i++) {
+            const jMesh = new THREE.Mesh(new THREE.SphereGeometry(0.8, 8, 8), jellyMat);
+            jMesh.position.set((Math.random() - 0.5) * 120, -0.5, (Math.random() - 0.5) * 120);
+            jellyGroup.add(jMesh); jellies.push(jMesh);
+        }
+
+        // --- 6. BOAT ENGINE, SPRAY & EXHAUST PARTICLES ---
         const boatGroup = new THREE.Group(); scene.add(boatGroup);
         const woodMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.6 });
         const railMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.5 });
 
-        // Hull & Deck Deck
+        // Hull & Deck
         const deck = new THREE.Mesh(new THREE.BoxGeometry(6, 0.6, 14), woodMat); deck.position.y = 0.8; boatGroup.add(deck);
-
         const lRail = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 14), railMat); lRail.position.set(-2.9, 1.4, 0);
         const rRail = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 14), railMat); rRail.position.set(2.9, 1.4, 0);
         const bRail = new THREE.Mesh(new THREE.BoxGeometry(6, 0.6, 0.2), railMat); bRail.position.set(0, 1.4, 6.9);
@@ -292,11 +349,9 @@
         const wheelGroup = new THREE.Group();
         const wheelRing = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.06, 8, 16), woodMat); wheelGroup.add(wheelRing); wheelGroup.position.set(0, 2.2, -5.3); boatGroup.add(wheelGroup);
 
-        // BENCH FOR BOB (Deck level = Y 0.8, Seat surface = Y 1.1)
+        // BENCH FOR BOB
         const benchSeat = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.15, 2.2), woodMat);
         benchSeat.position.set(2.2, 1.1, -1.5); boatGroup.add(benchSeat);
-        const benchLeg1 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.3, 0.1), woodMat); benchLeg1.position.set(2.2, 0.95, -2.4); boatGroup.add(benchLeg1);
-        const benchLeg2 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.3, 0.1), woodMat); benchLeg2.position.set(2.2, 0.95, -0.6); boatGroup.add(benchLeg2);
 
         // Mast & Flag
         const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 8), woodMat); mast.position.set(0, 4.8, 0); boatGroup.add(mast);
@@ -312,20 +367,29 @@
         const rodPole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.015, 3.5), woodMat); rodPole.rotation.z = -Math.PI / 4; rodGroup.add(rodPole);
         rodGroup.position.set(-2.8, 1.5, 3); boatGroup.add(rodGroup);
 
-        // Bow Water Spray Particle System
+        // Bow Water Spray
         const sprayGeo = new THREE.BufferGeometry();
         const sprayCount = 80;
         const sprayPos = new Float32Array(sprayCount * 3);
         for(let i=0; i<sprayCount*3; i+=3) {
-            sprayPos[i] = (Math.random() - 0.5) * 3;
-            sprayPos[i+1] = 0.2;
-            sprayPos[i+2] = -6.5 - Math.random() * 2;
+            sprayPos[i] = (Math.random() - 0.5) * 3; sprayPos[i+1] = 0.2; sprayPos[i+2] = -6.5 - Math.random() * 2;
         }
         sprayGeo.setAttribute('position', new THREE.BufferAttribute(sprayPos, 3));
         const sprayParticles = new THREE.Points(sprayGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.35, transparent: true, opacity: 0.5 }));
         boatGroup.add(sprayParticles);
 
-        // --- 6. STICKMAN BUILDER & FIXED SEATING LOGIC ---
+        // Engine Smoke Particles
+        const smokeGeo = new THREE.BufferGeometry();
+        const smokeCount = 40;
+        const smokePos = new Float32Array(smokeCount * 3);
+        for(let i=0; i<smokeCount*3; i+=3) {
+            smokePos[i] = (Math.random() - 0.5) * 0.4; smokePos[i+1] = 1.2; smokePos[i+2] = 6.5 + Math.random() * 1.5;
+        }
+        smokeGeo.setAttribute('position', new THREE.BufferAttribute(smokePos, 3));
+        const smokeParticles = new THREE.Points(smokeGeo, new THREE.PointsMaterial({ color: 0x94a3b8, size: 0.5, transparent: true, opacity: 0.4 }));
+        boatGroup.add(smokeParticles);
+
+        // --- 7. CHARACTERS & BOB BENCH FIX ---
         const stickMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
 
         function buildStickman() {
@@ -350,17 +414,15 @@
 
         const player = buildStickman(); player.group.position.set(0, 1.1, 2); boatGroup.add(player.group);
 
-        // BOB PLACEMENT FIX: Position lowered to Y=0.85 so hips rest directly on top of the seat surface (no floating!)
         const bob = buildStickman();
         bob.group.position.set(2.2, 0.85, -1.5);
         bob.group.rotation.y = -Math.PI / 2;
         boatGroup.add(bob.group);
 
-        // Sit legs forward over the bench front edge
         bob.lLeg.rotation.x = Math.PI / 2; bob.rLeg.rotation.x = Math.PI / 2;
         bob.lArm.rotation.x = 0.3; bob.rArm.rotation.x = 0.3;
 
-        // --- 7. UNDERTALE FACE PORTRAIT CANVAS ---
+        // --- 8. UNDERTALE FACE PORTRAIT ---
         const faceCanvas = document.getElementById('faceCanvas');
         const fCtx = faceCanvas.getContext('2d');
 
@@ -368,26 +430,21 @@
             fCtx.fillStyle = '#000'; fCtx.fillRect(0, 0, 36, 36);
             fCtx.strokeStyle = '#fff'; fCtx.lineWidth = 2;
             fCtx.beginPath(); fCtx.arc(18, 18, 12, 0, Math.PI * 2); fCtx.stroke();
-
-            fCtx.lineWidth = 2; fCtx.beginPath();
+            fCtx.beginPath();
             if (expression === 'happy') {
-                fCtx.moveTo(11, 13); fCtx.lineTo(15, 11);
-                fCtx.moveTo(21, 11); fCtx.lineTo(25, 13);
+                fCtx.moveTo(11, 13); fCtx.lineTo(15, 11); fCtx.moveTo(21, 11); fCtx.lineTo(25, 13);
             } else if (expression === 'thoughtful') {
-                fCtx.moveTo(11, 11); fCtx.lineTo(15, 11);
-                fCtx.moveTo(21, 14); fCtx.lineTo(25, 12);
+                fCtx.moveTo(11, 11); fCtx.lineTo(15, 11); fCtx.moveTo(21, 14); fCtx.lineTo(25, 12);
             } else if (expression === 'surprised') {
-                fCtx.moveTo(11, 10); fCtx.lineTo(15, 8);
-                fCtx.moveTo(21, 8); fCtx.lineTo(25, 10);
+                fCtx.moveTo(11, 10); fCtx.lineTo(15, 8); fCtx.moveTo(21, 8); fCtx.lineTo(25, 10);
             } else {
-                fCtx.moveTo(11, 12); fCtx.lineTo(15, 12);
-                fCtx.moveTo(21, 12); fCtx.lineTo(25, 12);
+                fCtx.moveTo(11, 12); fCtx.lineTo(15, 12); fCtx.moveTo(21, 12); fCtx.lineTo(25, 12);
             }
             fCtx.stroke();
         }
         drawBobFace('happy');
 
-        // --- 8. ENHANCED FISH SPECIMEN 3D PREVIEW ---
+        // --- 9. FISH SPECIMENS ---
         const fishCanvas = document.getElementById('fishCanvas');
         const fishRenderer = new THREE.WebGLRenderer({ canvas: fishCanvas, antialias: false, alpha: true });
         fishRenderer.setSize(200 * pixelScale, 150 * pixelScale, false);
@@ -399,51 +456,25 @@
         const fishDisplayGroup = new THREE.Group(); fishScene.add(fishDisplayGroup);
 
         const fishList = [
-            {
-                name: "WHITE-FLUID SKIMMER",
-                desc: "A sleek, fast swimmer that skims top-layer kinetic ocean currents.",
-                geo: new THREE.ConeGeometry(0.4, 1.3, 6),
-                col: 0x38bdf8
-            },
-            {
-                name: "SPIKE-TAILED EEL",
-                desc: "Extremely rare predator lurking deep within storm swells.",
-                geo: new THREE.CylinderGeometry(0.12, 0.35, 1.5, 8),
-                col: 0xc084fc
-            },
-            {
-                name: "KINETIC RAY",
-                desc: "Flat-bodied species that glides smoothly across underwater turbulence.",
-                geo: new THREE.BoxGeometry(1.0, 0.1, 1.0),
-                col: 0xef4444
-            },
-            {
-                name: "DEEPSEA ANGLER",
-                desc: "Equipped with bioluminescent lures to navigate nighttime sea fog.",
-                geo: new THREE.DodecahedronGeometry(0.55, 1),
-                col: 0x22c55e
-            },
-            {
-                name: "GOLDEN CROWN-FISH",
-                desc: "A legendary trophy specimen found only near distance lighthouse waters.",
-                geo: new THREE.OctahedronGeometry(0.6, 0),
-                col: 0xfbbf24
-            }
+            { name: "WHITE-FLUID SKIMMER", desc: "A sleek, fast swimmer that skims top-layer kinetic ocean currents.", geo: new THREE.ConeGeometry(0.4, 1.3, 6), col: 0x38bdf8 },
+            { name: "SPIKE-TAILED EEL", desc: "Extremely rare predator lurking deep within storm swells.", geo: new THREE.CylinderGeometry(0.12, 0.35, 1.5, 8), col: 0xc084fc },
+            { name: "KINETIC RAY", desc: "Flat-bodied species that glides smoothly across underwater turbulence.", geo: new THREE.BoxGeometry(1.0, 0.1, 1.0), col: 0xef4444 },
+            { name: "DEEPSEA ANGLER", desc: "Equipped with bioluminescent lures to navigate nighttime sea fog.", geo: new THREE.DodecahedronGeometry(0.55, 1), col: 0x22c55e },
+            { name: "GOLDEN CROWN-FISH", desc: "A legendary trophy specimen found only near distance lighthouse waters.", geo: new THREE.OctahedronGeometry(0.6, 0), col: 0xfbbf24 }
         ];
 
         function setFishDisplay(index) {
             while(fishDisplayGroup.children.length > 0) fishDisplayGroup.remove(fishDisplayGroup.children[0]);
             const item = fishList[index];
             const mesh = new THREE.Mesh(item.geo, new THREE.MeshStandardMaterial({ color: item.col, flatShading: true }));
-            mesh.rotation.z = Math.PI / 2;
-            fishDisplayGroup.add(mesh);
+            mesh.rotation.z = Math.PI / 2; fishDisplayGroup.add(mesh);
         }
 
-        // --- 9. DIALOGUE SYSTEM ---
+        // --- 10. DIALOGUE & FISHING ---
         const bobDialogues = [
             { text: "* Ah, sitting right on this bench feels great. Ocean swells look wild today!", expr: "happy" },
-            { text: "* See that lighthouse out in the distance? That keeps our heading safe.", expr: "thoughtful" },
-            { text: "* Press [T] whenever you want to fast-forward the day/night cycle!", expr: "surprised" },
+            { text: "* Use the Weather Control panel on the top right to change the sea conditions!", expr: "surprised" },
+            { text: "* Check your compass in the corner to stay oriented with North.", expr: "thoughtful" },
             { text: "* Cast your line near the stern! There are 5 rare specimen types out here.", expr: "neutral" }
         ];
         let bobIdx = 0;
@@ -476,7 +507,24 @@
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-        // --- 10. CONTROLS & MANUAL TIME OVERRIDE ---
+        // --- 11. MANUAL WEATHER & TIME CONTROLS ---
+        const meteoStates = ["SUNNY", "CLOUDY", "RAINY", "STORMY", "FOGGY"];
+        let currentMeteoIdx = 0;
+
+        function setWeatherManual(idx) {
+            currentMeteoIdx = idx;
+            const state = meteoStates[currentMeteoIdx];
+            document.getElementById('weatherVal').innerText = `METEO: ${state}`;
+
+            cloudGroup.visible = (state === "CLOUDY" || state === "RAINY" || state === "STORMY");
+            rainParticles.visible = (state === "RAINY" || state === "STORMY");
+            scene.fog.density = (state === "FOGGY") ? 0.018 : 0.004;
+
+            if (state === "STORMY") { targetWaveAmp = 1.4; document.getElementById('swellVal').innerText = "SWELL: HEAVY STORM"; }
+            else if (state === "RAINY" || state === "CLOUDY") { targetWaveAmp = 0.85; document.getElementById('swellVal').innerText = "SWELL: MODERATE"; }
+            else { targetWaveAmp = 0.45; document.getElementById('swellVal').innerText = "SWELL: CALM"; }
+        }
+
         let isDriving = false;
         let camYaw = 0, camPitch = 0.3;
         let isMouseDown = false;
@@ -497,7 +545,7 @@
         const keys = {};
         window.addEventListener('keydown', (e) => {
             keys[e.code] = true;
-            if (e.code === 'KeyT') timeOffset += 4.0; // Fast forward time
+            if (e.code === 'KeyT') timeOffset += 4.0;
             handleInteraction(e.code);
         });
         window.addEventListener('keyup', (e) => keys[e.code] = false);
@@ -510,51 +558,20 @@
                 const distBob = player.group.position.distanceTo(bob.group.position);
                 const distRod = player.group.position.distanceTo(rodGroup.position);
 
-                if (distHelm < 2) {
-                    isDriving = !isDriving;
-                    document.getElementById('modeVal').innerText = isDriving ? "MODE: STEERING HELM" : "MODE: DECK WALK";
-                } else if (distBob < 2) {
-                    openModal('dialogBox');
-                    drawBobFace(bobDialogues[bobIdx].expr);
-                } else if (distRod < 2) {
-                    triggerFishing();
-                }
+                if (distHelm < 2) isDriving = !isDriving;
+                else if (distBob < 2) { openModal('dialogBox'); drawBobFace(bobDialogues[bobIdx].expr); }
+                else if (distRod < 2) triggerFishing();
             }
         }
 
-        // --- 11. METEO MANAGER ---
-        const meteoStates = ["SUNNY", "CLOUDY", "RAINY", "STORMY", "FOGGY"];
-        let currentMeteoIdx = 0;
-
-        setInterval(() => {
-            currentMeteoIdx = (currentMeteoIdx + 1) % meteoStates.length;
-            const state = meteoStates[currentMeteoIdx];
-            document.getElementById('weatherVal').innerText = `METEO: ${state}`;
-
-            cloudGroup.visible = (state === "CLOUDY" || state === "RAINY" || state === "STORMY");
-            rainParticles.visible = (state === "RAINY" || state === "STORMY");
-            scene.fog.density = (state === "FOGGY") ? 0.018 : 0.004;
-
-            if (state === "STORMY") {
-                targetWaveAmp = 1.4;
-                document.getElementById('swellVal').innerText = "SWELL: HEAVY STORM";
-            } else if (state === "RAINY" || state === "CLOUDY") {
-                targetWaveAmp = 0.85;
-                document.getElementById('swellVal').innerText = "SWELL: MODERATE";
-            } else {
-                targetWaveAmp = 0.45;
-                document.getElementById('swellVal').innerText = "SWELL: CALM";
-            }
-        }, 12000);
-
-        // --- 12. ANIMATION & MAIN RENDER LOOP ---
+        // --- 12. ANIMATION LOOP ---
         const clock = new THREE.Clock();
 
         function animate() {
             requestAnimationFrame(animate);
             const t = clock.getElapsedTime() + timeOffset;
 
-            // 1. Precise Day / Dusk / Night Transitions
+            // 1. Precise Day / Night Cycle
             const dayCycle = (Math.sin(t * 0.1) + 1) / 2;
             const sunAngle = t * 0.1;
             sun.position.x = Math.cos(sunAngle) * 350;
@@ -571,11 +588,15 @@
             scene.background = currentSky;
             scene.fog.color = currentSky;
             ambLight.intensity = 0.25 + dayCycle * 0.55;
+            starfield.material.opacity = Math.max(0, (0.4 - dayCycle) * 2);
 
             const hours = Math.floor(dayCycle * 24);
             document.getElementById('timeVal').innerText = `TIME (${hours.toString().padStart(2, '0')}:00)`;
 
-            // 2. Rotate Lighthouse Beam
+            // 2. Compass Needle Alignment
+            document.getElementById('compassNeedle').style.transform = `rotate(${-boatState.heading * (180 / Math.PI)}deg)`;
+
+            // 3. Rotate Lighthouse Light
             lhLight.target.position.set(
                 lighthouseGroup.position.x + Math.sin(t * 1.5) * 100,
                 0,
@@ -583,17 +604,14 @@
             );
             lhLight.target.updateMatrixWorld();
 
-            // 3. Wave Height Smoothing
+            // 4. Wave Smoothing & Ocean Motion
             currentWaveAmp += (targetWaveAmp - currentWaveAmp) * 0.02;
 
-            // 4. Storm Lightning Flashes
             if (meteoStates[currentMeteoIdx] === "STORMY" && Math.random() < 0.008) {
-                lightningLight.intensity = 5;
-                playSound('thunder');
+                lightningLight.intensity = 5; playSound('thunder');
                 setTimeout(() => lightningLight.intensity = 0, 140);
             }
 
-            // 5. Rain Particle Motion
             if (rainParticles.visible) {
                 const positions = rainParticles.geometry.attributes.position.array;
                 for (let i = 1; i < rainCount * 3; i += 3) {
@@ -603,19 +621,31 @@
                 rainParticles.geometry.attributes.position.needsUpdate = true;
             }
 
-            // 6. Water Spray Particle Motion
+            // 5. Water Spray & Engine Smoke Motion
             const sprayPositions = sprayParticles.geometry.attributes.position.array;
-            for (let i = 0; i < sprayCount * 3; i += 3) {
-                sprayPositions[i+1] += (boatState.speed * 0.5 + 0.05);
-                if (sprayPositions[i+1] > 1.8) sprayPositions[i+1] = 0.2;
+            for (let i = 1; i < sprayCount * 3; i += 3) {
+                sprayPositions[i] += (boatState.speed * 0.5 + 0.05);
+                if (sprayPositions[i] > 1.8) sprayPositions[i] = 0.2;
             }
             sprayParticles.geometry.attributes.position.needsUpdate = true;
 
-            // 7. Bob Seated Foot Tapping & Relaxed Animations
+            const smokePositions = smokeParticles.geometry.attributes.position.array;
+            for (let i = 1; i < smokeCount * 3; i += 3) {
+                smokePositions[i] += 0.05;
+                if (smokePositions[i] > 3.5) smokePositions[i] = 1.2;
+            }
+            smokeParticles.geometry.attributes.position.needsUpdate = true;
+
+            // 6. Jellyfish Pulsing Motion
+            jellies.forEach((j, idx) => {
+                j.position.y = -0.5 + Math.sin(t * 2 + idx) * 0.3;
+            });
+
+            // 7. Bob Seated Foot Tapping & Head Movements
             bob.lLeg.rotation.x = Math.PI / 2 + Math.sin(t * 3.5) * 0.06;
             bob.head.rotation.y = Math.sin(t * 0.7) * 0.18;
 
-            // 8. Player Controls & Character Walk Cycle
+            // 8. Player Controls & Steering
             if (!isDriving) {
                 const moveSpeed = 0.07;
                 let moveX = 0, moveZ = 0;
@@ -630,10 +660,8 @@
                     const moveDir = new THREE.Vector3(moveX, 0, moveZ).applyAxisAngle(new THREE.Vector3(0, 1, 0), camYaw);
                     player.group.position.add(moveDir);
 
-                    player.lLeg.rotation.x = Math.sin(t * 10) * 0.6;
-                    player.rLeg.rotation.x = -Math.sin(t * 10) * 0.6;
-                    player.lArm.rotation.x = -Math.sin(t * 10) * 0.4;
-                    player.rArm.rotation.x = Math.sin(t * 10) * 0.4;
+                    player.lLeg.rotation.x = Math.sin(t * 10) * 0.6; player.rLeg.rotation.x = -Math.sin(t * 10) * 0.6;
+                    player.lArm.rotation.x = -Math.sin(t * 10) * 0.4; player.rArm.rotation.x = Math.sin(t * 10) * 0.4;
                     player.group.rotation.y = Math.atan2(moveDir.x, moveDir.z);
                 } else {
                     player.lLeg.rotation.x = 0; player.rLeg.rotation.x = 0;
@@ -642,7 +670,6 @@
 
                 if (isFishingAnim) player.rArm.rotation.x = -Math.PI / 1.5;
 
-                // Restrict Player Movement inside Deck Boundaries
                 player.group.position.x = Math.max(-2.5, Math.min(2.5, player.group.position.x));
                 player.group.position.z = Math.max(-6.2, Math.min(6.2, player.group.position.z));
             } else {
@@ -657,15 +684,14 @@
                 wheelGroup.rotation.z = -boatState.heading * 5;
             }
 
-            // Boat Navigation Dynamics & Wave Simulation
+            // Boat Navigation Dynamics
             boatState.speed *= 0.98;
             boatGroup.position.x += Math.sin(boatState.heading) * boatState.speed;
             boatGroup.position.z += Math.cos(boatState.heading) * boatState.speed;
             boatGroup.rotation.y = boatState.heading;
 
             for (let i = 0; i < posAttr.count; i++) {
-                const u = baseVerts[i * 3];
-                const v = baseVerts[i * 3 + 2];
+                const u = baseVerts[i * 3]; const v = baseVerts[i * 3 + 2];
                 posAttr.setY(i, getWaveHeight(u, v, t));
             }
             posAttr.needsUpdate = true;
@@ -677,7 +703,7 @@
 
             flag.rotation.y = Math.sin(t * 5) * 0.15;
 
-            // Camera Orbit Setup
+            // Camera Tracking Setup
             const camDist = 6.5;
             const targetPos = player.group.getWorldPosition(new THREE.Vector3());
             camera.position.x = targetPos.x + camDist * Math.sin(camYaw) * Math.cos(camPitch);
@@ -685,11 +711,11 @@
             camera.position.z = targetPos.z + camDist * Math.cos(camYaw) * Math.cos(camPitch);
             camera.lookAt(targetPos.clone().add(new THREE.Vector3(0, 0.7, 0)));
 
-            // 3D Fish Turntable Animation
+            // 3D Fish Preview Rotation
             fishDisplayGroup.rotation.y += 0.03;
             fishRenderer.render(fishScene, fishCam);
 
-            // Proximity HUD Prompt Check
+            // Proximity Prompt Check
             const prompt = document.getElementById('prompt');
             const distHelm = player.group.position.distanceTo(helmStand.position);
             const distBob = player.group.position.distanceTo(bob.group.position);
@@ -697,8 +723,6 @@
 
             if (distHelm < 2 || distBob < 2 || distRod < 2) prompt.style.display = 'block';
             else prompt.style.display = 'none';
-
-            document.getElementById('speedVal').innerText = `${(boatState.speed * 100).toFixed(1)} KTS`;
 
             renderer.render(scene, camera);
         }
