@@ -3,30 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Protocol | Terminal Adventure</title>
+    <title>Late Night Rain | A Quiet Story</title>
     <style>
         :root {
-            --bg-color: #0d0e15;
-            --card-bg: #151823;
-            --accent-cyan: #00f3ff;
-            --accent-glow: rgba(0, 243, 255, 0.4);
-            --accent-red: #ff2a6d;
-            --text-main: #d1d5db;
-            --text-bright: #ffffff;
-            --border-color: #2a2e3d;
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --accent-glow: #e3b341;
+            --accent-cyan: #58a6ff;
+            --text-main: #c9d1d9;
+            --text-bright: #f0f6fc;
+            --border-color: #30363d;
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            cursor: none; /* Hide default cursor */
+            cursor: none;
         }
 
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -35,59 +34,51 @@
             position: relative;
         }
 
-        /* Custom Glowing Cursor */
+        /* Custom Soft Glowing Cursor */
         #custom-cursor {
-            width: 16px;
-            height: 16px;
-            background: var(--accent-cyan);
+            width: 14px;
+            height: 14px;
+            background: var(--accent-glow);
             border-radius: 50%;
             position: fixed;
             pointer-events: none;
             z-index: 9999;
             transform: translate(-50%, -50%);
-            box-shadow: 0 0 15px var(--accent-cyan), 0 0 30px var(--accent-cyan);
-            transition: transform 0.05s ease-out;
+            box-shadow: 0 0 12px var(--accent-glow), 0 0 24px var(--accent-glow);
+            transition: transform 0.08s ease-out;
         }
 
-        /* Scanline FX Over Overlay */
-        .scanline {
+        /* Ambient Rain Overlay */
+        .ambient-overlay {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
-            background: linear-gradient(
-                to bottom,
-                rgba(255,255,255,0),
-                rgba(255,255,255,0) 50%,
-                rgba(0, 0, 0, 0.3) 50%,
-                rgba(0, 0, 0, 0.3)
-            );
-            background-size: 100% 4px;
+            background: radial-gradient(circle at 50% 30%, rgba(88, 166, 255, 0.05), transparent 70%);
             pointer-events: none;
-            z-index: 10;
-            opacity: 0.6;
+            z-index: 1;
         }
 
-        /* Container & Card */
+        /* Main Container */
         .game-container {
-            width: 90%;
-            max-width: 650px;
+            width: 92%;
+            max-width: 680px;
             background: var(--card-bg);
             border: 1px solid var(--border-color);
             border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 20px rgba(0, 243, 255, 0.1);
+            padding: 28px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6), 0 0 20px rgba(227, 179, 65, 0.05);
             position: relative;
             z-index: 2;
             animation: fadeIn 0.8s ease-in-out;
         }
 
-        /* Canvas Vector Animation Stage */
+        /* Canvas Stage */
         .canvas-frame {
             width: 100%;
-            height: 200px;
-            background: #050608;
+            height: 220px;
+            background: #090d12;
             border: 1px solid var(--border-color);
             border-radius: 8px;
-            margin-bottom: 20px;
+            margin-bottom: 22px;
             overflow: hidden;
             position: relative;
         }
@@ -100,10 +91,10 @@
 
         /* Story Text Area */
         .story-box {
-            min-height: 90px;
+            min-height: 110px;
             margin-bottom: 24px;
             font-size: 1.05rem;
-            line-height: 1.6;
+            line-height: 1.75;
             color: var(--text-bright);
             position: relative;
         }
@@ -116,47 +107,46 @@
         }
 
         .choice-btn {
-            background: #1a1e2d;
+            background: #21262d;
             border: 1px solid var(--border-color);
             color: var(--text-bright);
             padding: 14px 20px;
-            border-radius: 6px;
+            border-radius: 8px;
             font-size: 0.95rem;
-            font-weight: 600;
+            font-weight: 500;
             text-align: left;
-            transition: all 0.2s ease;
+            transition: all 0.25s ease;
             position: relative;
-            overflow: hidden;
         }
 
         .choice-btn:hover {
-            border-color: var(--accent-cyan);
-            background: #22273a;
-            box-shadow: 0 0 12px var(--accent-glow);
+            border-color: var(--accent-glow);
+            background: #282e38;
+            box-shadow: 0 0 12px rgba(227, 179, 65, 0.2);
             transform: translateX(4px);
-            color: var(--accent-cyan);
+            color: var(--accent-glow);
         }
 
         .choice-btn:active {
             transform: scale(0.98);
         }
 
-        /* Status Bar */
+        /* Header Info Bar */
         .status-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 16px;
-            font-size: 0.8rem;
+            margin-bottom: 18px;
+            font-size: 0.82rem;
             text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: var(--accent-cyan);
+            letter-spacing: 1.2px;
+            color: var(--accent-glow);
             border-bottom: 1px solid var(--border-color);
-            padding-bottom: 8px;
+            padding-bottom: 10px;
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(8px); }
             to { opacity: 1; transform: translateY(0); }
         }
     </style>
@@ -164,25 +154,25 @@
 <body>
 
     <div id="custom-cursor"></div>
-    <div class="scanline"></div>
+    <div class="ambient-overlay"></div>
 
     <div class="game-container">
         <div class="status-bar">
-            <span id="zone-tag">SECTOR 00</span>
-            <span id="status-tag">STATUS: ONLINE</span>
+            <span id="zone-tag">11:42 PM - DOWNTOWN</span>
+            <span id="status-tag">RAIN: HEAVY</span>
         </div>
 
         <div class="canvas-frame">
             <canvas id="sceneCanvas"></canvas>
         </div>
 
-        <div class="story-box" id="story-text">Loading simulation data...</div>
+        <div class="story-box" id="story-text">Loading narrative...</div>
 
         <div class="choices-grid" id="choices-container"></div>
     </div>
 
     <script>
-        // Custom Cursor Logic
+        // Smooth Custom Cursor
         const cursor = document.getElementById('custom-cursor');
         document.addEventListener('mousemove', (e) => {
             cursor.style.left = e.clientX + 'px';
@@ -196,11 +186,10 @@
             cursor.style.transform = 'translate(-50%, -50%) scale(1)';
         });
 
-        // Canvas Animation Engine
+        // Ambient Canvas Engine
         const canvas = document.getElementById('sceneCanvas');
         const ctx = canvas.getContext('2d');
-        let animationFrameId;
-        let sceneType = 'grid';
+        let sceneType = 'rain';
 
         function resizeCanvas() {
             canvas.width = canvas.offsetWidth;
@@ -209,139 +198,235 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
+        // Canvas Particles Setup
+        let drops = [];
+        for (let i = 0; i < 60; i++) {
+            drops.push({
+                x: Math.random() * 700,
+                y: Math.random() * 300,
+                length: Math.random() * 15 + 10,
+                speed: Math.random() * 7 + 4
+            });
+        }
+
+        let steam = [];
+        for (let i = 0; i < 20; i++) {
+            steam.push({
+                x: Math.random() * 700,
+                y: Math.random() * 200 + 50,
+                r: Math.random() * 20 + 10,
+                alpha: Math.random() * 0.3
+            });
+        }
+
         let t = 0;
         function renderScene() {
-            t += 0.03;
+            t += 0.02;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            if (sceneType === 'gate') {
-                // Moving Corridor / Gate Effect
-                ctx.strokeStyle = '#00f3ff';
-                ctx.lineWidth = 1.5;
-                const cx = canvas.width / 2;
-                const cy = canvas.height / 2;
-                for (let i = 1; i < 8; i++) {
-                    let size = ((t * 20 + i * 35) % 200);
-                    ctx.strokeRect(cx - size, cy - size / 2, size * 2, size);
-                }
-            } else if (sceneType === 'core') {
-                // Pulsing Energy Core
-                const cx = canvas.width / 2;
-                const cy = canvas.height / 2;
-                const radius = 30 + Math.sin(t * 2) * 8;
-                
-                let gradient = ctx.createRadialGradient(cx, cy, 5, cx, cy, radius + 20);
-                gradient.addColorStop(0, '#00f3ff');
-                gradient.addColorStop(0.5, '#ff2a6d');
-                gradient.addColorStop(1, 'transparent');
+            if (sceneType === 'diner') {
+                // Cozy Diner Warm Lights & Steam
+                ctx.fillStyle = '#120f0a';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+                // Warm ambient lamp glow
+                let gradient = ctx.createRadialGradient(canvas.width/2, 60, 10, canvas.width/2, 60, 140);
+                gradient.addColorStop(0, 'rgba(227, 179, 65, 0.4)');
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
                 ctx.fillStyle = gradient;
                 ctx.beginPath();
-                ctx.arc(cx, cy, radius + 20, 0, Math.PI * 2);
+                ctx.arc(canvas.width/2, 60, 140, 0, Math.PI * 2);
                 ctx.fill();
-            } else if (sceneType === 'anomaly') {
-                // Glitchy Chaos Particles
-                ctx.fillStyle = '#ff2a6d';
-                for(let i = 0; i < 25; i++) {
-                    let x = (Math.sin(i + t) * 0.5 + 0.5) * canvas.width;
-                    let y = (Math.cos(i * 2 + t) * 0.5 + 0.5) * canvas.height;
-                    let size = Math.random() * 4 + 2;
-                    ctx.fillRect(x, y, size, size);
-                }
+
+                // Coffee Steam rising
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+                steam.forEach(s => {
+                    s.y -= 0.4;
+                    if (s.y < 20) s.y = canvas.height - 20;
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+            } else if (sceneType === 'park') {
+                // Park at night with soft lampposts
+                ctx.fillStyle = '#080d12';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Lamppost
+                const lx = canvas.width * 0.7;
+                ctx.strokeStyle = '#30363d';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(lx, canvas.height);
+                ctx.lineTo(lx, 50);
+                ctx.stroke();
+
+                let lampGlow = ctx.createRadialGradient(lx, 50, 5, lx, 50, 90);
+                lampGlow.addColorStop(0, 'rgba(255, 235, 170, 0.5)');
+                lampGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.fillStyle = lampGlow;
+                ctx.beginPath();
+                ctx.arc(lx, 50, 90, 0, Math.PI * 2);
+                ctx.fill();
+
             } else {
-                // Default Synthwave Grid
-                ctx.strokeStyle = 'rgba(0, 243, 255, 0.2)';
-                ctx.lineWidth = 1;
-                let gridGap = 20;
-                for (let x = 0; x < canvas.width; x += gridGap) {
-                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-                }
-                for (let y = (t * 10) % gridGap; y < canvas.height; y += gridGap) {
-                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-                }
+                // Rain Streets
+                ctx.fillStyle = '#090d12';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Rain streaks
+                ctx.strokeStyle = 'rgba(88, 166, 255, 0.25)';
+                ctx.lineWidth = 1.2;
+                drops.forEach(d => {
+                    d.y += d.speed;
+                    if (d.y > canvas.height) {
+                        d.y = -20;
+                        d.x = Math.random() * canvas.width;
+                    }
+                    ctx.beginPath();
+                    ctx.moveTo(d.x, d.y);
+                    ctx.lineTo(d.x - 2, d.y + d.length);
+                    ctx.stroke();
+                });
             }
 
-            animationFrameId = requestAnimationFrame(renderScene);
+            requestAnimationFrame(renderScene);
         }
         renderScene();
 
-        // Story State Tree
+        // Branching Narrative Data
         const storyData = {
             start: {
-                text: "System Alert: Terminal link initialized. You wake up inside a pitch-black airlock unit. The emergency interface light blinks orange ahead of you.",
-                scene: "grid",
-                zone: "SECTOR 01 - AIRLOCK",
-                status: "ONLINE",
+                text: "The storm caught you off guard three blocks from your apartment. You're standing under the dripping awning of a 24-hour convenience store, holding a damp paper bag with late-night snacks.",
+                scene: "rain",
+                zone: "11:42 PM - 4TH AVENUE",
+                status: "RAIN: HEAVY",
                 choices: [
-                    { text: "Examine the manual override panel", next: "panel" },
-                    { text: "Force open the sealed glass hatch", next: "hatch" }
+                    { text: "Dodge the puddles and push through the downpour to get home", next: "home_path" },
+                    { text: "Duck into the brightly lit diner across the street to wait it out", next: "diner_entry" },
+                    { text: "Take the quiet shortcut through the neighborhood park", next: "park_path" }
                 ]
             },
-            panel: {
-                text: "You wipe dust off the screen. It displays two power redirection options to unlock the facility doors. One draws from the Sub-Core, the other triggers an Emergency Purge.",
-                scene: "gate",
-                zone: "SECTOR 02 - CONTROL",
-                status: "POWER LOW",
+            diner_entry: {
+                text: "A bell jingles overhead as you push through the door. The air inside smells of fresh espresso and toasted sourdough. Only a couple of people are inside—an older cook cleaning the counter and someone sitting in a corner booth sketching in a worn notebook.",
+                scene: "diner",
+                zone: "11:47 PM - THE CORNER DINER",
+                status: "ATMOSPHERE: WARM",
                 choices: [
-                    { text: "Reroute power through the Sub-Core", next: "core_path" },
-                    { text: "Execute Emergency Purge protocol", next: "purge_path" }
+                    { text: "Order a warm hot chocolate at the counter", next: "diner_counter" },
+                    { text: "Take a window seat and watch the rain against the glass", next: "diner_window" }
                 ]
             },
-            hatch: {
-                text: "The glass seal hairline-fractures with a loud crack! Cold, unstable mist surges out from the adjacent hallway.",
-                scene: "anomaly",
-                zone: "SECTOR 01 - BREACH",
-                status: "WARNING",
+            diner_counter: {
+                text: "The cook slides a hot mug over to you with a friendly nod. 'Crazy weather tonight,' he says, wiping down the stainless steel. 'You caught the last brew.' You hold the warm mug in both hands as the chill leaves your fingers.",
+                scene: "diner",
+                zone: "11:52 PM - THE COUNTER",
+                status: "ATMOSPHERE: COZY",
                 choices: [
-                    { text: "Step cautiously through the breached mist", next: "mist_path" },
-                    { text: "Retreat and check the manual panel", next: "panel" }
+                    { text: "Strike up a conversation with the cook about the neighborhood", next: "cook_chat" },
+                    { text: "Quietly sip your drink and pull out your phone to listen to music", next: "quiet_music" }
                 ]
             },
-            core_path: {
-                text: "Humming vibrations fill the deck. A deep blue liquid light runs down glass conduits along the corridor, leading to a massive vault.",
-                scene: "core",
-                zone: "VAULT - CORE ROOM",
-                status: "STABLE",
+            diner_window: {
+                text: "You slide into the leather booth. Outside, the streetlights reflect red and yellow across the wet asphalt. The artist in the corner booth glances up, smiles briefly, and goes back to drawing.",
+                scene: "diner",
+                zone: "11:55 PM - WINDOW BOOTH",
+                status: "ATMOSPHERE: PEACEFUL",
                 choices: [
-                    { text: "Access the central terminal console", next: "win_ending" },
-                    { text: "Touch the pulsing liquid energy stream", next: "anomaly_ending" }
+                    { text: "Compliment their sketch on your way to grab a napkin", next: "artist_chat" },
+                    { text: "Enjoy the peaceful solitude and relax against the booth", next: "quiet_music" }
                 ]
             },
-            purge_path: {
-                text: "Red alarms blare! Siren strobes illuminate the entire chamber as doors seal permanently.",
-                scene: "anomaly",
-                zone: "CRITICAL FAILURE",
-                status: "DANGER",
+            cook_chat: {
+                text: "He tells you about how this diner has been open since 1994, through winter storms and hot summers. He gives you a warm blueberry muffin on the house just as the rain outside begins to soften into a light drizzle.",
+                scene: "diner",
+                zone: "12:10 AM - THE COUNTER",
+                status: "RAIN: EASING",
                 choices: [
-                    { text: "Reboot System to try again", next: "start" }
+                    { text: "Thank him, pay, and take a pleasant night walk home", next: "ending_warm" }
                 ]
             },
-            mist_path: {
-                text: "Inside the mist, structural geometry seems to bend unnaturally. Reality distorts as path lines shift around you.",
-                scene: "anomaly",
-                zone: "UNKNOWN STANZAS",
-                status: "ERR_UNSTABLE",
+            artist_chat: {
+                text: "They show you their sketchbook—it's filled with detailed ink drawings of city buildings and late-night street scenes. You realize they were actually sketching the raindrops on your exact window. You exchange local game recommendations before parting ways.",
+                scene: "diner",
+                zone: "12:15 AM - THE CORNER DINER",
+                status: "RAIN: STOPPED",
                 choices: [
-                    { text: "Follow the glowing shift lines deeper", next: "anomaly_ending" },
-                    { text: "Turn around immediately", next: "start" }
+                    { text: "Head outside into the fresh midnight air", next: "ending_inspired" }
                 ]
             },
-            win_ending: {
-                text: "Core authorization granted! Full facility map unlocked. You have successfully bypassed the locks and gained master override.",
-                scene: "gate",
-                zone: "ACCESS GRANTED",
-                status: "COMPLETE",
+            quiet_music: {
+                text: "You put in your headphones. The lo-fi synth music blends perfectly with the steady rhythm of rain outside. For thirty uninterrupted minutes, the world feels completely still and calm.",
+                scene: "diner",
+                zone: "12:20 AM - WINDOW BOOTH",
+                status: "STATE: SERENE",
                 choices: [
-                    { text: "Restart Simulation", next: "start" }
+                    { text: "Pack up and head home feeling refreshed", next: "ending_warm" }
                 ]
             },
-            anomaly_ending: {
-                text: "The unstable energy encapsulates the terminal screen... signal lost in the dark expanse.",
-                scene: "anomaly",
-                zone: "SIGNAL LOST",
-                status: "OFFLINE",
+            park_path: {
+                text: "The rain sounds soothing as it drops through the canopy of leaves overhead. Streetlights cast long golden beams across the wet stone paths. Halfway down the trail, you notice a stray cat staying dry under a wooden park bench.",
+                scene: "park",
+                zone: "11:50 PM - MAPLE PARK",
+                status: "ATMOSPHERE: QUIET",
                 choices: [
-                    { text: "Re-establish Terminal Link", next: "start" }
+                    { text: "Offer a small piece of food from your bag", next: "cat_friend" },
+                    { text: "Keep walking so you don't startle it", next: "park_walk" }
+                ]
+            },
+            cat_friend: {
+                text: "The cat creeps out cautiously, sniffs the food, and purrs softly against your shoe. It walks alongside you all the way to the park exit before heading toward its shelter under a porch.",
+                scene: "park",
+                zone: "12:05 AM - PARK EXIT",
+                status: "MOOD: WHOLESOME",
+                choices: [
+                    { text: "Wave goodbye and stroll the last block home", next: "ending_warm" }
+                ]
+            },
+            park_walk: {
+                text: "You walk quietly through the mist. The smell of wet earth and crisp night air fills the park. It's one of those rare late-night strolls where you have the entire world to yourself.",
+                scene: "park",
+                zone: "12:00 AM - OAK PATH",
+                status: "MOOD: REFLECTIVE",
+                choices: [
+                    { text: "Finish your walk and return home", next: "ending_warm" }
+                ]
+            },
+            home_path: {
+                text: "You run straight through the rain, shoes splashing through puddle reflections! You sprint up your apartment stairs, turn the key in the door, and step inside completely out of breath.",
+                scene: "rain",
+                zone: "11:46 PM - APARTMENT HALLWAY",
+                status: "STATE: DRENCHED",
+                choices: [
+                    { text: "Change into dry clothes and make a hot tea", next: "ending_cozy_home" }
+                ]
+            },
+            ending_warm: {
+                text: "You unlock your front door. Outside, the storm has passed, leaving behind clear skies and damp streets. You set your stuff down, feeling comfortable, relaxed, and glad you took your time tonight.",
+                scene: "diner",
+                zone: "12:30 AM - HOME",
+                status: "NIGHT COMPLETE",
+                choices: [
+                    { text: "Play again from the start", next: "start" }
+                ]
+            },
+            ending_inspired: {
+                text: "You walk home with a light step. The midnight city feels full of creative energy. You jot down a few ideas in your phone before turning off the lights for a good night's sleep.",
+                scene: "park",
+                zone: "12:35 AM - HOME",
+                status: "NIGHT COMPLETE",
+                choices: [
+                    { text: "Play again from the start", next: "start" }
+                ]
+            },
+            ending_cozy_home: {
+                text: "Wrapped in a dry hoodie with a warm drink in hand, you sit near your window listening to the distant storm fade away. A perfect end to a long day.",
+                scene: "diner",
+                zone: "12:00 AM - HOME",
+                status: "NIGHT COMPLETE",
+                choices: [
+                    { text: "Play again from the start", next: "start" }
                 ]
             }
         };
@@ -353,10 +438,9 @@
             document.getElementById('zone-tag').innerText = node.zone;
             document.getElementById('status-tag').innerText = node.status;
             
-            // Set Animated Canvas Scene
             sceneType = node.scene;
 
-            // Typewriter Effect for Story Text
+            // Typewriter Effect
             const storyBox = document.getElementById('story-text');
             storyBox.innerHTML = '';
             let charIndex = 0;
@@ -366,12 +450,12 @@
                 if (charIndex < fullText.length) {
                     storyBox.innerHTML += fullText.charAt(charIndex);
                     charIndex++;
-                    setTimeout(typeWriter, 18);
+                    setTimeout(typeWriter, 16);
                 }
             }
             typeWriter();
 
-            // Populate Choice Buttons
+            // Populate Buttons
             const choicesContainer = document.getElementById('choices-container');
             choicesContainer.innerHTML = '';
 
@@ -384,7 +468,7 @@
             });
         }
 
-        // Start Initial Scene
+        // Initialize First Scene
         loadNode('start');
     </script>
 </body>
