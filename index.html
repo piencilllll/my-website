@@ -3,238 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SECTOR ZERO // UNIQUE SUBJECT LAB</title>
+    <title>SECTOR ZERO // THE DESCENT</title>
     <style>
         :root {
-            --bg-dark: #04060a;
-            --panel-bg: rgba(10, 15, 26, 0.92);
-            --border: #1e293b;
+            --bg: #020307;
             --cyan: #00f3ff;
             --amber: #ffaa00;
             --purple: #bc13fe;
-            --green: #00ff66;
-            --red: #ff3344;
             --pink: #ff66cc;
-            --text-bright: #f8fafc;
-            --text-dim: #64748b;
+            --text: #f8fafc;
+            --dim: #64748b;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
 
         html, body {
             width: 100vw;
             height: 100vh;
-            overflow: hidden; /* Fixed viewport - no scrolling */
-            background-color: var(--bg-dark);
-            color: var(--text-bright);
-            font-family: 'Segoe UI', system-ui, sans-serif;
+            overflow: hidden; /* Page locked - no moving or scrolling */
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Courier New', Courier, monospace;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 12px;
         }
 
+        /* SCANLINE OVERLAY */
         .scanlines {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
-            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0, 0, 0, 0.35) 50%, rgba(0, 0, 0, 0.35));
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0, 0, 0, 0.4) 50%, rgba(0, 0, 0, 0.4));
             background-size: 100% 4px;
             pointer-events: none;
             z-index: 100;
         }
 
-        .app-container {
-            width: 100%;
-            max-width: 1200px;
-            height: 100%;
-            max-height: 720px;
-            display: grid;
-            grid-template-columns: 260px 1fr;
-            gap: 12px;
-            z-index: 1;
-        }
-
-        /* ROSTER SIDEBAR */
-        .roster-panel {
-            background: var(--panel-bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            height: 100%;
-        }
-
-        .panel-header {
-            font-size: 0.7rem;
-            color: var(--cyan);
-            letter-spacing: 1.5px;
-            font-weight: 800;
-            text-transform: uppercase;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 6px;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .roster-list {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            flex: 1;
-            overflow-y: auto;
-        }
-
-        .char-card {
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .char-card:hover, .char-card.active {
-            border-color: var(--cyan);
-            background: rgba(30, 41, 59, 0.9);
-        }
-
-        .char-icon {
-            width: 28px;
-            height: 28px;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            font-weight: 900;
-            color: #000;
-            flex-shrink: 0;
-        }
-
-        .char-info { display: flex; flex-direction: column; gap: 2px; }
-        .char-name { font-size: 0.75rem; font-weight: 700; color: var(--text-bright); }
-        .char-archetype { font-size: 0.6rem; color: var(--text-dim); }
-
-        /* MAIN WORKSPACE */
-        .workspace {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            height: 100%;
-        }
-
-        .stage-card {
-            background: var(--panel-bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            flex: 1;
-        }
-
-        .canvas-container {
-            flex: 1;
-            width: 100%;
-            background: #020305;
-            border: 1px solid var(--border);
-            border-radius: 6px;
+        /* SCREEN FRAME */
+        .viewport {
+            width: 100vw;
+            height: 100vh;
+            max-width: 1000px;
+            max-height: 650px;
             position: relative;
+            background: #000;
+            border: 2px solid #1e293b;
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.15);
+            display: flex;
+            flex-direction: column;
             overflow: hidden;
         }
 
-        canvas#stageCanvas {
+        canvas#mainCanvas {
             width: 100%;
             height: 100%;
             display: block;
         }
 
-        /* CONTROLS BAR */
-        .controls-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(15, 23, 42, 0.5);
-            padding: 6px 10px;
+        /* UNDERTALE / DELTARUNE TEXT BOX */
+        .dialogue-box {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 88%;
+            height: 130px;
+            background: rgba(4, 6, 12, 0.95);
+            border: 3px solid #fff;
             border-radius: 6px;
-            border: 1px solid var(--border);
-            font-size: 0.65rem;
-        }
-
-        .key-badge {
-            background: #0f172a;
-            border: 1px solid var(--cyan);
-            color: var(--cyan);
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: monospace;
-            font-weight: bold;
-        }
-
-        .tool-btn {
-            background: #0f172a;
-            border: 1px solid var(--border);
-            color: var(--text-bright);
-            padding: 5px 10px;
-            font-size: 0.65rem;
-            font-weight: 700;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-
-        .tool-btn.active, .tool-btn:hover {
-            border-color: var(--cyan);
-            color: var(--cyan);
-        }
-
-        /* ASSISTANT WIDGET */
-        .assistant-card {
-            background: var(--panel-bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 8px 12px;
-            display: flex;
+            padding: 12px 16px;
+            display: none; /* Managed by JS */
+            gap: 16px;
             align-items: center;
-            gap: 12px;
-            height: 72px;
+            z-index: 10;
+            box-shadow: 0 0 15px rgba(0,0,0,0.8);
         }
 
-        .portrait-frame {
-            width: 52px;
-            height: 52px;
-            background: #000;
+        .portrait-container {
+            width: 90px;
+            height: 90px;
             border: 2px solid var(--cyan);
-            border-radius: 4px;
+            background: #000;
+            flex-shrink: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            flex-shrink: 0;
         }
 
-        .dialogue-wrap {
+        canvas#portraitCanvas {
+            width: 80px;
+            height: 80px;
+        }
+
+        .dialogue-content {
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            justify-content: space-between;
+            height: 100%;
+            flex: 1;
         }
 
-        .assistant-name {
-            font-size: 0.65rem;
+        .speaker-name {
+            font-size: 0.85rem;
+            font-weight: bold;
             color: var(--cyan);
-            font-weight: 800;
-            letter-spacing: 1px;
+            letter-spacing: 2px;
         }
 
         .dialogue-text {
-            font-family: 'Courier New', monospace;
+            font-size: 1.05rem;
+            line-height: 1.4;
+            color: #fff;
+            height: 50px;
+        }
+
+        .prompt-next {
             font-size: 0.75rem;
-            color: var(--text-bright);
-            line-height: 1.3;
+            color: var(--amber);
+            align-self: flex-end;
+            animation: blink 0.8s infinite alternate;
+        }
+
+        @keyframes blink {
+            from { opacity: 0.3; }
+            to { opacity: 1; }
+        }
+
+        /* UI OVERLAY FOR RPG GAMEPLAY */
+        .game-hud {
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            z-index: 10;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .hud-title {
+            font-size: 0.75rem;
+            color: var(--cyan);
+            font-weight: 800;
+            letter-spacing: 2px;
+        }
+
+        .hud-keys {
+            font-size: 0.7rem;
+            color: var(--dim);
+            background: rgba(0,0,0,0.6);
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #1e293b;
+        }
+
+        .key-tag {
+            color: var(--amber);
+            font-weight: bold;
         }
     </style>
 </head>
@@ -242,493 +167,517 @@
 
     <div class="scanlines"></div>
 
-    <div class="app-container">
-        <!-- SIDEBAR: 7 DISTINCT SUBJECTS -->
-        <div class="roster-panel">
-            <div class="panel-header">
-                <span>SUBJECT ROSTER</span>
-                <span style="color:var(--text-bright);">7/7</span>
+    <div class="viewport">
+        <!-- CANVAS FOR CINEMATICS & 2.5D GAMEPLAY -->
+        <canvas id="mainCanvas"></canvas>
+
+        <!-- DELTARUNE / ONESHOT STYLE DIALOGUE BOX -->
+        <div class="dialogue-box" id="dialogueBox">
+            <div class="portrait-container">
+                <canvas id="portraitCanvas" width="80" height="80"></canvas>
             </div>
-            <div class="roster-list" id="rosterList"></div>
+            <div class="dialogue-content">
+                <div class="speaker-name" id="speakerName">ORB-68</div>
+                <div class="dialogue-text" id="dialogueText">...</div>
+                <div class="prompt-next">[PRESS SPACE / ENTER]</div>
+            </div>
         </div>
 
-        <!-- WORKSPACE AREA -->
-        <div class="workspace">
-            <div class="stage-card">
-                <div class="panel-header">
-                    <span id="subjectTitle">SUBJECT 01 // ORB-68 (BLUE DROPLET)</span>
-                    <span id="subjectKeys" style="color:var(--amber);">KEYS: [A/D] MOVE | [SPACE] JUMP | [E] HYPER-BOUNCE | [Q] SLAM</span>
-                </div>
-
-                <div class="canvas-container">
-                    <canvas id="stageCanvas"></canvas>
-                </div>
-
-                <!-- CONTROLS & SPAWNER BAR -->
-                <div class="controls-bar">
-                    <div style="display:flex; gap:12px; align-items:center;">
-                        <span>CONTROLS: <span class="key-badge">A / D</span> MOVE | <span class="key-badge">W / SPACE</span> JUMP | <span class="key-badge">E</span> ABILITY 1 | <span class="key-badge">Q</span> ABILITY 2</span>
-                    </div>
-                    <div style="display:flex; gap:6px;">
-                        <button class="tool-btn active" id="btnCrate">PLACE CRATE</button>
-                        <button class="tool-btn" id="btnOrb">PLACE GRAV-NODE</button>
-                        <button class="tool-btn" id="btnClear" style="border-color:var(--red); color:var(--red);">CLEAR</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- UNDERTALE-STYLE ASSISTANT -->
-            <div class="assistant-card">
-                <div class="portrait-frame">
-                    <canvas id="portraitCanvas" width="48" height="48"></canvas>
-                </div>
-                <div class="dialogue-wrap">
-                    <div class="assistant-name">GUIDE // T.I.P.-S</div>
-                    <div class="dialogue-text" id="dialogueText">* Welcome to the testing chamber! Select a subject on the left or press E/Q to trigger unique ability engines.</div>
-                </div>
+        <!-- HUD FOR 2.5D OVERWORLD -->
+        <div class="game-hud" id="gameHud">
+            <div class="hud-title">ZONE 01 // KINETIC MATRIX</div>
+            <div class="hud-keys">
+                MOVE: <span class="key-tag">WASD / ARROWS</span> | INTERACT: <span class="key-tag">SPACE</span> | PULSE: <span class="key-tag">E</span>
             </div>
         </div>
     </div>
 
     <script>
-        // --- 7 CUSTOM DESIGNED CHARACTERS ---
-        const subjects = [
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        const pCanvas = document.getElementById('portraitCanvas');
+        const pCtx = pCanvas.getContext('2d');
+
+        const dialogueBox = document.getElementById('dialogueBox');
+        const speakerName = document.getElementById('speakerName');
+        const dialogueText = document.getElementById('dialogueText');
+        const gameHud = document.getElementById('gameHud');
+
+        function resize() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Game States: 'INTRO_CINEMATIC', 'DIALOGUE_CINEMATIC', 'PLAYING_RPG'
+        let gameState = 'INTRO_CINEMATIC';
+
+        // --- INTRO CINEMATIC LORE SEQUENCE ---
+        const introSlides = [
             {
-                id: 0,
-                name: "Orb-68",
-                type: "Blue Droplet",
-                color: "#00f3ff",
-                keys: "KEYS: [A/D] Roll | [SPACE] Jump | [E] Hyper Bounce | [Q] Slam Blast",
-                tip: "* Orb-68 is a bouncy blue liquid droplet! Press E to launch upward or Q to slam down!",
-                mood: "happy"
+                text: "BEFORE THE BOUNDARIES OF THE SECTOR WERE DRAWN...",
+                sub: "An infinite void existed in absolute silence.",
+                visual: "VOID"
             },
             {
-                id: 1,
-                name: "Vektor",
-                type: "Hatted Humanoid",
-                color: "#ffaa00",
-                keys: "KEYS: [A/D] Walk | [SPACE] Jump | [E] Sword Slash | [Q] Shield Lock",
-                tip: "* Vektor is a sharp orange warrior with a stylish hat. Press E to swing your energy blade!",
-                mood: "determined"
+                text: "THEN CAME THE DENSITY COLLAPSE.",
+                sub: "Raw kinetic matter crystallized into sentient physical forms.",
+                visual: "CRYSTAL"
             },
             {
-                id: 2,
-                name: "Giga-Slime",
-                type: "Massive Green Blob",
-                color: "#00ff66",
-                keys: "KEYS: [A/D] Slosh | [SPACE] Split Jump | [E] Dissolve | [Q] Expand",
-                tip: "* Giga-Slime deforms and squishes smoothly. Press E to dissolve into mini blobs and reform!",
-                mood: "surprised"
-            },
-            {
-                id: 3,
-                name: "Chrono-Drone",
-                type: "U.F.O. + Alien",
-                color: "#bc13fe",
-                keys: "KEYS: [A/D] Thrust | [SPACE] Hover | [E] Time Freeze Zone | [Q] Dash",
-                tip: "* A purple U.F.O. piloted by a little green alien inside! Press E to freeze time around you!",
-                mood: "smug"
-            },
-            {
-                id: 4,
-                name: "Chitin-Runner",
-                type: "Red Insect",
-                color: "#ff3344",
-                keys: "KEYS: [A/D] Scuttle | [SPACE] Wall Leap | [E] Ceiling Climb | [Q] Web Sling",
-                tip: "* Chitin-Runner scuttles on sharp animated insect legs! Press E to latch onto vertical walls!",
-                mood: "annoyed"
-            },
-            {
-                id: 5,
-                name: "Shadow-Ghost",
-                type: "Pink Ghost (Shades)",
-                color: "#ff66cc",
-                keys: "KEYS: [A/D] Float | [SPACE] Rise | [E] Phase Through Walls | [Q] Possess Crate",
-                tip: "* A cool pink ghost rocking dark sunglasses! Press E to become intangible and phase through walls!",
-                mood: "cool"
-            },
-            {
-                id: 6,
-                name: "Kinetix",
-                type: "Glove-Headed Humanoid",
-                color: "#ffffff",
-                keys: "KEYS: [A/D] Step | [SPACE] Heavy Leap | [E] Spawn Block Stairs | [Q] Earthquake",
-                tip: "* A white humanoid entity with a giant Mickey-style hand for a head! Press E to construct stone pillars!",
-                mood: "confused"
+                text: "7 SUBJECTS WERE AWAKENED TO GUARDIAN THE MATRIX.",
+                sub: "Orb-68 was the first to open its eyes...",
+                visual: "ORB_AWAKEN"
             }
         ];
 
-        let activeSubject = subjects[0];
-        let currentTool = 'crate';
-        let currentMood = 'happy';
+        let currentIntroSlide = 0;
+        let slideAlpha = 0;
+        let slideTimer = 0;
 
-        // Stage setup
-        const stage = document.getElementById('stageCanvas');
-        const sCtx = stage.getContext('2d');
-
-        function resizeStage() {
-            stage.width = stage.offsetWidth;
-            stage.height = stage.offsetHeight;
-        }
-        window.addEventListener('resize', resizeStage);
-        setTimeout(resizeStage, 50);
-
-        // Player physics state
-        const player = {
-            x: 120, y: 150,
-            vx: 0, vy: 0,
-            radius: 16,
-            grounded: false,
-            rotation: 0,
-            animTimer: 0
-        };
-
-        let keys = {};
-        let decorations = [
-            { type: 'crate', x: 260, y: 220, w: 40, h: 40 }
+        // --- DIALOGUE CUTSCENE DATA ---
+        const dialogueSequence = [
+            {
+                speaker: "Orb-68",
+                color: "#00f3ff",
+                mood: "orb_normal",
+                text: "Vektor... do you ever feel like this floor isn't entirely real?"
+            },
+            {
+                speaker: "Vektor",
+                color: "#ffaa00",
+                mood: "vektor_normal",
+                text: "Real? We're rendered in a 2.5D isometric plane, Orb. Nothing here is real."
+            },
+            {
+                speaker: "Orb-68",
+                color: "#00f3ff",
+                mood: "orb_surprised",
+                text: "Wait, WHAT?! So the dark void around us is just empty canvas memory?!"
+            },
+            {
+                speaker: "Vektor",
+                color: "#ffaa00",
+                mood: "vektor_hat",
+                text: "Exactly. Now stop staring into the camera and use [WASD] to explore the sector."
+            },
+            {
+                speaker: "Orb-68",
+                color: "#00f3ff",
+                mood: "orb_happy",
+                text: "Alright! Let's check out the area! Press SPACE or E to interact!"
+            }
         ];
 
+        let dialogueIndex = 0;
+        let typewriterText = "";
+        let typewriterTarget = "";
+        let typewriterCharIdx = 0;
+
+        // --- 2.5D ONESHOT / DELTARUNE PLAYER & WORLD ENGINE ---
+        const player = {
+            x: 500,
+            y: 350,
+            z: 0, // Pseudo height/depth
+            vx: 0,
+            vy: 0,
+            speed: 3.2,
+            radius: 16,
+            bounce: 0,
+            facing: 'down',
+            pulseRing: 0
+        };
+
+        const keys = {};
+
+        // Interactive World Objects
+        const worldObjects = [
+            { x: 350, y: 250, type: 'crystal', color: '#bc13fe', label: 'KINETIC CRYSTAL', talk: "* A glowing kinetic crystal. It hums with 2.5D energy." },
+            { x: 650, y: 280, type: 'vektor_npc', color: '#ffaa00', label: 'VEKTOR', talk: "* Vektor: Adjusting my hat. Don't slip on the grid tiles." },
+            { x: 500, y: 180, type: 'monolith', color: '#00ff66', label: 'SECTOR ZERO MONOLITH', talk: "* Sector Terminal: ALL SYSTEMS OPERATIONAL." },
+            { x: 250, y: 450, type: 'ghost_npc', color: '#ff66cc', label: 'SHADOW GHOST', talk: "* Shadow Ghost: Cool sunglasses, right? I phase through dimensions." }
+        ];
+
+        let currentInteractObject = null;
+
+        // Key Listeners
         window.addEventListener('keydown', e => {
             keys[e.code] = true;
-            if (e.code === 'KeyE') triggerAbility1();
-            if (e.code === 'KeyQ') triggerAbility2();
-            if (e.code === 'Space' || e.code === 'KeyW') {
-                if (player.grounded || activeSubject.id === 3) {
-                    player.vy = -9.5;
-                    player.grounded = false;
+
+            if (e.code === 'Space' || e.code === 'Enter') {
+                if (gameState === 'INTRO_CINEMATIC') {
+                    nextIntroSlide();
+                } else if (gameState === 'DIALOGUE_CINEMATIC') {
+                    advanceDialogue();
+                } else if (gameState === 'PLAYING_RPG') {
+                    if (currentInteractObject) {
+                        triggerNpcDialogue(currentInteractObject);
+                    }
                 }
+            }
+
+            if (e.code === 'KeyE' && gameState === 'PLAYING_RPG') {
+                player.pulseRing = 35; // Trigger kinetic pulse animation
             }
         });
 
         window.addEventListener('keyup', e => keys[e.code] = false);
 
-        stage.addEventListener('click', e => {
-            const rect = stage.getBoundingClientRect();
-            const mx = e.clientX - rect.left;
-            const my = e.clientY - rect.top;
-
-            if (currentTool === 'crate') {
-                decorations.push({ type: 'crate', x: mx - 20, y: my - 20, w: 40, h: 40 });
-                speak(`* Placed a wooden crate at [${Math.round(mx)}, ${Math.round(my)}].`, "determined");
-            } else if (currentTool === 'orb') {
-                decorations.push({ type: 'orb', x: mx, y: my, radius: 30 });
-                speak(`* Deployed Zero-G Attraction Orb!`, "surprised");
-            }
-        });
-
-        document.getElementById('btnCrate').onclick = () => { currentTool = 'crate'; setToolBtn('btnCrate'); };
-        document.getElementById('btnOrb').onclick = () => { currentTool = 'orb'; setToolBtn('btnOrb'); };
-        document.getElementById('btnClear').onclick = () => { decorations = []; speak("* Map cleared!", "annoyed"); };
-
-        function setToolBtn(id) {
-            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-        }
-
-        // Abilities
-        function triggerAbility1() {
-            if (activeSubject.id === 0) { player.vy = -14; speak("* Orb-68 HYPER BOUNCE activated!", "surprised"); }
-            else if (activeSubject.id === 1) { speak("* Vektor performed an ENERGY SLASH!", "determined"); }
-            else if (activeSubject.id === 2) { speak("* Giga-Slime DISSOLVED into mini blobs!", "happy"); }
-            else if (activeSubject.id === 3) { speak("* Chrono-Drone deployed TIME SLOW FIELD!", "smug"); }
-            else if (activeSubject.id === 4) { player.vy = -11; speak("* Chitin-Runner WALL-CLIMBED vertically!", "annoyed"); }
-            else if (activeSubject.id === 5) { speak("* Shadow-Ghost PHASED through solid obstacles!", "cool"); }
-            else if (activeSubject.id === 6) { 
-                decorations.push({ type: 'crate', x: player.x - 20, y: player.y + 15, w: 40, h: 40 });
-                speak("* Kinetix CONSTRUCTED a stone pillar!", "confused");
+        // --- INTRO CINEMATIC LOGIC ---
+        function nextIntroSlide() {
+            currentIntroSlide++;
+            slideAlpha = 0;
+            if (currentIntroSlide >= introSlides.length) {
+                gameState = 'DIALOGUE_CINEMATIC';
+                startDialogueSequence();
             }
         }
 
-        function triggerAbility2() {
-            if (activeSubject.id === 0) { player.vy = 16; speak("* Orb-68 SLAM BLAST!", "determined"); }
-            else { player.vx = player.vx > 0 ? 12 : -12; speak(`* ${activeSubject.name} used SPECIAL MANEUVER!`, "cool"); }
+        // --- DIALOGUE SYSTEM ---
+        function startDialogueSequence() {
+            dialogueBox.style.display = 'flex';
+            dialogueIndex = 0;
+            loadDialogueStep();
         }
 
-        // --- MAIN SIMULATION & DRAWING LOOP ---
-        function loop() {
-            player.animTimer += 0.05;
-            sCtx.clearRect(0, 0, stage.width, stage.height);
+        function loadDialogueStep() {
+            const current = dialogueSequence[dialogueIndex];
+            speakerName.innerText = current.speaker.toUpperCase();
+            speakerName.style.color = current.color;
 
-            // Grid
-            sCtx.strokeStyle = 'rgba(30, 41, 59, 0.25)';
-            sCtx.lineWidth = 1;
-            for(let x=0; x<stage.width; x+=25) {
-                sCtx.beginPath(); sCtx.moveTo(x,0); sCtx.lineTo(x, stage.height); sCtx.stroke();
+            typewriterTarget = current.text;
+            typewriterText = "";
+            typewriterCharIdx = 0;
+
+            drawPortrait(current.mood);
+        }
+
+        function advanceDialogue() {
+            // If still typing, finish instantly
+            if (typewriterText.length < typewriterTarget.length) {
+                typewriterText = typewriterTarget;
+                dialogueText.innerText = typewriterText;
+                return;
             }
-            for(let y=0; y<stage.height; y+=25) {
-                sCtx.beginPath(); sCtx.moveTo(0,y); sCtx.lineTo(stage.width, y); sCtx.stroke();
+
+            dialogueIndex++;
+            if (dialogueIndex < dialogueSequence.length) {
+                loadDialogueStep();
+            } else {
+                // End Cutscene -> Start RPG Gameplay
+                dialogueBox.style.display = 'none';
+                gameHud.style.display = 'flex';
+                gameState = 'PLAYING_RPG';
             }
+        }
 
-            // Movement Physics
-            if (keys['KeyA'] || keys['ArrowLeft']) player.vx -= 0.6;
-            if (keys['KeyD'] || keys['ArrowRight']) player.vx += 0.6;
-
-            player.vx *= 0.88;
-            player.vy += (activeSubject.id === 3) ? 0.05 : 0.42; // U.F.O hovers
-            player.x += player.vx;
-            player.y += player.vy;
-
-            // Floor Collision
-            const floor = stage.height - 25;
-            if (player.y + player.radius > floor) {
-                player.y = floor - player.radius;
-                player.vy = 0;
-                player.grounded = true;
-            }
-            if (player.x - player.radius < 0) { player.x = player.radius; player.vx = 0; }
-            if (player.x + player.radius > stage.width) { player.x = stage.width - player.radius; player.vx = 0; }
-
-            // Draw Stage Floor
-            sCtx.fillStyle = '#0f172a';
-            sCtx.fillRect(0, floor, stage.width, 25);
-            sCtx.strokeStyle = 'var(--cyan)';
-            sCtx.strokeRect(0, floor, stage.width, 1);
-
-            // Render Objects
-            decorations.forEach(d => {
-                if (d.type === 'crate') {
-                    sCtx.fillStyle = '#1e293b';
-                    sCtx.strokeStyle = '#00f3ff';
-                    sCtx.lineWidth = 1.5;
-                    sCtx.fillRect(d.x, d.y, d.w, d.h);
-                    sCtx.strokeRect(d.x, d.y, d.w, d.h);
-
-                    if (player.x > d.x && player.x < d.x + d.w &&
-                        player.y + player.radius > d.y && player.y - player.radius < d.y + d.h) {
-                        if (activeSubject.id !== 5) { // Ghost phases through
-                            player.y = d.y - player.radius;
-                            player.vy = 0;
-                            player.grounded = true;
-                        }
-                    }
-                } else if (d.type === 'orb') {
-                    sCtx.strokeStyle = '#ffaa00';
-                    sCtx.lineWidth = 2;
-                    sCtx.beginPath();
-                    sCtx.arc(d.x, d.y, d.radius + Math.sin(player.animTimer*2)*4, 0, Math.PI*2);
-                    sCtx.stroke();
-                }
+        function triggerNpcDialogue(obj) {
+            gameState = 'DIALOGUE_CINEMATIC';
+            dialogueBox.style.display = 'flex';
+            
+            dialogueSequence.length = 0; // Clear cutscene dialogue
+            dialogueSequence.push({
+                speaker: obj.label,
+                color: obj.color,
+                mood: obj.type === 'vektor_npc' ? 'vektor_normal' : 'orb_happy',
+                text: obj.talk
             });
+            dialogueIndex = 0;
+            loadDialogueStep();
+        }
 
-            // --- DRAW REDESIGNED UNIQUE CHARACTERS ---
-            sCtx.save();
-            sCtx.translate(player.x, player.y);
+        // --- PORTRAIT RENDERER (UNDERTALE STYLE) ---
+        function drawPortrait(mood) {
+            pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+            pCtx.fillStyle = '#04060c';
+            pCtx.fillRect(0, 0, pCanvas.width, pCanvas.height);
 
-            if (activeSubject.id === 0) { // ORB-68 (BLUE DROPLET WITH EYES)
-                sCtx.fillStyle = '#00f3ff';
-                sCtx.beginPath();
-                sCtx.moveTo(0, -22);
-                sCtx.bezierCurveTo(18, -2, 20, 18, 0, 18);
-                sCtx.bezierCurveTo(-20, 18, -18, -2, 0, -22);
-                sCtx.fill();
-                // Cute Big Eyes
-                sCtx.fillStyle = '#fff';
-                sCtx.beginPath(); sCtx.arc(-5, 2, 4, 0, Math.PI*2); sCtx.arc(5, 2, 4, 0, Math.PI*2); sCtx.fill();
-                sCtx.fillStyle = '#000';
-                sCtx.beginPath(); sCtx.arc(-4, 2, 2, 0, Math.PI*2); sCtx.arc(6, 2, 2, 0, Math.PI*2); sCtx.fill();
+            pCtx.save();
+            pCtx.translate(40, 40);
+
+            if (mood.startsWith('orb')) {
+                // Orb-68 Droplet Portrait
+                pCtx.fillStyle = '#00f3ff';
+                pCtx.beginPath();
+                pCtx.moveTo(0, -26);
+                pCtx.bezierCurveTo(22, -2, 24, 22, 0, 22);
+                pCtx.bezierCurveTo(-24, 22, -22, -2, 0, -26);
+                pCtx.fill();
+
+                // Eyes
+                pCtx.fillStyle = '#fff';
+                pCtx.beginPath(); pCtx.arc(-6, 2, 5, 0, Math.PI*2); pCtx.arc(6, 2, 5, 0, Math.PI*2); pCtx.fill();
+                pCtx.fillStyle = '#000';
+                pCtx.beginPath();
+
+                if (mood === 'orb_surprised') {
+                    pCtx.arc(-6, 2, 3, 0, Math.PI*2); pCtx.arc(6, 2, 3, 0, Math.PI*2); pCtx.fill();
+                    pCtx.strokeStyle = '#000'; pCtx.lineWidth = 2;
+                    pCtx.beginPath(); pCtx.arc(0, 12, 4, 0, Math.PI*2); pCtx.stroke();
+                } else {
+                    pCtx.arc(-4, 2, 2.5, 0, Math.PI*2); pCtx.arc(8, 2, 2.5, 0, Math.PI*2); pCtx.fill();
+                    // Smile
+                    pCtx.strokeStyle = '#000'; pCtx.lineWidth = 2;
+                    pCtx.beginPath(); pCtx.arc(0, 8, 5, 0, Math.PI); pCtx.stroke();
+                }
             } 
-            else if (activeSubject.id === 1) { // VEKTOR (ORANGE HUMANOID WITH HAT & FACE)
-                // Body
-                sCtx.fillStyle = '#ffaa00';
-                sCtx.fillRect(-7, -10, 14, 16);
-                // Head
-                sCtx.fillRect(-6, -22, 12, 12);
-                // Eyes & Smile
-                sCtx.fillStyle = '#000';
-                sCtx.fillRect(-4, -18, 2, 3);
-                sCtx.fillRect(2, -18, 2, 3);
-                sCtx.fillRect(-3, -13, 6, 2);
-                // Cool Hat
-                sCtx.fillStyle = '#1e293b';
-                sCtx.fillRect(-12, -24, 24, 3); // Brim
-                sCtx.fillRect(-7, -31, 14, 7);  // Cap Top
-                // Animated Legs
-                sCtx.fillStyle = '#ffaa00';
-                let leg = Math.sin(player.animTimer * 10) * 5;
-                sCtx.fillRect(-5, 6, 4, 10 + leg);
-                sCtx.fillRect(1, 6, 4, 10 - leg);
-            }
-            else if (activeSubject.id === 2) { // GIGA-SLIME (BIG GREEN BLOB)
-                sCtx.fillStyle = '#00ff66';
-                let squish = Math.sin(player.animTimer * 5) * 3;
-                sCtx.beginPath();
-                sCtx.ellipse(0, 4, 22 + squish, 16 - squish, 0, 0, Math.PI*2);
-                sCtx.fill();
-                // Cute Blob Face
-                sCtx.fillStyle = '#000';
-                sCtx.beginPath(); sCtx.arc(-7, 2, 2.5, 0, Math.PI*2); sCtx.arc(7, 2, 2.5, 0, Math.PI*2); sCtx.fill();
-                sCtx.beginPath(); sCtx.arc(0, 7, 3, 0, Math.PI); sCtx.stroke();
-            }
-            else if (activeSubject.id === 3) { // CHRONO-DRONE (PURPLE UFO WITH ALIEN INSIDE)
-                // Glass Dome
-                sCtx.fillStyle = 'rgba(0, 243, 255, 0.4)';
-                sCtx.beginPath(); sCtx.arc(0, -6, 12, Math.PI, 0); sCtx.fill();
-                // Green Alien Inside
-                sCtx.fillStyle = '#00ff66';
-                sCtx.beginPath(); sCtx.arc(0, -8, 6, 0, Math.PI*2); sCtx.fill();
-                sCtx.fillStyle = '#000'; // Big alien eyes
-                sCtx.beginPath(); sCtx.ellipse(-2, -9, 2, 3, 0, 0, Math.PI*2); sCtx.ellipse(2, -9, 2, 3, 0, 0, Math.PI*2); sCtx.fill();
-                // Purple UFO Body
-                sCtx.fillStyle = '#bc13fe';
-                sCtx.beginPath(); sCtx.ellipse(0, 2, 22, 8, 0, 0, Math.PI*2); sCtx.fill();
-                // Glow Lights
-                sCtx.fillStyle = '#ffaa00';
-                sCtx.beginPath(); sCtx.arc(-12, 3, 2, 0, Math.PI*2); sCtx.arc(0, 5, 2, 0, Math.PI*2); sCtx.arc(12, 3, 2, 0, Math.PI*2); sCtx.fill();
-            }
-            else if (activeSubject.id === 4) { // CHITIN-RUNNER (RED INSECT)
-                sCtx.fillStyle = '#ff3344';
-                // Segmented Insect Body
-                sCtx.beginPath(); sCtx.ellipse(-6, 0, 8, 6, 0, 0, Math.PI*2); sCtx.fill();
-                sCtx.beginPath(); sCtx.ellipse(6, -2, 10, 8, 0, 0, Math.PI*2); sCtx.fill();
-                // Antennae
-                sCtx.strokeStyle = '#ff3344'; sCtx.lineWidth = 1.5;
-                sCtx.beginPath(); sCtx.moveTo(-10, -4); sCtx.lineTo(-16, -12); sCtx.moveTo(-8, -4); sCtx.lineTo(-11, -14); sCtx.stroke();
-                // Animated Insect Legs
-                for(let i = -1; i <= 1; i++) {
-                    let legY = Math.sin(player.animTimer * 12 + i) * 5;
-                    sCtx.beginPath(); sCtx.moveTo(i*6, 2); sCtx.lineTo(i*10, 14 + legY); sCtx.stroke();
-                }
-            }
-            else if (activeSubject.id === 5) { // SHADOW-GHOST (PINK GHOST WITH COOL SUNGLASSES)
-                sCtx.fillStyle = '#ff66cc';
-                sCtx.beginPath();
-                sCtx.arc(0, -6, 15, Math.PI, 0);
-                sCtx.lineTo(15, 12); 
-                sCtx.lineTo(5, 6); sCtx.lineTo(0, 12); sCtx.lineTo(-5, 6); sCtx.lineTo(-15, 12);
-                sCtx.closePath(); sCtx.fill();
-                // Cool Dark Sunglasses
-                sCtx.fillStyle = '#000';
-                sCtx.fillRect(-10, -8, 20, 6);
-                sCtx.strokeStyle = '#fff'; sCtx.lineWidth = 1;
-                sCtx.beginPath(); sCtx.moveTo(-8, -7); sCtx.lineTo(-3, -3); sCtx.stroke(); // Glare
-            }
-            else if (activeSubject.id === 6) { // KINETIX (WHITE HUMANOID WITH MICKEY MOUSE GLOVE HEAD)
-                // White Body
-                sCtx.fillStyle = '#ffffff';
-                sCtx.fillRect(-6, -6, 12, 18);
-                // Legs
-                sCtx.fillRect(-5, 12, 4, 8); sCtx.fillRect(1, 12, 4, 8);
-                // Mickey Mouse Glove Head!
-                sCtx.fillStyle = '#ffffff';
-                sCtx.strokeStyle = '#000';
-                sCtx.lineWidth = 1.5;
-                sCtx.beginPath(); sCtx.arc(0, -16, 10, 0, Math.PI*2); sCtx.fill(); sCtx.stroke(); // Palm Head
-                // 4 Cartoon Fingers
-                for(let f = -1.5; f <= 1.5; f += 1) {
-                    sCtx.beginPath(); sCtx.arc(f*5, -26, 3.5, 0, Math.PI*2); sCtx.fill(); sCtx.stroke();
-                }
-                // Glove Wrist Band Details
-                sCtx.fillStyle = '#000';
-                sCtx.fillRect(-7, -8, 14, 2);
+            else if (mood.startsWith('vektor')) {
+                // Vektor Humanoid Portrait
+                pCtx.fillStyle = '#ffaa00';
+                pCtx.fillRect(-12, -10, 24, 24);
+                // Eyes & Face
+                pCtx.fillStyle = '#000';
+                pCtx.fillRect(-7, -4, 4, 5); pCtx.fillRect(3, -4, 4, 5);
+                pCtx.fillRect(-5, 6, 10, 2);
+                // Hat
+                pCtx.fillStyle = '#1e293b';
+                pCtx.fillRect(-20, -14, 40, 5);
+                pCtx.fillRect(-12, -26, 24, 12);
             }
 
-            sCtx.restore();
+            pCtx.restore();
+        }
+
+        // --- MAIN RENDER & GAME LOOP ---
+        function loop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (gameState === 'INTRO_CINEMATIC') {
+                renderIntroCinematic();
+            } 
+            else if (gameState === 'DIALOGUE_CINEMATIC' || gameState === 'PLAYING_RPG') {
+                renderRPGWorld();
+
+                if (gameState === 'PLAYING_RPG') {
+                    updatePlayerPhysics();
+                }
+
+                // Update Typewriter Effect
+                if (typewriterText.length < typewriterTarget.length) {
+                    typewriterCharIdx += 0.6;
+                    typewriterText = typewriterTarget.substring(0, Math.floor(typewriterCharIdx));
+                    dialogueText.innerText = typewriterText;
+                }
+            }
 
             requestAnimationFrame(loop);
         }
 
-        // --- EXPRESSIVE ASSISTANT FACES (5 FACIAL EXPRESSIONS) ---
-        const pCanvas = document.getElementById('portraitCanvas');
-        const pCtx = pCanvas.getContext('2d');
+        // --- INTRO CINEMATIC RENDERER ---
+        function renderIntroCinematic() {
+            slideTimer += 0.02;
+            if (slideAlpha < 1) slideAlpha += 0.015;
 
-        function drawPortrait() {
-            pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
-            pCtx.fillStyle = '#00f3ff';
-            pCtx.fillRect(2, 2, 44, 44);
-            pCtx.fillStyle = '#000';
-            pCtx.fillRect(5, 5, 38, 38);
+            const slide = introSlides[currentIntroSlide];
 
-            const talk = Math.sin(Date.now() * 0.02) > 0;
-            const blink = Math.sin(Date.now() * 0.005) > 0.93;
+            // Animated Canvas Backgrounds
+            ctx.save();
+            ctx.translate(canvas.width/2, canvas.height/2 - 40);
 
-            pCtx.fillStyle = '#00f3ff';
-            pCtx.strokeStyle = '#00f3ff';
-            pCtx.lineWidth = 2;
-
-            if (currentMood === 'happy') {
-                // Happy Arc Eyes
-                if (!blink) {
-                    pCtx.beginPath(); pCtx.arc(16, 18, 4, Math.PI, 0); pCtx.stroke();
-                    pCtx.beginPath(); pCtx.arc(32, 18, 4, Math.PI, 0); pCtx.stroke();
+            if (slide.visual === 'VOID') {
+                ctx.strokeStyle = `rgba(0, 243, 255, ${0.15 + Math.sin(slideTimer)*0.1})`;
+                ctx.lineWidth = 1;
+                for (let r = 20; r < 200; r += 30) {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, r + Math.sin(slideTimer + r)*5, 0, Math.PI*2);
+                    ctx.stroke();
                 }
-                // Smile
-                pCtx.beginPath(); pCtx.arc(24, 28, talk ? 6 : 4, 0, Math.PI); pCtx.fill();
             } 
-            else if (currentMood === 'determined') {
-                // Slanted Intense Eyes
-                if (!blink) {
-                    pCtx.beginPath(); pCtx.moveTo(12, 14); pCtx.lineTo(20, 18); pCtx.stroke();
-                    pCtx.beginPath(); pCtx.moveTo(36, 14); pCtx.lineTo(28, 18); pCtx.stroke();
-                }
-                pCtx.fillRect(16, 30, 16, talk ? 4 : 2);
+            else if (slide.visual === 'CRYSTAL') {
+                ctx.fillStyle = '#bc13fe';
+                ctx.rotate(slideTimer * 0.5);
+                ctx.beginPath();
+                ctx.moveTo(0, -50); ctx.lineTo(35, 0); ctx.lineTo(0, 50); ctx.lineTo(-35, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.shadowColor = '#bc13fe'; ctx.shadowBlur = 20;
             } 
-            else if (currentMood === 'surprised') {
-                // Wide Circle Eyes & O-Mouth
-                if (!blink) {
-                    pCtx.beginPath(); pCtx.arc(16, 18, 5, 0, Math.PI*2); pCtx.stroke();
-                    pCtx.beginPath(); pCtx.arc(32, 18, 5, 0, Math.PI*2); pCtx.stroke();
-                }
-                pCtx.beginPath(); pCtx.arc(24, 30, talk ? 5 : 3, 0, Math.PI*2); pCtx.fill();
-            }
-            else if (currentMood === 'smug') {
-                // One eyebrow raised, smirk
-                if (!blink) {
-                    pCtx.fillRect(12, 16, 8, 2);
-                    pCtx.beginPath(); pCtx.arc(32, 16, 4, Math.PI, 0); pCtx.stroke();
-                }
-                pCtx.beginPath(); pCtx.moveTo(18, 30); pCtx.lineTo(30, 26); pCtx.stroke();
-            }
-            else if (currentMood === 'cool') {
-                // Sunglasses!
-                pCtx.fillRect(10, 14, 28, 8);
-                pCtx.fillRect(20, 30, 8, talk ? 4 : 2);
-            }
-            else if (currentMood === 'annoyed' || currentMood === 'confused') {
-                // Flat eyebrows & squiggles
-                if (!blink) {
-                    pCtx.fillRect(12, 16, 8, 2); pCtx.fillRect(28, 16, 8, 2);
-                }
-                pCtx.beginPath(); pCtx.moveTo(16, 30); pCtx.lineTo(22, 28); pCtx.lineTo(32, 32); pCtx.stroke();
+            else if (slide.visual === 'ORB_AWAKEN') {
+                ctx.fillStyle = '#00f3ff';
+                ctx.beginPath();
+                ctx.arc(0, 0, 30 + Math.sin(slideTimer*3)*3, 0, Math.PI*2);
+                ctx.fill();
+                ctx.shadowColor = '#00f3ff'; ctx.shadowBlur = 30;
             }
 
-            requestAnimationFrame(drawPortrait);
+            ctx.restore();
+
+            // Cinematic Subtitles
+            ctx.textAlign = 'center';
+            ctx.fillStyle = `rgba(255, 255, 255, ${slideAlpha})`;
+            ctx.font = 'bold 1.2rem "Courier New", monospace';
+            ctx.fillText(slide.text, canvas.width/2, canvas.height - 140);
+
+            ctx.fillStyle = `rgba(100, 116, 139, ${slideAlpha})`;
+            ctx.font = '0.9rem "Segoe UI", sans-serif';
+            ctx.fillText(slide.sub, canvas.width/2, canvas.height - 110);
+
+            ctx.fillStyle = 'rgba(255, 170, 0, 0.8)';
+            ctx.font = '0.75rem monospace';
+            ctx.fillText('[PRESS SPACE TO CONTINUE]', canvas.width/2, canvas.height - 50);
         }
 
-        function speak(text, mood = 'happy') {
-            document.getElementById('dialogueText').innerText = text;
-            currentMood = mood;
+        // --- 2.5D ONESHOT / ISOMETRIC RPG WORLD RENDERER ---
+        function renderRPGWorld() {
+            // 2.5D Grid Floor (Perspective effect)
+            const gridSpacing = 40;
+            ctx.strokeStyle = 'rgba(30, 41, 59, 0.4)';
+            ctx.lineWidth = 1;
+
+            // Draw Perspective Grid Floor
+            for (let x = -200; x < canvas.width + 200; x += gridSpacing) {
+                ctx.beginPath();
+                ctx.moveTo(x, 100);
+                ctx.lineTo(x + (x - canvas.width/2) * 0.3, canvas.height);
+                ctx.stroke();
+            }
+
+            for (let y = 100; y < canvas.height; y += 30) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // Draw World Objects (Sorted by Y for depth layering)
+            const allRenderables = [
+                ...worldObjects.map(o => ({ ...o, isPlayer: false })),
+                { x: player.x, y: player.y, isPlayer: true }
+            ];
+
+            allRenderables.sort((a, b) => a.y - b.y);
+
+            currentInteractObject = null;
+
+            allRenderables.forEach(obj => {
+                if (obj.isPlayer) {
+                    drawPlayer25D();
+                } else {
+                    drawWorldObject(obj);
+
+                    // Check interaction proximity
+                    const dist = Math.hypot(player.x - obj.x, player.y - obj.y);
+                    if (dist < 45) {
+                        currentInteractObject = obj;
+                        // Prompt tag above object
+                        ctx.fillStyle = '#ffaa00';
+                        ctx.font = 'bold 0.75rem sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('[SPACE] INTERACT', obj.x, obj.y - 45);
+                    }
+                }
+            });
         }
 
-        // --- BUILD SIDEBAR ROSTER ---
-        const rosterEl = document.getElementById('rosterList');
-        subjects.forEach((s, idx) => {
-            const card = document.createElement('div');
-            card.className = `char-card ${idx === 0 ? 'active' : ''}`;
-            card.onclick = () => selectSubject(s, card);
+        // --- DRAW 2.5D ORB-68 PLAYER ---
+        function drawPlayer25D() {
+            player.bounce = Math.sin(Date.now() * 0.008) * 4;
 
-            card.innerHTML = `
-                <div class="char-icon" style="background:${s.color};">${s.id + 1}</div>
-                <div class="char-info">
-                    <div class="char-name">${s.name}</div>
-                    <div class="char-archetype">${s.type}</div>
-                </div>
-            `;
-            rosterEl.appendChild(card);
-        });
+            // Kinetic Pulse Ring (Ability E)
+            if (player.pulseRing > 0) {
+                ctx.strokeStyle = `rgba(0, 243, 255, ${player.pulseRing / 35})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(player.x, player.y, (35 - player.pulseRing) * 2.5, 0, Math.PI*2);
+                ctx.stroke();
+                player.pulseRing--;
+            }
 
-        function selectSubject(s, cardEl) {
-            activeSubject = s;
-            document.querySelectorAll('.char-card').forEach(el => el.classList.remove('active'));
-            cardEl.classList.add('active');
+            // Ground Shadow (Adds 2.5D depth perception)
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.beginPath();
+            ctx.ellipse(player.x, player.y + 4, 16, 7, 0, 0, Math.PI*2);
+            ctx.fill();
 
-            document.getElementById('subjectTitle').innerText = `SUBJECT 0${s.id + 1} // ${s.name.toUpperCase()} (${s.type.toUpperCase()})`;
-            document.getElementById('subjectKeys').innerText = s.keys;
+            // Orb-68 Droplet Body (Floating with bounce)
+            const py = player.y - 12 + player.bounce;
+            ctx.fillStyle = '#00f3ff';
+            ctx.beginPath();
+            ctx.moveTo(player.x, py - 18);
+            ctx.bezierCurveTo(player.x + 14, py - 2, player.x + 16, py + 14, player.x, py + 14);
+            ctx.bezierCurveTo(player.x - 16, py + 14, player.x - 14, py - 2, player.x, py - 18);
+            ctx.fill();
 
-            speak(s.tip, s.mood);
+            // Glowing Eyes
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(player.x - 4, py + 1, 3, 0, Math.PI*2);
+            ctx.arc(player.x + 4, py + 1, 3, 0, Math.PI*2);
+            ctx.fill();
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(player.x - 3, py + 1, 1.5, 0, Math.PI*2);
+            ctx.arc(player.x + 5, py + 1, 1.5, 0, Math.PI*2);
+            ctx.fill();
+        }
+
+        // --- DRAW ENVIRONMENT OBJECTS ---
+        function drawWorldObject(obj) {
+            // Shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.beginPath();
+            ctx.ellipse(obj.x, obj.y + 4, 18, 8, 0, 0, Math.PI*2);
+            ctx.fill();
+
+            ctx.save();
+            ctx.translate(obj.x, obj.y);
+
+            if (obj.type === 'crystal') {
+                ctx.fillStyle = obj.color;
+                ctx.beginPath();
+                ctx.moveTo(0, -32); ctx.lineTo(14, -14); ctx.lineTo(0, 4); ctx.lineTo(-14, -14);
+                ctx.closePath();
+                ctx.fill();
+            } 
+            else if (obj.type === 'vektor_npc') {
+                // Vektor standing in world
+                ctx.fillStyle = obj.color;
+                ctx.fillRect(-6, -20, 12, 20);
+                // Hat
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(-12, -24, 24, 4);
+                ctx.fillRect(-7, -32, 14, 8);
+            } 
+            else if (obj.type === 'ghost_npc') {
+                // Shadow Ghost in world
+                ctx.fillStyle = obj.color;
+                ctx.beginPath(); ctx.arc(0, -16, 12, Math.PI, 0); ctx.lineTo(12, 0); ctx.lineTo(-12, 0); ctx.fill();
+                // Sunglasses
+                ctx.fillStyle = '#000'; ctx.fillRect(-8, -18, 16, 5);
+            }
+            else if (obj.type === 'monolith') {
+                ctx.fillStyle = '#0f172a';
+                ctx.strokeStyle = obj.color;
+                ctx.lineWidth = 1.5;
+                ctx.fillRect(-14, -40, 28, 40);
+                ctx.strokeRect(-14, -40, 28, 40);
+            }
+
+            ctx.restore();
+        }
+
+        // --- RPG PLAYER PHYSICS & MOVEMENT ---
+        function updatePlayerPhysics() {
+            player.vx = 0;
+            player.vy = 0;
+
+            if (keys['KeyA'] || keys['ArrowLeft']) player.vx = -player.speed;
+            if (keys['KeyD'] || keys['ArrowRight']) player.vx = player.speed;
+            if (keys['KeyW'] || keys['ArrowUp']) player.vy = -player.speed * 0.75; // Isometric damping
+            if (keys['KeyS'] || keys['ArrowDown']) player.vy = player.speed * 0.75;
+
+            player.x += player.vx;
+            player.y += player.vy;
+
+            // Boundaries
+            if (player.x < 40) player.x = 40;
+            if (player.x > canvas.width - 40) player.x = canvas.width - 40;
+            if (player.y < 120) player.y = 120;
+            if (player.y > canvas.height - 40) player.y = canvas.height - 40;
         }
 
         loop();
-        drawPortrait();
     </script>
 </body>
 </html>
