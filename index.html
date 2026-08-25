@@ -133,7 +133,7 @@
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
         }
 
-        /* Left Column - Procedural Visual Engine */
+        /* Left Column - Visual Panel */
         .visual-panel {
             grid-column: 1;
             display: flex;
@@ -412,7 +412,191 @@
         let currentEntry = {};
         let savedEntries = JSON.parse(localStorage.getItem('saved_anomalies') || '[]');
 
-        // Dynamic Procedural Canvas Animation Generator
+        // Distinct Anatomical Creature Rig Renderers
+        function drawSpider(ctx, colorHex) {
+            const bodyY = Math.sin(t * 3) * 6;
+            const breathe = Math.sin(t * 2) * 2;
+
+            // Cephalothorax & Abdomen
+            ctx.fillStyle = colorHex;
+            ctx.beginPath();
+            ctx.ellipse(0, bodyY + 15, 22 + breathe, 28 + breathe, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.ellipse(0, bodyY - 12, 14, 16, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Glowing Eyes
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = '#ffffff';
+            ctx.shadowBlur = 8;
+            [-6, -2, 2, 6].forEach((x, i) => {
+                ctx.beginPath();
+                ctx.arc(x, bodyY - 18, (i === 1 || i === 2) ? 2.5 : 1.5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // 8 Animated Procedural Jointed Legs
+            ctx.strokeStyle = colorHex;
+            ctx.lineWidth = 3;
+            ctx.shadowColor = colorHex;
+            ctx.shadowBlur = 10;
+
+            for (let side = -1; side <= 1; side += 2) {
+                for (let i = 0; i < 4; i++) {
+                    const legAngle = (i * 0.35) - 0.5;
+                    const step = Math.sin(t * 4 + i * 0.8 * side) * 12;
+
+                    const jointX = side * (35 + i * 4);
+                    const jointY = bodyY - 20 + (i * 12) + step;
+                    const tipX = side * (65 + i * 8);
+                    const tipY = bodyY + 10 + (i * 16);
+
+                    ctx.beginPath();
+                    ctx.moveTo(side * 8, bodyY - 10 + (i * 6));
+                    ctx.lineTo(jointX, jointY);
+                    ctx.lineTo(tipX, tipY);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        function drawSerpent(ctx, colorHex) {
+            ctx.strokeStyle = colorHex;
+            ctx.lineWidth = 14;
+            ctx.lineCap = 'round';
+            ctx.shadowColor = colorHex;
+            ctx.shadowBlur = 12;
+
+            ctx.beginPath();
+            const segments = 30;
+            let headX = 0, headY = 0;
+
+            for (let i = 0; i < segments; i++) {
+                const wave = Math.sin(t * 3 - i * 0.25) * (20 + i * 1.2);
+                const y = -100 + i * 7;
+                const x = wave;
+
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                    headX = x; headY = y;
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.stroke();
+
+            // Head & Glowing Eyes
+            ctx.fillStyle = colorHex;
+            ctx.beginPath();
+            ctx.arc(headX, headY, 14, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = '#ffffff';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.arc(headX - 5, headY - 3, 2.5, 0, Math.PI * 2);
+            ctx.arc(headX + 5, headY - 3, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawBiped(ctx, colorHex) {
+            const sway = Math.sin(t * 2.5) * 8;
+            const breathe = Math.sin(t * 1.8) * 3;
+
+            ctx.strokeStyle = colorHex;
+            ctx.fillStyle = colorHex;
+            ctx.lineWidth = 4;
+            ctx.shadowColor = colorHex;
+            ctx.shadowBlur = 10;
+
+            // Skull
+            ctx.beginPath();
+            ctx.arc(sway, -65, 12, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eyes
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(sway - 4, -67, 2, 0, Math.PI * 2);
+            ctx.arc(sway + 4, -67, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Spine & Rib Cage
+            ctx.beginPath();
+            ctx.moveTo(sway, -53);
+            ctx.lineTo(0, 10);
+            ctx.stroke();
+
+            for (let i = 0; i < 4; i++) {
+                ctx.beginPath();
+                ctx.moveTo(sway - (10 - i * 2), -45 + (i * 7));
+                ctx.lineTo(sway + (10 - i * 2), -45 + (i * 7));
+                ctx.stroke();
+            }
+
+            // Long Arms
+            for (let side = -1; side <= 1; side += 2) {
+                const armWave = Math.sin(t * 2.5 + side) * 10;
+                ctx.beginPath();
+                ctx.moveTo(sway + side * 12, -45);
+                ctx.lineTo(sway + side * 28, -15 + armWave);
+                ctx.lineTo(sway + side * 35, 25 + armWave);
+                ctx.stroke();
+            }
+
+            // Legs
+            ctx.beginPath();
+            ctx.moveTo(0, 10); ctx.lineTo(-18, 45); ctx.lineTo(-22, 85);
+            ctx.moveTo(0, 10); ctx.lineTo(18, 45); ctx.lineTo(22, 85);
+            ctx.stroke();
+        }
+
+        function drawLeviathan(ctx, colorHex) {
+            const bodyY = Math.sin(t * 2) * 10;
+
+            ctx.fillStyle = colorHex;
+            ctx.strokeStyle = colorHex;
+            ctx.shadowColor = colorHex;
+            ctx.shadowBlur = 12;
+
+            // Main Mantle / Bell
+            ctx.beginPath();
+            ctx.moveTo(-45, bodyY);
+            ctx.quadraticCurveTo(0, bodyY - 70 - Math.sin(t * 3) * 10, 45, bodyY);
+            ctx.quadraticCurveTo(0, bodyY + 15, -45, bodyY);
+            ctx.fill();
+
+            // Glowing Core Orbs
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = '#ffffff';
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc(0, bodyY - 20, 8, 0, Math.PI * 2);
+            ctx.arc(-15, bodyY - 10, 5, 0, Math.PI * 2);
+            ctx.arc(15, bodyY - 10, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Undulating Tentacles
+            ctx.strokeStyle = colorHex;
+            ctx.lineWidth = 3.5;
+            for (let i = -4; i <= 4; i++) {
+                const startX = i * 9;
+                ctx.beginPath();
+                ctx.moveTo(startX, bodyY + 5);
+
+                for (let j = 0; j < 8; j++) {
+                    const waveX = Math.sin(t * 3.5 + i * 0.5 + j * 0.4) * (12 + j * 2);
+                    const segY = bodyY + 15 + (j * 12);
+                    ctx.lineTo(startX + waveX, segY);
+                }
+                ctx.stroke();
+            }
+        }
+
+        // Render Controller
         function renderEntity() {
             t += 0.025;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -420,7 +604,7 @@
             const cx = canvas.width / 2;
             const cy = canvas.height / 2;
 
-            // Background Atmospheric Energy Grid
+            // Background Atmospheric Radar Grid
             ctx.strokeStyle = 'rgba(0, 243, 255, 0.05)';
             ctx.lineWidth = 1;
             for(let i = 0; i < canvas.width; i += 24) {
@@ -434,64 +618,17 @@
                 ctx.save();
                 ctx.translate(cx, cy);
 
-                // Threat Color Palette Selection
                 let colorHex = '#00f3ff';
                 if (currentEntry.threatLevel === 'APOCALYPTIC') colorHex = '#bc13fe';
                 else if (currentEntry.threatLevel === 'CRITICAL') colorHex = '#ff3344';
                 else if (currentEntry.threatLevel === 'HAZARDOUS') colorHex = '#ffaa00';
 
-                // Particle Rings
-                ctx.strokeStyle = colorHex;
-                ctx.lineWidth = 1.5;
-                ctx.shadowColor = colorHex;
-                ctx.shadowBlur = 12;
-
-                let ringRadius = 60 + Math.sin(t * 1.5) * 8;
-                ctx.beginPath();
-                ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
-                ctx.stroke();
-
-                // Animated Procedural Specimen Silhouette Core
-                ctx.fillStyle = colorHex;
-                const numTentacles = 8 + (currentEntry.seed % 8);
-                
-                ctx.beginPath();
-                for (let i = 0; i < numTentacles; i++) {
-                    let angle = (i / numTentacles) * Math.PI * 2 + (t * 0.2);
-                    let pulse = Math.sin(t * 3 + i * currentEntry.seed) * 22;
-                    let rad = 35 + pulse;
-
-                    let x = Math.cos(angle) * rad;
-                    let y = Math.sin(angle) * rad;
-
-                    if (i === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
-
-                    // Secondary Outer Spikes/Tentacles
-                    let tx = Math.cos(angle) * (rad + 35 + Math.sin(t * 4 + i) * 18);
-                    let ty = Math.sin(angle) * (rad + 35 + Math.cos(t * 4 + i) * 18);
-                    ctx.lineTo(tx, ty);
-                }
-                ctx.closePath();
-                ctx.fill();
-
-                // Core Luminescent Orb
-                ctx.fillStyle = '#ffffff';
-                ctx.beginPath();
-                ctx.arc(0, 0, 12 + Math.sin(t * 4) * 3, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Floating Orbital Particles
-                for (let i = 0; i < 6; i++) {
-                    let orbitAngle = t * (0.8 + i * 0.1) + i;
-                    let orbitDist = 75 + Math.sin(t + i) * 15;
-                    let px = Math.cos(orbitAngle) * orbitDist;
-                    let py = Math.sin(orbitAngle) * orbitDist;
-
-                    ctx.beginPath();
-                    ctx.arc(px, py, 3, 0, Math.PI * 2);
-                    ctx.fill();
-                }
+                // Select Creature Form based on Entry
+                const creatureType = currentEntry.creatureType || 0;
+                if (creatureType === 0) drawSpider(ctx, colorHex);
+                else if (creatureType === 1) drawSerpent(ctx, colorHex);
+                else if (creatureType === 2) drawBiped(ctx, colorHex);
+                else drawLeviathan(ctx, colorHex);
 
                 ctx.restore();
             }
@@ -500,22 +637,42 @@
         }
 
         // Procedural Text Generator Tables
-        const namePrefixes = ["Obsidian", "Non-Euclidean", "The Echoing", "Sub-Surface", "Kinetic", "Stanza", "Cosmic", "Phase-Shifted"];
-        const nameNouns = ["Architect", "Vanguard", "Watcher", "Entity", "Crawler", "Husk", "Spectre", "Weaver"];
-        const classes = ["Liminal-Anomaly", "Biological-Shift", "Spatial-Distortion", "Cognitohazard", "Liquid-State Entity"];
-        
+        const creaturePresets = [
+            {
+                type: 0,
+                prefixes: ["Arachnid", "Weaver", "Eight-Legged", "Chitinous"],
+                nouns: ["Stalker", "Crawler", "Horror", "Lurker"],
+                classes: ["Biological-Parasite", "Arachnoid-Class"],
+                morphs: ["Eight-jointed arachnoid morphology with layered chitin plates and multiple luminescent optical nodes."]
+            },
+            {
+                type: 1,
+                prefixes: ["Serpentine", "Echoing", "Sub-Surface", "Coiled"],
+                nouns: ["Wyrm", "Leviathan", "Slitherer", "Tendril"],
+                classes: ["Spatial-Distortion", "Serpentine Anomaly"],
+                morphs: ["Elongated segmented serpent body lacking epidermal scales, moving through acoustic waveforms."]
+            },
+            {
+                type: 2,
+                prefixes: ["Skeletal", "Bipedal", "Striding", "Hollow"],
+                nouns: ["Husk", "Vanguard", "Watcher", "Spectre"],
+                classes: ["Liminal-Horror", "Cognitohazard"],
+                morphs: ["Elongated bipedal skeletal organism with extended upper extremities and rib cage structure."]
+            },
+            {
+                type: 3,
+                prefixes: ["Floating", "Abyssal", "Non-Euclidean", "Spectral"],
+                nouns: ["Weaver", "Sovereign", "Architect", "Gazer"],
+                classes: ["Liquid-State Entity", "Aether-Class"],
+                morphs: ["Floating central mantle with bioluminescent core rings and multiple fluid tentacular appendages."]
+            }
+        ];
+
         const threats = [
             { level: "MINIMAL", color: "#00ff66", bg: "rgba(0, 255, 106, 0.15)" },
             { level: "HAZARDOUS", color: "#ffaa00", bg: "rgba(255, 170, 0, 0.15)" },
             { level: "CRITICAL", color: "#ff3344", bg: "rgba(255, 51, 68, 0.15)" },
             { level: "APOCALYPTIC", color: "#bc13fe", bg: "rgba(188, 19, 254, 0.2)" }
-        ];
-
-        const morphologies = [
-            "Amorphous mass shifting constantly across non-Euclidean geometry with bioluminescent glow.",
-            "Bipedal skeletal frame integrated with dense white liquid energy channels.",
-            "Sub-surface crystalline core emitting localized gravitational distortion rings.",
-            "Multi-jointed appendage network with fluctuating visual camouflage abilities."
         ];
 
         const behaviors = [
@@ -535,15 +692,18 @@
         function generateNewArchiveEntry() {
             const seed = Math.floor(Math.random() * 10000);
             const threatObj = threats[Math.floor(Math.random() * threats.length)];
+            const creatureType = Math.floor(Math.random() * creaturePresets.length);
+            const preset = creaturePresets[creatureType];
 
             currentEntry = {
                 seed: seed,
+                creatureType: creatureType,
                 id: "ENT-" + Math.floor(1000 + Math.random() * 9000),
-                name: namePrefixes[Math.floor(Math.random() * namePrefixes.length)] + " " + nameNouns[Math.floor(Math.random() * nameNouns.length)],
-                eClass: classes[Math.floor(Math.random() * classes.length)],
+                name: preset.prefixes[Math.floor(Math.random() * preset.prefixes.length)] + " " + preset.nouns[Math.floor(Math.random() * preset.nouns.length)],
+                eClass: preset.classes[Math.floor(Math.random() * preset.classes.length)],
                 threatLevel: threatObj.level,
                 threatObj: threatObj,
-                morph: morphologies[Math.floor(Math.random() * morphologies.length)],
+                morph: preset.morphs[0],
                 behavior: behaviors[Math.floor(Math.random() * behaviors.length)],
                 containment: protocols[Math.floor(Math.random() * protocols.length)]
             };
