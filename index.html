@@ -3,846 +3,351 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CLASSIFIED ARCHIVE // ANOMALOUS SPECIMEN DATABASE</title>
+    <title>SECTOR ZERO // PROTOTYPE TEST LAB</title>
     <style>
         :root {
-            --bg-dark: #05070a;
-            --panel-bg: rgba(12, 17, 24, 0.85);
-            --border-color: #1e293b;
-            --accent-green: #00ff66;
-            --accent-red: #ff3344;
-            --accent-amber: #ffaa00;
-            --accent-cyan: #00f3ff;
-            --accent-purple: #bc13fe;
+            --bg-dark: #04060a;
+            --panel-bg: rgba(10, 15, 26, 0.85);
+            --border: #1e293b;
+            --cyan: #00f3ff;
+            --amber: #ffaa00;
+            --purple: #bc13fe;
             --text-bright: #f8fafc;
             --text-dim: #64748b;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
             background-color: var(--bg-dark);
             color: var(--text-bright);
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-family: 'Segoe UI', system-ui, sans-serif;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
-            overflow-x: hidden;
-            position: relative;
-        }
-
-        .ambient-bg {
-            position: fixed;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 100vw; height: 100vh;
-            background: radial-gradient(circle at 30% 30%, rgba(0, 243, 255, 0.05), transparent 60%),
-                        radial-gradient(circle at 70% 70%, rgba(188, 19, 254, 0.05), transparent 60%);
-            pointer-events: none;
-            z-index: 0;
+            overflow: hidden;
         }
 
         .scanlines {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
-            background: linear-gradient(
-                to bottom,
-                rgba(255,255,255,0),
-                rgba(255,255,255,0) 50%,
-                rgba(0, 0, 0, 0.4) 50%,
-                rgba(0, 0, 0, 0.4)
-            );
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0, 0, 0, 0.3) 50%, rgba(0, 0, 0, 0.3));
             background-size: 100% 4px;
             pointer-events: none;
             z-index: 100;
-            opacity: 0.6;
         }
 
-        .main-wrapper {
+        .container {
             width: 100%;
-            max-width: 1280px;
+            max-width: 1100px;
             display: grid;
-            grid-template-columns: 1fr 320px;
+            grid-template-columns: 1fr 300px;
             gap: 20px;
             z-index: 1;
         }
 
-        .archive-card {
+        .viewport-card {
             background: var(--panel-bg);
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border);
             border-radius: 12px;
-            backdrop-filter: blur(12px);
-            box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 20px rgba(0, 243, 255, 0.05);
-            display: grid;
-            grid-template-columns: 360px 1fr;
-            grid-template-rows: auto 1fr auto;
-            gap: 24px;
-            padding: 28px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .archive-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple), var(--accent-green));
-            z-index: 2;
-        }
-
-        header {
-            grid-column: 1 / -1;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .archive-title {
-            font-size: 1.1rem;
-            letter-spacing: 2px;
-            font-weight: 700;
-            color: var(--accent-cyan);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .threat-badge {
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-weight: 800;
-            font-size: 0.8rem;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
-        }
-
-        .visual-panel {
-            grid-column: 1;
+            padding: 20px;
             display: flex;
             flex-direction: column;
             gap: 16px;
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.05);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+            font-size: 0.85rem;
+            color: var(--cyan);
+            letter-spacing: 1.5px;
+            font-weight: 700;
         }
 
         .canvas-frame {
             width: 100%;
-            height: 320px;
+            height: 480px;
             background: #020305;
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border);
             border-radius: 8px;
             position: relative;
             overflow: hidden;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.9);
         }
 
-        canvas {
-            width: 100%; height: 100%; display: block;
-        }
+        canvas { width: 100%; height: 100%; display: block; }
 
-        .data-panel {
-            grid-column: 2;
-            display: flex;
-            flex-direction: column;
-            gap: 18px;
-        }
-
-        .field-group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .field-label {
-            font-size: 0.7rem;
-            color: var(--text-dim);
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            font-weight: 700;
-        }
-
-        .field-value {
-            font-size: 0.95rem;
-            color: var(--text-bright);
-            line-height: 1.6;
-        }
-
-        .saved-sidebar {
+        .control-panel {
             background: var(--panel-bg);
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border);
             border-radius: 12px;
-            backdrop-filter: blur(12px);
-            padding: 24px;
+            padding: 20px;
             display: flex;
             flex-direction: column;
             gap: 16px;
-            max-height: 680px;
         }
 
-        .sidebar-title {
-            font-size: 0.85rem;
-            color: var(--accent-cyan);
+        .section-title {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
             letter-spacing: 1.5px;
             font-weight: 700;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 12px;
-            text-transform: uppercase;
-            display: flex;
-            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
         }
-
-        .saved-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            overflow-y: auto;
-            padding-right: 4px;
-        }
-
-        .saved-item {
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid var(--border-color);
-            padding: 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.25s ease;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .saved-item:hover {
-            border-color: var(--accent-cyan);
-            background: rgba(30, 41, 59, 0.8);
-            transform: translateX(4px);
-        }
-
-        .saved-id {
-            font-size: 0.7rem;
-            color: var(--text-dim);
-            font-weight: 600;
-        }
-
-        .saved-name {
-            font-size: 0.85rem;
-            color: var(--text-bright);
-            font-weight: 600;
-        }
-
-        .delete-btn {
-            background: transparent;
-            border: none;
-            color: var(--text-dim);
-            font-size: 0.9rem;
-            cursor: pointer;
-            padding: 4px;
-            transition: color 0.2s;
-        }
-
-        .delete-btn:hover { color: var(--accent-red); }
-
-        footer {
-            grid-column: 1 / -1;
-            border-top: 1px solid var(--border-color);
-            padding-top: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .button-group { display: flex; gap: 12px; }
 
         .btn {
             background: #0f172a;
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border);
             color: var(--text-bright);
-            padding: 12px 20px;
+            padding: 12px;
             font-family: inherit;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 700;
             letter-spacing: 1px;
             text-transform: uppercase;
             cursor: pointer;
-            transition: all 0.25s ease;
             border-radius: 6px;
+            transition: all 0.2s;
+            text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .btn:hover {
-            border-color: var(--accent-green);
-            color: var(--accent-green);
-            box-shadow: 0 0 15px rgba(0, 255, 102, 0.2);
-            transform: translateY(-2px);
+            border-color: var(--cyan);
+            color: var(--cyan);
+            transform: translateX(4px);
         }
 
-        .btn-save { color: var(--accent-cyan); border-color: rgba(0, 243, 255, 0.3); }
-        .btn-save:hover { background: var(--accent-cyan); color: #000; box-shadow: 0 0 20px rgba(0, 243, 255, 0.4); }
-
-        .btn-danger { color: var(--accent-red); border-color: rgba(255, 51, 68, 0.3); }
-        .btn-danger:hover { background: var(--accent-red); color: #fff; box-shadow: 0 0 20px rgba(255, 51, 68, 0.4); }
-
-        @media (max-width: 1024px) {
-            .main-wrapper { grid-template-columns: 1fr; }
-            .archive-card { grid-template-columns: 1fr; }
-            .visual-panel, .data-panel { grid-column: 1; }
+        .instructions {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            line-height: 1.5;
+            background: rgba(15, 23, 42, 0.5);
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
         }
     </style>
 </head>
 <body>
-
-    <div class="ambient-bg"></div>
     <div class="scanlines"></div>
-
-    <div class="main-wrapper">
-        <div class="archive-card">
-            <header>
-                <div class="archive-title">
-                    <span style="display:inline-block; width:8px; height:8px; background:var(--accent-cyan); border-radius:50%; box-shadow: 0 0 10px var(--accent-cyan);"></span>
-                    CENTRAL ARCHIVE // ENTITY DOSSIER
-                </div>
-                <div id="threat-tag" class="threat-badge">LEVEL 0</div>
-            </header>
-
-            <div class="visual-panel">
-                <div class="canvas-frame">
-                    <canvas id="entityCanvas"></canvas>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div class="field-group">
-                        <span class="field-label">INDEX CODE</span>
-                        <span class="field-value" id="val-id" style="font-family: monospace;">ENT-0000</span>
-                    </div>
-                    <div class="field-group">
-                        <span class="field-label">ANOMALOUS CLASS</span>
-                        <span class="field-value" id="val-class">UNKNOWN</span>
-                    </div>
-                </div>
+    <div class="container">
+        <div class="viewport-card">
+            <div class="header">
+                <span>SECTOR ZERO // PHYSICS & ANOMALY LAB</span>
+                <span>STATUS: ACTIVE</span>
             </div>
-
-            <div class="data-panel">
-                <div class="field-group">
-                    <span class="field-label">COGNOMEN / DESIGNATION</span>
-                    <span class="field-value" id="val-name" style="font-size: 1.3rem; font-weight: 800; color: var(--accent-cyan);">---</span>
-                </div>
-                <div class="field-group">
-                    <span class="field-label">MORPHOLOGICAL PROFILE</span>
-                    <span class="field-value" id="val-morph">---</span>
-                </div>
-                <div class="field-group">
-                    <span class="field-label">BEHAVIORAL PATTERNS & ANOMALIES</span>
-                    <span class="field-value" id="val-behavior">---</span>
-                </div>
-                <div class="field-group">
-                    <span class="field-label">CONTAINMENT DIRECTIVES</span>
-                    <span class="field-value" id="val-containment">---</span>
-                </div>
+            <div class="canvas-frame">
+                <canvas id="labCanvas"></canvas>
             </div>
-
-            <footer>
-                <span style="font-size: 0.75rem; color: var(--text-dim); font-family: monospace;" id="timestamp">TERMINAL READY</span>
-                <div class="button-group">
-                    <button class="btn btn-save" id="saveBtn">★ BOOKMARK FILE</button>
-                    <button class="btn btn-danger" id="genBtn">GENERATE NEW</button>
-                </div>
-            </footer>
+            <div class="instructions">
+                <b>CONTROLS:</b> Use <b>A / D</b> or <b>Left / Right Arrows</b> to move Unit 09. Press <b>SPACE</b> or <b>W</b> to jump. Click inside the viewport to place a grav-anomaly core.
+            </div>
         </div>
 
-        <div class="saved-sidebar">
-            <div class="sidebar-title">
-                <span>BOOKMARKED ENTRIES</span>
-                <span id="saved-count" style="color: var(--text-bright);">0</span>
+        <div class="control-panel">
+            <div class="section-title">TEST ENVIRONMENTS</div>
+            <button class="btn" id="modeNormal"><span>01. ZERO SECTOR</span><span style="color:var(--cyan);">[ACTIVE]</span></button>
+            <button class="btn" id="modeGravity"><span>02. REVERSE GRAVITY</span></button>
+            <button class="btn" id="modeEntities"><span>03. ENTITY FIELD</span></button>
+
+            <div class="section-title">BRAINSTORM LOGS</div>
+            <div class="instructions" id="ideaLog">
+                Select or interact with elements in the simulator to test new mechanics and trigger game idea concepts.
             </div>
-            <div class="saved-list" id="saved-list"></div>
         </div>
     </div>
 
     <script>
-        const canvas = document.getElementById('entityCanvas');
+        const canvas = document.getElementById('labCanvas');
         const ctx = canvas.getContext('2d');
 
-        function resizeCanvas() {
+        function resize() {
             canvas.width = canvas.offsetWidth;
             canvas.height = canvas.offsetHeight;
         }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
+        window.addEventListener('resize', resize);
+        resize();
 
-        let t = 0;
-        let currentEntry = {};
-        let savedEntries = JSON.parse(localStorage.getItem('saved_anomalies') || '[]');
+        // Player Unit 09 Physics State
+        const player = {
+            x: 100, y: 300,
+            vx: 0, vy: 0,
+            radius: 14,
+            grounded: false,
+            color: '#00f3ff',
+            eyeAngle: 0
+        };
 
-        // Helper Setup
-        function setupCtx(colorHex) {
-            ctx.fillStyle = colorHex;
-            ctx.strokeStyle = colorHex;
-            ctx.shadowColor = colorHex;
-            ctx.shadowBlur = 10;
-        }
+        let keys = {};
+        let gravity = 0.45;
+        let anomalyNodes = [];
+        let activeMode = 'normal';
 
-        function drawEyes(coords, colorHex = '#ffffff') {
-            ctx.fillStyle = colorHex;
-            ctx.shadowColor = colorHex;
-            ctx.shadowBlur = 8;
-            coords.forEach(([x, y, r]) => {
-                ctx.beginPath();
-                ctx.arc(x, y, r, 0, Math.PI * 2);
-                ctx.fill();
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            anomalyNodes.push({
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top,
+                radius: 60,
+                pulse: 0
             });
+            updateIdeaLog("NEW MECHANIC: Gravitational Anchor. Deployable nodes that let Unit 09 slingshot through non-Euclidean vertical sectors.");
+        });
+
+        document.getElementById('modeNormal').onclick = () => {
+            gravity = 0.45;
+            activeMode = 'normal';
+            updateIdeaLog("SECTOR ZERO: Standard exploration mode. Minimal light, platform momentum, and scanner puzzles.");
+        };
+
+        document.getElementById('modeGravity').onclick = () => {
+            gravity = -0.3;
+            activeMode = 'gravity';
+            updateIdeaLog("NEW MECHANIC: Gravitational Inversion. Flipping sector orientation to walk on ceilings and solve inverted environmental locks.");
+        };
+
+        document.getElementById('modeEntities').onclick = () => {
+            gravity = 0.45;
+            activeMode = 'entities';
+            updateIdeaLog("NEW MECHANIC: Spectral Pulse. Releasing pulse blasts to stun wandering anomalous entities and expose hidden platforms.");
+        };
+
+        function updateIdeaLog(text) {
+            document.getElementById('ideaLog').innerText = text;
         }
 
-        // --- 16 DISTINCT CREATURE DRAW FUNCTIONS ---
-        // 0. Spider
-        function drawSpider(ctx, colorHex) {
-            setupCtx(colorHex);
-            const bodyY = Math.sin(t * 3) * 6;
-            ctx.beginPath(); ctx.ellipse(0, bodyY + 15, 22, 28, 0, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.ellipse(0, bodyY - 12, 14, 16, 0, 0, Math.PI * 2); ctx.fill();
-            drawEyes([[-6, bodyY - 18, 2], [-2, bodyY - 18, 3], [2, bodyY - 18, 3], [6, bodyY - 18, 2]]);
-            ctx.lineWidth = 3;
-            for (let side = -1; side <= 1; side += 2) {
-                for (let i = 0; i < 4; i++) {
-                    const step = Math.sin(t * 4 + i * 0.8 * side) * 12;
-                    ctx.beginPath();
-                    ctx.moveTo(side * 8, bodyY - 10 + (i * 6));
-                    ctx.lineTo(side * (35 + i * 4), bodyY - 20 + (i * 12) + step);
-                    ctx.lineTo(side * (65 + i * 8), bodyY + 10 + (i * 16));
-                    ctx.stroke();
-                }
-            }
-        }
-
-        // 1. Serpent
-        function drawSerpent(ctx, colorHex) {
-            setupCtx(colorHex);
-            ctx.lineWidth = 14; ctx.lineCap = 'round';
-            ctx.beginPath();
-            let headX = 0, headY = 0;
-            for (let i = 0; i < 30; i++) {
-                const x = Math.sin(t * 3 - i * 0.25) * (20 + i * 1.2);
-                const y = -100 + i * 7;
-                if (i === 0) { ctx.moveTo(x, y); headX = x; headY = y; }
-                else ctx.lineTo(x, y);
-            }
-            ctx.stroke();
-            ctx.beginPath(); ctx.arc(headX, headY, 14, 0, Math.PI * 2); ctx.fill();
-            drawEyes([[headX - 5, headY - 3, 2.5], [headX + 5, headY - 3, 2.5]]);
-        }
-
-        // 2. Biped Skeletal
-        function drawBiped(ctx, colorHex) {
-            setupCtx(colorHex);
-            const sway = Math.sin(t * 2.5) * 8;
-            ctx.lineWidth = 4;
-            ctx.beginPath(); ctx.arc(sway, -65, 12, 0, Math.PI * 2); ctx.fill();
-            drawEyes([[sway - 4, -67, 2], [sway + 4, -67, 2]]);
-            ctx.beginPath(); ctx.moveTo(sway, -53); ctx.lineTo(0, 10); ctx.stroke();
-            for (let i = 0; i < 4; i++) {
-                ctx.beginPath(); ctx.moveTo(sway - (10 - i * 2), -45 + (i * 7)); ctx.lineTo(sway + (10 - i * 2), -45 + (i * 7)); ctx.stroke();
-            }
-            for (let side = -1; side <= 1; side += 2) {
-                const armWave = Math.sin(t * 2.5 + side) * 10;
-                ctx.beginPath(); ctx.moveTo(sway + side * 12, -45); ctx.lineTo(sway + side * 28, -15 + armWave); ctx.lineTo(sway + side * 35, 25 + armWave); ctx.stroke();
-            }
-            ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(-18, 45); ctx.lineTo(-22, 85); ctx.moveTo(0, 10); ctx.lineTo(18, 45); ctx.lineTo(22, 85); ctx.stroke();
-        }
-
-        // 3. Leviathan / Medusa
-        function drawLeviathan(ctx, colorHex) {
-            setupCtx(colorHex);
-            const bodyY = Math.sin(t * 2) * 10;
-            ctx.beginPath(); ctx.moveTo(-45, bodyY);
-            ctx.quadraticCurveTo(0, bodyY - 70 - Math.sin(t * 3) * 10, 45, bodyY);
-            ctx.quadraticCurveTo(0, bodyY + 15, -45, bodyY); ctx.fill();
-            drawEyes([[0, bodyY - 20, 8], [-15, bodyY - 10, 5], [15, bodyY - 10, 5]]);
-            ctx.lineWidth = 3.5;
-            for (let i = -4; i <= 4; i++) {
-                const startX = i * 9;
-                ctx.beginPath(); ctx.moveTo(startX, bodyY + 5);
-                for (let j = 0; j < 8; j++) {
-                    ctx.lineTo(startX + Math.sin(t * 3.5 + i * 0.5 + j * 0.4) * (12 + j * 2), bodyY + 15 + (j * 12));
-                }
-                ctx.stroke();
-            }
-        }
-
-        // 4. Centipede
-        function drawCentipede(ctx, colorHex) {
-            setupCtx(colorHex);
-            ctx.lineWidth = 3;
-            let headX = 0, headY = 0;
-            for (let i = 0; i < 18; i++) {
-                const x = Math.sin(t * 3 + i * 0.3) * 25;
-                const y = -80 + i * 9;
-                if (i === 0) { headX = x; headY = y; }
-                ctx.beginPath(); ctx.arc(x, y, 9 - (i * 0.3), 0, Math.PI * 2); ctx.fill();
-                const legSwing = Math.sin(t * 5 + i) * 12;
-                ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 22, y + legSwing); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 22, y - legSwing); ctx.stroke();
-            }
-            drawEyes([[headX - 4, headY - 4, 3], [headX + 4, headY - 4, 3]]);
-        }
-
-        // 5. Beholder / Eyeball Hive
-        function drawBeholder(ctx, colorHex) {
-            setupCtx(colorHex);
-            const floatY = Math.sin(t * 2) * 8;
-            ctx.beginPath(); ctx.arc(0, floatY, 40, 0, Math.PI * 2); ctx.fill();
-            drawEyes([[0, floatY, 18], [-8, floatY - 4, 4]]);
-            ctx.lineWidth = 3;
-            for (let i = 0; i < 7; i++) {
-                const angle = (i / 7) * Math.PI * 2 + t * 0.5;
-                const tx = Math.cos(angle) * (65 + Math.sin(t * 3 + i) * 8);
-                const ty = floatY + Math.sin(angle) * (65 + Math.sin(t * 3 + i) * 8);
-                ctx.beginPath(); ctx.moveTo(Math.cos(angle) * 35, floatY + Math.sin(angle) * 35); ctx.lineTo(tx, ty); ctx.stroke();
-                drawEyes([[tx, ty, 5]]);
-            }
-        }
-
-        // 6. Winged Bat/Gargoyle
-        function drawBat(ctx, colorHex) {
-            setupCtx(colorHex);
-            const flap = Math.sin(t * 4) * 30;
-            const bodyY = Math.sin(t * 2) * 6;
-            ctx.beginPath(); ctx.ellipse(0, bodyY, 14, 25, 0, 0, Math.PI * 2); ctx.fill();
-            drawEyes([[-5, bodyY - 10, 2.5], [5, bodyY - 10, 2.5]]);
-            for (let side = -1; side <= 1; side += 2) {
-                ctx.beginPath(); ctx.moveTo(side * 8, bodyY - 10);
-                ctx.lineTo(side * 75, bodyY - 40 + flap);
-                ctx.lineTo(side * 45, bodyY + 15);
-                ctx.lineTo(side * 25, bodyY + 5);
-                ctx.lineTo(side * 8, bodyY + 15); ctx.fill();
-            }
-        }
-
-        // 7. Scorpion
-        function drawScorpion(ctx, colorHex) {
-            setupCtx(colorHex);
-            ctx.beginPath(); ctx.ellipse(0, 20, 18, 30, 0, 0, Math.PI * 2); ctx.fill();
-            drawEyes([[-4, 0, 2], [4, 0, 2]]);
-            ctx.lineWidth = 6; ctx.lineCap = 'round';
-            ctx.beginPath(); ctx.moveTo(0, 45);
-            for (let i = 0; i < 8; i++) {
-                const tx = Math.sin(t * 3 + i * 0.3) * 15;
-                const ty = 45 + i * 8 - (i > 4 ? (i - 4) * 12 : 0);
-                ctx.lineTo(tx, ty);
-            }
-            ctx.stroke();
-            ctx.lineWidth = 3;
-            for (let side = -1; side <= 1; side += 2) {
-                const clawSwing = Math.sin(t * 3 + side) * 8;
-                ctx.beginPath(); ctx.moveTo(side * 10, 5);
-                ctx.lineTo(side * 40, -15 + clawSwing);
-                ctx.lineTo(side * 35, -40 + clawSwing); ctx.stroke();
-                ctx.beginPath(); ctx.arc(side * 35, -42 + clawSwing, 7, 0, Math.PI * 2); ctx.fill();
-            }
-        }
-
-        // 8. Mantis
-        function drawMantis(ctx, colorHex) {
-            setupCtx(colorHex);
-            const sway = Math.sin(t * 2) * 6;
-            ctx.beginPath(); ctx.ellipse(sway, -20, 10, 35, 0.1, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(sway, -60, 12, 0, Math.PI * 2); ctx.fill();
-            drawEyes([[sway - 8, -62, 4], [sway + 8, -62, 4]]);
-            ctx.lineWidth = 4;
-            for (let side = -1; side <= 1; side += 2) {
-                const blade = Math.sin(t * 4 + side) * 10;
-                ctx.beginPath(); ctx.moveTo(sway + side * 8, -55);
-                ctx.lineTo(sway + side * 30, -85 + blade);
-                ctx.lineTo(sway + side * 15, -40 + blade); ctx.stroke();
-            }
-            ctx.lineWidth = 3;
-            for (let side = -1; side <= 1; side += 2) {
-                ctx.beginPath(); ctx.moveTo(sway + side * 6, 0); ctx.lineTo(side * 45, 40); ctx.lineTo(side * 50, 85); ctx.stroke();
-            }
-        }
-
-        // 9. Floating Orbital Core
-        function drawCore(ctx, colorHex) {
-            setupCtx(colorHex);
-            const floatY = Math.sin(t * 2) * 8;
-            ctx.beginPath(); ctx.arc(0, floatY, 22, 0, Math.PI * 2); ctx.fill();
-            drawEyes([[0, floatY, 8]]);
-            ctx.lineWidth = 2;
-            for (let i = 0; i < 4; i++) {
-                const angle = t * (1 + i * 0.3) + i * 1.5;
-                ctx.beginPath(); ctx.ellipse(0, floatY, 65 + i * 8, 20 + i * 5, angle, 0, Math.PI * 2); ctx.stroke();
-            }
-        }
-
-        // 10. Quadruped / Beast
-        function drawQuadruped(ctx, colorHex) {
-            setupCtx(colorHex);
-            const breath = Math.sin(t * 2) * 4;
-            ctx.beginPath(); ctx.ellipse(-10, 0, 45, 22 + breath, -0.1, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(35, -20, 16, 0, Math.PI * 2); ctx.fill();
-            drawEyes([[42, -24, 3], [35, -24, 2]]);
-            ctx.lineWidth = 5;
-            for (let i = 0; i < 4; i++) {
-                const legX = -40 + i * 24;
-                const step = Math.sin(t * 4 + i) * 14;
-                ctx.beginPath(); ctx.moveTo(legX, 10); ctx.lineTo(legX + step * 0.5, 50); ctx.lineTo(legX + step, 85); ctx.stroke();
-            }
-        }
-
-        // 11. Crab / Crustacean
-        function drawCrab(ctx, colorHex) {
-            setupCtx(colorHex);
-            const walk = Math.sin(t * 3) * 10;
-            ctx.beginPath(); ctx.ellipse(walk, 10, 40, 25, 0, 0, Math.PI * 2); ctx.fill();
-            drawEyes([[walk - 12, -18, 3], [walk + 12, -18, 3]]);
-            ctx.lineWidth = 3;
-            for (let side = -1; side <= 1; side += 2) {
-                for (let i = 0; i < 3; i++) {
-                    const step = Math.sin(t * 5 + i * 0.8) * 8;
-                    ctx.beginPath(); ctx.moveTo(walk + side * 20, 15 + i * 5);
-                    ctx.lineTo(walk + side * (50 + i * 5), 25 + step);
-                    ctx.lineTo(walk + side * (60 + i * 5), 65); ctx.stroke();
-                }
-                const claw = Math.sin(t * 3) * 6;
-                ctx.beginPath(); ctx.moveTo(walk + side * 25, -5); ctx.lineTo(walk + side * 55, -35 + claw); ctx.stroke();
-                ctx.beginPath(); ctx.arc(walk + side * 60, -40 + claw, 10, 0, Math.PI * 2); ctx.fill();
-            }
-        }
-
-        // 12. Plant / Tendril Pod
-        function drawPlant(ctx, colorHex) {
-            setupCtx(colorHex);
-            ctx.beginPath(); ctx.ellipse(0, 50, 25, 35, 0, 0, Math.PI * 2); ctx.fill();
-            drawEyes([[0, 30, 6], [-10, 45, 3], [10, 45, 3]]);
-            ctx.lineWidth = 3;
-            for (let i = 0; i < 6; i++) {
-                const angle = (i / 6) * Math.PI - Math.PI / 2;
-                ctx.beginPath(); ctx.moveTo(Math.cos(angle) * 15, 30);
-                for (let j = 0; j < 6; j++) {
-                    const tx = Math.cos(angle) * (30 + j * 12) + Math.sin(t * 3 + i + j) * 10;
-                    const ty = 30 + Math.sin(angle) * (30 + j * 12);
-                    ctx.lineTo(tx, ty);
-                }
-                ctx.stroke();
-            }
-        }
-
-        // 13. Worm / Parasite
-        function drawWorm(ctx, colorHex) {
-            setupCtx(colorHex);
-            ctx.lineWidth = 18; ctx.lineCap = 'round';
-            ctx.beginPath();
-            for (let i = 0; i < 20; i++) {
-                const radius = Math.sin(t * 2 + i * 0.3) * 35;
-                const angle = (i / 20) * Math.PI * 2;
-                const x = Math.cos(angle) * (50 + radius);
-                const y = Math.sin(angle) * (50 + radius);
-                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-            }
-            ctx.closePath(); ctx.stroke();
-            drawEyes([[0, 0, 12], [-8, -5, 3], [8, -5, 3]]);
-        }
-
-        // 14. Golem / Construct
-        function drawGolem(ctx, colorHex) {
-            setupCtx(colorHex);
-            const pulse = Math.sin(t * 2) * 3;
-            ctx.fillRect(-30, -40, 60, 70);
-            ctx.fillRect(-20, -70, 40, 25);
-            drawEyes([[0, -58, 5]], '#00f3ff');
-            ctx.lineWidth = 8;
-            for (let side = -1; side <= 1; side += 2) {
-                const armMove = Math.sin(t * 2 + side) * 8;
-                ctx.beginPath(); ctx.moveTo(side * 35, -35); ctx.lineTo(side * 50, 10 + armMove); ctx.lineTo(side * 52, 60 + armMove); ctx.stroke();
-            }
-            ctx.fillRect(-25, 30, 18, 50);
-            ctx.fillRect(7, 30, 18, 50);
-        }
-
-        // 15. Phoenix / Firebird
-        function drawPhoenix(ctx, colorHex) {
-            setupCtx(colorHex);
-            const flap = Math.sin(t * 4) * 25;
-            const floatY = Math.sin(t * 2) * 8;
-            ctx.beginPath(); ctx.ellipse(0, floatY, 12, 30, 0, 0, Math.PI * 2); ctx.fill();
-            drawEyes([[-4, floatY - 20, 2], [4, floatY - 20, 2]]);
-            ctx.lineWidth = 3;
-            for (let side = -1; side <= 1; side += 2) {
-                for (let i = 0; i < 4; i++) {
-                    ctx.beginPath(); ctx.moveTo(side * 6, floatY - 10 + i * 5);
-                    ctx.quadraticCurveTo(side * (40 + i * 10), floatY - 40 + flap + i * 8, side * (75 + i * 5), floatY - 10 + flap + i * 12);
-                    ctx.stroke();
-                }
-            }
-        }
-
-        const drawFunctions = [
-            drawSpider, drawSerpent, drawBiped, drawLeviathan,
-            drawCentipede, drawBeholder, drawBat, drawScorpion,
-            drawMantis, drawCore, drawQuadruped, drawCrab,
-            drawPlant, drawWorm, drawGolem, drawPhoenix
-        ];
-
-        // Render Loop
-        function renderEntity() {
-            t += 0.025;
+        let time = 0;
+        function loop() {
+            time += 0.03;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            const cx = canvas.width / 2;
-            const cy = canvas.height / 2;
-
-            ctx.strokeStyle = 'rgba(0, 243, 255, 0.05)';
+            // Draw Grid
+            ctx.strokeStyle = 'rgba(30, 41, 59, 0.4)';
             ctx.lineWidth = 1;
-            for(let i = 0; i < canvas.width; i += 24) {
-                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            for(let x = 0; x < canvas.width; x += 30) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
             }
-            for(let i = 0; i < canvas.height; i += 24) {
-                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
-            }
-
-            if (currentEntry.seed !== undefined) {
-                ctx.save();
-                ctx.translate(cx, cy);
-
-                let colorHex = '#00f3ff';
-                if (currentEntry.threatLevel === 'APOCALYPTIC') colorHex = '#bc13fe';
-                else if (currentEntry.threatLevel === 'CRITICAL') colorHex = '#ff3344';
-                else if (currentEntry.threatLevel === 'HAZARDOUS') colorHex = '#ffaa00';
-
-                const typeIdx = currentEntry.creatureType % drawFunctions.length;
-                drawFunctions[typeIdx](ctx, colorHex);
-
-                ctx.restore();
+            for(let y = 0; y < canvas.height; y += 30) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
             }
 
-            requestAnimationFrame(renderEntity);
-        }
+            // Player Movement Controls
+            if (keys['KeyA'] || keys['ArrowLeft']) player.vx -= 0.8;
+            if (keys['KeyD'] || keys['ArrowRight']) player.vx += 0.8;
+            if ((keys['Space'] || keys['KeyW'] || keys['ArrowUp']) && player.grounded) {
+                player.vy = gravity > 0 ? -10 : 10;
+                player.grounded = false;
+            }
 
-        // Presets Data
-        const creaturePresets = [
-            { type: 0, prefixes: ["Arachnid", "Weaver", "Eight-Legged"], nouns: ["Stalker", "Crawler", "Horror"], classes: ["Biological-Parasite"], morphs: ["Eight-jointed arachnoid frame with layered chitin armor."] },
-            { type: 1, prefixes: ["Serpentine", "Coiled", "Sub-Surface"], nouns: ["Wyrm", "Slitherer", "Tendril"], classes: ["Spatial-Distortion"], morphs: ["Elongated segmented serpent body moving through acoustic waves."] },
-            { type: 2, prefixes: ["Skeletal", "Bipedal", "Striding"], nouns: ["Husk", "Vanguard", "Spectre"], classes: ["Liminal-Horror"], morphs: ["Tall bipedal skeletal framework with elongated extremities."] },
-            { type: 3, prefixes: ["Abyssal", "Floating", "Spectral"], nouns: ["Sovereign", "Leviathan", "Gazer"], classes: ["Liquid-State Entity"], morphs: ["Floating mantle bell featuring bioluminescent core nodes and tentacles."] },
-            { type: 4, prefixes: ["Centipede", "Multi-Jointed", "Chitinous"], nouns: ["Scuttler", "Vermin", "Devourer"], classes: ["Sub-Surface Parasite"], morphs: ["Multi-segmented body supported by dozens of rapid jointed legs."] },
-            { type: 5, prefixes: ["Ocular", "Gazing", "Multi-Eyed"], nouns: ["Watcher", "Beholder", "Hive"], classes: ["Cognitohazard"], morphs: ["Spherical ocular mass suspended with multiple flexible eye-stalks."] },
-            { type: 6, prefixes: ["Winged", "Vesper", "Shadow"], nouns: ["Gargoyle", "Flayer", "Bat"], classes: ["Aerial-Anomaly"], morphs: ["Membranous winged organism with high-frequency sonar capabilities."] },
-            { type: 7, prefixes: ["Scorpion", "Venomous", "Barbed"], nouns: ["Stinger", "Crawler", "Dune-Horror"], classes: ["Toxic-Biological"], morphs: ["Heavy chitin pincers paired with an overhead segmented sting tail."] },
-            { type: 8, prefixes: ["Mantis", "Bladed", "Predatory"], nouns: ["Stalker", "Reaper", "Ambush-Bug"], classes: ["Predatory-Shift"], morphs: ["Elongated insectoid thorax with razor-sharp forelimb blades."] },
-            { type: 9, prefixes: ["Orbital", "Singularity", "Kinetic"], nouns: ["Core", "Nexus", "Engine"], classes: ["Spatial-Anomaly"], morphs: ["Dense energy sphere enclosed within rotating concentric rings."] },
-            { type: 10, prefixes: ["Feral", "Quadruped", "Beastial"], nouns: ["Hound", "Predator", "Stalker"], classes: ["Biological-Beast"], morphs: ["Heavy quadrupedal build with reinforced muscular frame."] },
-            { type: 11, prefixes: ["Crustacean", "Armored", "Tidal"], nouns: ["Crab", "Pincer", "Brine-Husk"], classes: ["Aquatic-Anomaly"], morphs: ["Wide carapace armor equipped with asymmetric crushing claws."] },
-            { type: 12, prefixes: ["Botanical", "Rooted", "Spore"], nouns: ["Pod", "Tendril", "Bloom"], classes: ["Bio-Organic Plant"], morphs: ["Central spore-emitting bulb guarded by sprawling vine tendrils."] },
-            { type: 13, prefixes: ["Cyclical", "Worm", "Ringed"], nouns: ["Parasite", "Burrower", "Loop"], classes: ["Sub-Dermal Parasite"], morphs: ["Circular ringed worm structure lacking defined head anatomy."] },
-            { type: 14, prefixes: ["Runic", "Construct", "Stone"], nouns: ["Golem", "Titan", "Monolith"], classes: ["Automaton-Anomaly"], morphs: ["Dense mineral block body bound by internal glow energy."] },
-            { type: 15, prefixes: ["Ignis", "Feathered", "Solar"], nouns: ["Phoenix", "Avian", "Flame-Wing"], classes: ["Thermal-Entity"], morphs: ["High-thermal avian form emitting localized heat convection."] }
-        ];
+            // Physics Update
+            player.vx *= 0.88;
+            player.vy += gravity;
+            player.x += player.vx;
+            player.y += player.vy;
 
-        const threats = [
-            { level: "MINIMAL", color: "#00ff66", bg: "rgba(0, 255, 106, 0.15)" },
-            { level: "HAZARDOUS", color: "#ffaa00", bg: "rgba(255, 170, 0, 0.15)" },
-            { level: "CRITICAL", color: "#ff3344", bg: "rgba(255, 51, 68, 0.15)" },
-            { level: "APOCALYPTIC", color: "#bc13fe", bg: "rgba(188, 19, 254, 0.2)" }
-        ];
-
-        const behaviors = [
-            "Remains inert in dark environments. Actively maneuvers toward radio frequencies.",
-            "Distorts structural geometry within a 20-meter radius, causing corridors to loop.",
-            "Emits acoustic waves that induce vivid auditory responses in nearby observers.",
-            "Absorbs surrounding heat rapidly, freezing local atmospheric moisture upon movement."
-        ];
-
-        const protocols = [
-            "Store inside a vacuum-sealed vault lined with sound-dampening acoustic layers.",
-            "Requires continuous low-intensity ultraviolet illumination. No active screens permitted.",
-            "Re-anchor cell perimeters weekly using reinforced steel alloy and cooling pumps.",
-            "Personnel must maintain continuous line-of-sight during maintenance shifts."
-        ];
-
-        function generateNewArchiveEntry() {
-            const seed = Math.floor(Math.random() * 10000);
-            const threatObj = threats[Math.floor(Math.random() * threats.length)];
-            const creatureType = Math.floor(Math.random() * creaturePresets.length);
-            const preset = creaturePresets[creatureType];
-
-            currentEntry = {
-                seed: seed,
-                creatureType: creatureType,
-                id: "ENT-" + Math.floor(1000 + Math.random() * 9000),
-                name: preset.prefixes[Math.floor(Math.random() * preset.prefixes.length)] + " " + preset.nouns[Math.floor(Math.random() * preset.nouns.length)],
-                eClass: preset.classes[Math.floor(Math.random() * preset.classes.length)],
-                threatLevel: threatObj.level,
-                threatObj: threatObj,
-                morph: preset.morphs[0],
-                behavior: behaviors[Math.floor(Math.random() * behaviors.length)],
-                containment: protocols[Math.floor(Math.random() * protocols.length)]
-            };
-
-            displayEntry(currentEntry);
-        }
-
-        function displayEntry(entry) {
-            currentEntry = entry;
-            document.getElementById('val-id').innerText = entry.id;
-            document.getElementById('val-name').innerText = entry.name;
-            document.getElementById('val-class').innerText = entry.eClass;
-            document.getElementById('val-morph').innerText = entry.morph;
-            document.getElementById('val-behavior').innerText = entry.behavior;
-            document.getElementById('val-containment').innerText = entry.containment;
-
-            const threatTag = document.getElementById('threat-tag');
-            threatTag.innerText = `LEVEL: ${entry.threatLevel}`;
-            threatTag.style.color = entry.threatObj.color;
-            threatTag.style.border = `1px solid ${entry.threatObj.color}`;
-            threatTag.style.backgroundColor = entry.threatObj.bg;
-
-            document.getElementById('timestamp').innerText = `SYSTEM SYNC: ${new Date().toLocaleTimeString()} // ID #${entry.seed}`;
-        }
-
-        function saveCurrentEntry() {
-            if (savedEntries.some(e => e.id === currentEntry.id)) return;
-            savedEntries.push(currentEntry);
-            localStorage.setItem('saved_anomalies', JSON.stringify(savedEntries));
-            renderSavedList();
-        }
-
-        function deleteEntry(id, event) {
-            event.stopPropagation();
-            savedEntries = savedEntries.filter(e => e.id !== id);
-            localStorage.setItem('saved_anomalies', JSON.stringify(savedEntries));
-            renderSavedList();
-        }
-
-        function renderSavedList() {
-            const listEl = document.getElementById('saved-list');
-            document.getElementById('saved-count').innerText = savedEntries.length;
-            listEl.innerHTML = '';
-
-            savedEntries.forEach(entry => {
-                const item = document.createElement('div');
-                item.className = 'saved-item';
-                item.onclick = () => displayEntry(entry);
-
-                item.innerHTML = `
-                    <div style="display:flex; flex-direction:column; gap:2px;">
-                        <span class="saved-id">${entry.id}</span>
-                        <span class="saved-name">${entry.name}</span>
-                    </div>
-                    <button class="delete-btn" onclick="deleteEntry('${entry.id}', event)">✕</button>
-                `;
-                listEl.appendChild(item);
+            // Anomaly Pull Physics
+            anomalyNodes.forEach(node => {
+                let dx = node.x - player.x;
+                let dy = node.y - player.y;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 180) {
+                    player.vx += (dx / dist) * 0.35;
+                    player.vy += (dy / dist) * 0.35;
+                }
             });
+
+            // Floor & Ceiling Boundaries
+            const floor = canvas.height - 40;
+            const ceiling = 40;
+            if (player.y + player.radius > floor) {
+                player.y = floor - player.radius;
+                player.vy = 0;
+                player.grounded = true;
+            } else if (player.y - player.radius < ceiling) {
+                player.y = ceiling + player.radius;
+                player.vy = 0;
+                player.grounded = true;
+            }
+
+            if (player.x - player.radius < 20) { player.x = 20 + player.radius; player.vx = 0; }
+            if (player.x + player.radius > canvas.width - 20) { player.x = canvas.width - 20 - player.radius; player.vx = 0; }
+
+            // Draw Boundaries
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, floor, canvas.width, 40);
+            ctx.fillRect(0, 0, canvas.width, ceiling);
+            ctx.strokeStyle = varColor('--cyan');
+            ctx.strokeRect(0, floor, canvas.width, 1);
+            ctx.strokeRect(0, ceiling, canvas.width, 1);
+
+            // Draw Anomaly Nodes
+            anomalyNodes.forEach(node => {
+                node.pulse += 0.05;
+                let r = node.radius + Math.sin(node.pulse) * 8;
+                ctx.strokeStyle = 'rgba(188, 19, 254, 0.6)';
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(node.x, node.y, r, 0, Math.PI * 2); ctx.stroke();
+                ctx.fillStyle = '#bc13fe';
+                ctx.beginPath(); ctx.arc(node.x, node.y, 6, 0, Math.PI * 2); ctx.fill();
+            });
+
+            // Draw Entity Field Mockup
+            if (activeMode === 'entities') {
+                let ex = canvas.width / 2 + Math.cos(time) * 120;
+                let ey = canvas.height / 2 + Math.sin(time * 1.5) * 40;
+                ctx.fillStyle = '#ff3344';
+                ctx.shadowColor = '#ff3344'; ctx.shadowBlur = 12;
+                ctx.beginPath(); ctx.arc(ex, ey, 16, 0, Math.PI * 2); ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
+            // Draw Player (Unit 09)
+            ctx.save();
+            ctx.translate(player.x, player.y);
+            
+            // Squash / Stretch effect
+            let stretchX = 1 + Math.abs(player.vx) * 0.02 - Math.abs(player.vy) * 0.01;
+            let stretchY = 1 + Math.abs(player.vy) * 0.02 - Math.abs(player.vx) * 0.01;
+            ctx.scale(stretchX, stretchY);
+
+            ctx.fillStyle = player.color;
+            ctx.shadowColor = player.color;
+            ctx.shadowBlur = 15;
+            ctx.beginPath(); ctx.arc(0, 0, player.radius, 0, Math.PI * 2); ctx.fill();
+
+            // Eye tracking
+            let aimX = player.vx * 2;
+            let aimY = player.vy * 2;
+            ctx.fillStyle = '#000';
+            ctx.shadowBlur = 0;
+            ctx.beginPath(); ctx.arc(aimX, aimY, 5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.arc(aimX + 1, aimY - 1, 2, 0, Math.PI * 2); ctx.fill();
+
+            ctx.restore();
+
+            requestAnimationFrame(loop);
         }
 
-        document.getElementById('genBtn').addEventListener('click', generateNewArchiveEntry);
-        document.getElementById('saveBtn').addEventListener('click', saveCurrentEntry);
+        function varColor(name) {
+            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        }
 
-        renderSavedList();
-        generateNewArchiveEntry();
-        renderEntity();
+        loop();
     </script>
 </body>
 </html>
