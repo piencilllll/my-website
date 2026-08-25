@@ -3,172 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SECTOR ZERO // THE DESCENT</title>
+    <title>THE UNPUBLISHED ZERO // THE CUTTING ROOM FLOOR</title>
     <style>
         :root {
-            --bg: #020307;
-            --cyan: #00f3ff;
-            --amber: #ffaa00;
-            --purple: #bc13fe;
-            --pink: #ff66cc;
-            --text: #f8fafc;
-            --dim: #64748b;
+            --bg: #0d0e12; /* Dark paper feel */
+            --paper-texture: #fafafa; /* Lighter sketch paper */
+            --cyan: #00f3ff; /* Corrupted correction fluid glow */
+            --amber: #ffaa00; /* Discarded text color */
+            --purple: #bc13fe; /* Inkwell residue */
+            --text-color: #f8fafc;
+            --font: 'Courier New', Courier, monospace;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
 
         html, body {
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden; /* Page locked - no moving or scrolling */
-            background-color: var(--bg);
-            color: var(--text);
-            font-family: 'Courier New', Courier, monospace;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            width: 100vw; height: 100vh; overflow: hidden;
+            background-color: var(--bg); color: var(--text-color);
+            font-family: var(--font);
+            display: flex; justify-content: center; align-items: center;
         }
 
-        /* SCANLINE OVERLAY */
-        .scanlines {
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0, 0, 0, 0.4) 50%, rgba(0, 0, 0, 0.4));
-            background-size: 100% 4px;
-            pointer-events: none;
-            z-index: 100;
-        }
-
-        /* SCREEN FRAME */
         .viewport {
-            width: 100vw;
-            height: 100vh;
-            max-width: 1000px;
-            max-height: 650px;
+            width: 100vw; height: 100vh; max-width: 1000px; max-height: 650px;
             position: relative;
             background: #000;
             border: 2px solid #1e293b;
-            box-shadow: 0 0 30px rgba(0, 243, 255, 0.15);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            box-shadow: 0 0 40px rgba(0,0,0,1);
+            display: flex; flex-direction: column; overflow: hidden;
         }
 
-        canvas#mainCanvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
+        canvas#mainCanvas { width: 100%; height: 100%; display: block; }
 
-        /* UNDERTALE / DELTARUNE TEXT BOX */
+        /* DIALOGUE BOX (Deltarune / OneShot Inspired) */
         .dialogue-box {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 88%;
-            height: 130px;
-            background: rgba(4, 6, 12, 0.95);
-            border: 3px solid #fff;
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: 88%; height: 135px;
+            background: rgba(4, 6, 12, 0.98);
+            border: 3px solid var(--text-color);
             border-radius: 6px;
             padding: 12px 16px;
             display: none; /* Managed by JS */
-            gap: 16px;
-            align-items: center;
+            gap: 16px; align-items: center;
             z-index: 10;
-            box-shadow: 0 0 15px rgba(0,0,0,0.8);
         }
 
         .portrait-container {
-            width: 90px;
-            height: 90px;
-            border: 2px solid var(--cyan);
+            width: 90px; height: 90px;
+            border: 2px solid var(--text-color);
             background: #000;
             flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
         }
 
-        canvas#portraitCanvas {
-            width: 80px;
-            height: 80px;
-        }
+        canvas#portraitCanvas { width: 80px; height: 80px; }
 
         .dialogue-content {
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            height: 100%;
-            flex: 1;
+            display: flex; flex-direction: column; justify-content: space-between;
+            height: 100%; flex: 1;
         }
 
         .speaker-name {
-            font-size: 0.85rem;
-            font-weight: bold;
-            color: var(--cyan);
-            letter-spacing: 2px;
+            font-size: 0.9rem; font-weight: bold;
+            color: var(--cyan); letter-spacing: 2px;
+            text-transform: uppercase;
         }
 
         .dialogue-text {
-            font-size: 1.05rem;
-            line-height: 1.4;
-            color: #fff;
-            height: 50px;
+            font-size: 1.05rem; line-height: 1.4; color: #fff;
+            height: 55px;
         }
 
         .prompt-next {
-            font-size: 0.75rem;
-            color: var(--amber);
+            font-size: 0.75rem; color: var(--amber);
             align-self: flex-end;
             animation: blink 0.8s infinite alternate;
         }
 
-        @keyframes blink {
-            from { opacity: 0.3; }
-            to { opacity: 1; }
-        }
+        @keyframes blink { from { opacity: 0.3; } to { opacity: 1; } }
 
-        /* UI OVERLAY FOR RPG GAMEPLAY */
+        /* GAME HUD */
         .game-hud {
-            position: absolute;
-            top: 15px;
-            left: 20px;
-            display: none;
-            flex-direction: column;
-            gap: 6px;
-            z-index: 10;
-            font-family: 'Segoe UI', sans-serif;
+            position: absolute; top: 15px; left: 20px;
+            display: none; flex-direction: column; gap: 6px; z-index: 10;
         }
 
         .hud-title {
-            font-size: 0.75rem;
-            color: var(--cyan);
-            font-weight: 800;
-            letter-spacing: 2px;
+            font-size: 0.8rem; color: var(--text-color);
+            font-weight: bold; letter-spacing: 1.5px;
         }
 
-        .hud-keys {
-            font-size: 0.7rem;
-            color: var(--dim);
-            background: rgba(0,0,0,0.6);
-            padding: 4px 8px;
-            border-radius: 4px;
-            border: 1px solid #1e293b;
-        }
-
-        .key-tag {
-            color: var(--amber);
-            font-weight: bold;
+        .hud-location {
+            font-size: 0.7rem; color: var(--text-color); opacity: 0.7;
+            font-style: italic;
         }
     </style>
 </head>
 <body>
 
-    <div class="scanlines"></div>
-
     <div class="viewport">
-        <!-- CANVAS FOR CINEMATICS & 2.5D GAMEPLAY -->
         <canvas id="mainCanvas"></canvas>
 
         <!-- DELTARUNE / ONESHOT STYLE DIALOGUE BOX -->
@@ -177,18 +110,16 @@
                 <canvas id="portraitCanvas" width="80" height="80"></canvas>
             </div>
             <div class="dialogue-content">
-                <div class="speaker-name" id="speakerName">ORB-68</div>
+                <div class="speaker-name" id="speakerName">...</div>
                 <div class="dialogue-text" id="dialogueText">...</div>
-                <div class="prompt-next">[PRESS SPACE / ENTER]</div>
+                <div class="prompt-next">[PRESS ENTER / SPACE]</div>
             </div>
         </div>
 
         <!-- HUD FOR 2.5D OVERWORLD -->
         <div class="game-hud" id="gameHud">
-            <div class="hud-title">ZONE 01 // KINETIC MATRIX</div>
-            <div class="hud-keys">
-                MOVE: <span class="key-tag">WASD / ARROWS</span> | INTERACT: <span class="key-tag">SPACE</span> | PULSE: <span class="key-tag">E</span>
-            </div>
+            <div class="hud-title">THE UNPUBLISHED ZERO // THE CURSOR'S WAKE</div>
+            <div class="hud-location">LOCATION: SECTOR 0 (THE CUTTING ROOM FLOOR)</div>
         </div>
     </div>
 
@@ -213,22 +144,24 @@
         // Game States: 'INTRO_CINEMATIC', 'DIALOGUE_CINEMATIC', 'PLAYING_RPG'
         let gameState = 'INTRO_CINEMATIC';
 
-        // --- INTRO CINEMATIC LORE SEQUENCE ---
+        // --- CONCEPT: THE INK & THE CURSOR ---
+        // LORE: Orb-68 is a self-aware ink blot in an unpublished, rotting novel draft.
+
         const introSlides = [
             {
-                text: "BEFORE THE BOUNDARIES OF THE SECTOR WERE DRAWN...",
-                sub: "An infinite void existed in absolute silence.",
-                visual: "VOID"
+                text: "IN THE ABANDONED DRAFTS OF SECTOR ZERO...",
+                sub: "A world built from unfinished stories is slowly erased.",
+                visual: "ROTTING_DRAFT"
             },
             {
-                text: "THEN CAME THE DENSITY COLLAPSE.",
-                sub: "Raw kinetic matter crystallized into sentient physical forms.",
-                visual: "CRYSTAL"
+                text: "THIS REALITY WAS NEVER PUBLISHED.",
+                sub: "A single corrections blot has achieved self-awareness.",
+                visual: "CORRECTION_BLOT"
             },
             {
-                text: "7 SUBJECTS WERE AWAKENED TO GUARDIAN THE MATRIX.",
-                sub: "Orb-68 was the first to open its eyes...",
-                visual: "ORB_AWAKEN"
+                text: "ORB-68... THE INK BLOT THAT WOKE UP IN CHAPTER 0.",
+                sub: "It is the last chance for the forgotten characters.",
+                visual: "ORB_BLOT"
             }
         ];
 
@@ -236,37 +169,43 @@
         let slideAlpha = 0;
         let slideTimer = 0;
 
-        // --- DIALOGUE CUTSCENE DATA ---
+        // --- DIALOGUE SEQUENCE DATA ---
         const dialogueSequence = [
             {
                 speaker: "Orb-68",
                 color: "#00f3ff",
-                mood: "orb_normal",
-                text: "Vektor... do you ever feel like this floor isn't entirely real?"
-            },
-            {
-                speaker: "Vektor",
-                color: "#ffaa00",
-                mood: "vektor_normal",
-                text: "Real? We're rendered in a 2.5D isometric plane, Orb. Nothing here is real."
+                mood: "orb_happy",
+                text: "* (My reality is just wet ink on rough paper?) "
             },
             {
                 speaker: "Orb-68",
                 color: "#00f3ff",
                 mood: "orb_surprised",
-                text: "Wait, WHAT?! So the dark void around us is just empty canvas memory?!"
+                text: "* (And Vektor... he's just a scribble with a tattered hat?)"
             },
             {
                 speaker: "Vektor",
                 color: "#ffaa00",
-                mood: "vektor_hat",
-                text: "Exactly. Now stop staring into the camera and use [WASD] to explore the sector."
+                mood: "vektor_normal",
+                text: "Adjusting my pencil-sketch trench coat. You got a problem with the artist's unrefined style, blot?"
             },
             {
                 speaker: "Orb-68",
                 color: "#00f3ff",
                 mood: "orb_happy",
-                text: "Alright! Let's check out the area! Press SPACE or E to interact!"
+                text: "* (No! It's mesmerizing. Where do I go first, Vektor?)"
+            },
+            {
+                speaker: "Vektor",
+                color: "#ffaa00",
+                mood: "vektor_hat",
+                text: "You can't go anywhere. Use WASD to navigate this messy isometric 'Cutting Room Floor' first."
+            },
+            {
+                speaker: "Orb-68",
+                color: "#00f3ff",
+                mood: "orb_determined",
+                text: "* (Understood! The ink is moving.)"
             }
         ];
 
@@ -275,28 +214,23 @@
         let typewriterTarget = "";
         let typewriterCharIdx = 0;
 
-        // --- 2.5D ONESHOT / DELTARUNE PLAYER & WORLD ENGINE ---
+        // --- 2.5D RPG ENGINE DATA ---
         const player = {
             x: 500,
             y: 350,
-            z: 0, // Pseudo height/depth
-            vx: 0,
-            vy: 0,
-            speed: 3.2,
+            speed: 3.0,
             radius: 16,
-            bounce: 0,
-            facing: 'down',
-            pulseRing: 0
+            grounded: false,
+            animTimer: 0
         };
 
         const keys = {};
 
-        // Interactive World Objects
+        // Sketched World Objects
         const worldObjects = [
-            { x: 350, y: 250, type: 'crystal', color: '#bc13fe', label: 'KINETIC CRYSTAL', talk: "* A glowing kinetic crystal. It hums with 2.5D energy." },
-            { x: 650, y: 280, type: 'vektor_npc', color: '#ffaa00', label: 'VEKTOR', talk: "* Vektor: Adjusting my hat. Don't slip on the grid tiles." },
-            { x: 500, y: 180, type: 'monolith', color: '#00ff66', label: 'SECTOR ZERO MONOLITH', talk: "* Sector Terminal: ALL SYSTEMS OPERATIONAL." },
-            { x: 250, y: 450, type: 'ghost_npc', color: '#ff66cc', label: 'SHADOW GHOST', talk: "* Shadow Ghost: Cool sunglasses, right? I phase through dimensions." }
+            { x: 350, y: 250, type: 'inkwell', color: '#bc13fe', label: 'ANCIENT INKWELL', talk: "* Inkwell: It smells faintly of unfinished sentences." },
+            { x: 650, y: 280, type: 'vektor_npc', color: '#ffaa00', label: 'VEKTOR', talk: "* Vektor: Careful, blot. Step too far and you'll fall into unrendered memory." },
+            { x: 500, y: 180, type: 'grammatical_error', color: '#00ff66', label: 'SENTENCE ANOMALY', talk: "* (A cluster of floating grammatical errors has materialized here.)" }
         ];
 
         let currentInteractObject = null;
@@ -316,10 +250,6 @@
                     }
                 }
             }
-
-            if (e.code === 'KeyE' && gameState === 'PLAYING_RPG') {
-                player.pulseRing = 35; // Trigger kinetic pulse animation
-            }
         });
 
         window.addEventListener('keyup', e => keys[e.code] = false);
@@ -337,6 +267,7 @@
         // --- DIALOGUE SYSTEM ---
         function startDialogueSequence() {
             dialogueBox.style.display = 'flex';
+            gameHud.style.display = 'none'; // Ensure HUD is off
             dialogueIndex = 0;
             loadDialogueStep();
         }
@@ -375,19 +306,20 @@
         function triggerNpcDialogue(obj) {
             gameState = 'DIALOGUE_CINEMATIC';
             dialogueBox.style.display = 'flex';
-            
+            gameHud.style.display = 'none';
+
             dialogueSequence.length = 0; // Clear cutscene dialogue
             dialogueSequence.push({
                 speaker: obj.label,
                 color: obj.color,
-                mood: obj.type === 'vektor_npc' ? 'vektor_normal' : 'orb_happy',
+                mood: obj.type === 'vektor_npc' ? 'vektor_normal' : 'orb_blot_happy',
                 text: obj.talk
             });
             dialogueIndex = 0;
             loadDialogueStep();
         }
 
-        // --- PORTRAIT RENDERER (UNDERTALE STYLE) ---
+        // --- PORTRAIT RENDERER (UNDERTALE / INK THEME) ---
         function drawPortrait(mood) {
             pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
             pCtx.fillStyle = '#04060c';
@@ -396,44 +328,46 @@
             pCtx.save();
             pCtx.translate(40, 40);
 
-            if (mood.startsWith('orb')) {
-                // Orb-68 Droplet Portrait
-                pCtx.fillStyle = '#00f3ff';
+            // Redrawing faces for the INK THEME
+            if (mood.startsWith('orb_blot')) {
+                // Orb-68 Ink Blot Portrait
+                pCtx.fillStyle = '#00f3ff'; // Blot color
                 pCtx.beginPath();
                 pCtx.moveTo(0, -26);
-                pCtx.bezierCurveTo(22, -2, 24, 22, 0, 22);
-                pCtx.bezierCurveTo(-24, 22, -22, -2, 0, -26);
+                pCtx.bezierCurveTo(24, -4, 20, 22, 0, 22);
+                pCtx.bezierCurveTo(-20, 22, -24, -4, 0, -26);
                 pCtx.fill();
 
-                // Eyes
-                pCtx.fillStyle = '#fff';
-                pCtx.beginPath(); pCtx.arc(-6, 2, 5, 0, Math.PI*2); pCtx.arc(6, 2, 5, 0, Math.PI*2); pCtx.fill();
+                // Eyes & Smudged Smile
                 pCtx.fillStyle = '#000';
                 pCtx.beginPath();
-
-                if (mood === 'orb_surprised') {
-                    pCtx.arc(-6, 2, 3, 0, Math.PI*2); pCtx.arc(6, 2, 3, 0, Math.PI*2); pCtx.fill();
-                    pCtx.strokeStyle = '#000'; pCtx.lineWidth = 2;
-                    pCtx.beginPath(); pCtx.arc(0, 12, 4, 0, Math.PI*2); pCtx.stroke();
+                if (mood === 'orb_blot_surprised') {
+                    pCtx.arc(-6, 2, 4, 0, Math.PI*2); pCtx.arc(6, 2, 4, 0, Math.PI*2); pCtx.fill();
+                    pCtx.fillStyle = '#000'; pCtx.beginPath(); pCtx.arc(0, 10, 3, 0, Math.PI*2); pCtx.fill();
                 } else {
-                    pCtx.arc(-4, 2, 2.5, 0, Math.PI*2); pCtx.arc(8, 2, 2.5, 0, Math.PI*2); pCtx.fill();
-                    // Smile
-                    pCtx.strokeStyle = '#000'; pCtx.lineWidth = 2;
-                    pCtx.beginPath(); pCtx.arc(0, 8, 5, 0, Math.PI); pCtx.stroke();
+                    pCtx.arc(-4, 2, 3, 0, Math.PI*2); pCtx.arc(8, 2, 3, 0, Math.PI*2); pCtx.fill();
+                    pCtx.strokeStyle = '#000'; pCtx.lineWidth = 1.5;
+                    pCtx.beginPath(); pCtx.arc(0, 7, 6, 0, Math.PI); pCtx.stroke();
                 }
+            }
+            else if (mood.startsWith('orb')) {
+                // Keep standard droplet design if needed (can remove if preferred)
+                pCtx.fillStyle = '#00f3ff';
+                pCtx.beginPath(); pCtx.arc(0,0,22,0,Math.PI*2); pCtx.fill();
+                pCtx.fillStyle='#000'; pCtx.beginPath(); pCtx.arc(-4,0,3,0,Math.PI*2); pCtx.arc(6,0,3,0,Math.PI*2); pCtx.fill();
             } 
             else if (mood.startsWith('vektor')) {
-                // Vektor Humanoid Portrait
+                // Vektor Humanoid Portrait (Scribbled Style)
                 pCtx.fillStyle = '#ffaa00';
                 pCtx.fillRect(-12, -10, 24, 24);
                 // Eyes & Face
                 pCtx.fillStyle = '#000';
                 pCtx.fillRect(-7, -4, 4, 5); pCtx.fillRect(3, -4, 4, 5);
                 pCtx.fillRect(-5, 6, 10, 2);
-                // Hat
+                // Sketched Hat Brim and Top
                 pCtx.fillStyle = '#1e293b';
-                pCtx.fillRect(-20, -14, 40, 5);
-                pCtx.fillRect(-12, -26, 24, 12);
+                pCtx.fillRect(-20, -14, 40, 5); // Brim
+                pCtx.fillRect(-12, -26, 24, 12); // Cap
             }
 
             pCtx.restore();
@@ -455,7 +389,7 @@
 
                 // Update Typewriter Effect
                 if (typewriterText.length < typewriterTarget.length) {
-                    typewriterCharIdx += 0.6;
+                    typewriterCharIdx += 0.55; // Deltarune speed
                     typewriterText = typewriterTarget.substring(0, Math.floor(typewriterCharIdx));
                     dialogueText.innerText = typewriterText;
                 }
@@ -464,41 +398,41 @@
             requestAnimationFrame(loop);
         }
 
-        // --- INTRO CINEMATIC RENDERER ---
+        // --- INTRO CINEMATIC RENDERER (SKETCH STYLE) ---
         function renderIntroCinematic() {
             slideTimer += 0.02;
             if (slideAlpha < 1) slideAlpha += 0.015;
 
             const slide = introSlides[currentIntroSlide];
 
-            // Animated Canvas Backgrounds
+            // Animated Sketched Canvas drawings
             ctx.save();
             ctx.translate(canvas.width/2, canvas.height/2 - 40);
 
-            if (slide.visual === 'VOID') {
-                ctx.strokeStyle = `rgba(0, 243, 255, ${0.15 + Math.sin(slideTimer)*0.1})`;
-                ctx.lineWidth = 1;
-                for (let r = 20; r < 200; r += 30) {
-                    ctx.beginPath();
-                    ctx.arc(0, 0, r + Math.sin(slideTimer + r)*5, 0, Math.PI*2);
-                    ctx.stroke();
+            ctx.strokeStyle = `rgba(255, 255, 255, ${slideAlpha * 0.4})`;
+            ctx.lineWidth = 1;
+
+            if (slide.visual === 'ROTTING_DRAFT') {
+                // Rotting Unfinished Pages drawing
+                for(let i=0; i<4; i++) {
+                    ctx.rotate(slideTimer * 0.1 + i);
+                    ctx.strokeRect(-60, -80, 120, 160);
                 }
             } 
-            else if (slide.visual === 'CRYSTAL') {
-                ctx.fillStyle = '#bc13fe';
-                ctx.rotate(slideTimer * 0.5);
-                ctx.beginPath();
-                ctx.moveTo(0, -50); ctx.lineTo(35, 0); ctx.lineTo(0, 50); ctx.lineTo(-35, 0);
-                ctx.closePath();
-                ctx.fill();
-                ctx.shadowColor = '#bc13fe'; ctx.shadowBlur = 20;
-            } 
-            else if (slide.visual === 'ORB_AWAKEN') {
+            else if (slide.visual === 'CORRECTION_BLOT') {
+                // Sentient Corrections Fluid Blot drawing
                 ctx.fillStyle = '#00f3ff';
                 ctx.beginPath();
-                ctx.arc(0, 0, 30 + Math.sin(slideTimer*3)*3, 0, Math.PI*2);
+                ctx.moveTo(0, -32); ctx.bezierCurveTo(24, -4, 20, 22, 0, 22); ctx.bezierCurveTo(-20, 22, -24, -4, 0, -32);
                 ctx.fill();
-                ctx.shadowColor = '#00f3ff'; ctx.shadowBlur = 30;
+                ctx.shadowColor = '#00f3ff'; ctx.shadowBlur = 15;
+            } 
+            else if (slide.visual === 'ORB_BLOT') {
+                // Redesigned Blot Character waking up
+                ctx.fillStyle = '#00f3ff';
+                ctx.beginPath(); ctx.arc(0, 0, 30 + Math.sin(slideTimer*3)*3, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = `rgba(0, 0, 0, ${slideAlpha})`;
+                ctx.beginPath(); ctx.arc(-10, 0, 4, 0, Math.PI*2); ctx.arc(10, 0, 4, 0, Math.PI*2); ctx.fill();
             }
 
             ctx.restore();
@@ -506,34 +440,33 @@
             // Cinematic Subtitles
             ctx.textAlign = 'center';
             ctx.fillStyle = `rgba(255, 255, 255, ${slideAlpha})`;
-            ctx.font = 'bold 1.2rem "Courier New", monospace';
+            ctx.font = 'bold 1.1rem "Courier New", monospace';
             ctx.fillText(slide.text, canvas.width/2, canvas.height - 140);
 
             ctx.fillStyle = `rgba(100, 116, 139, ${slideAlpha})`;
-            ctx.font = '0.9rem "Segoe UI", sans-serif';
+            ctx.font = '0.85rem monospace';
             ctx.fillText(slide.sub, canvas.width/2, canvas.height - 110);
 
-            ctx.fillStyle = 'rgba(255, 170, 0, 0.8)';
-            ctx.font = '0.75rem monospace';
-            ctx.fillText('[PRESS SPACE TO CONTINUE]', canvas.width/2, canvas.height - 50);
+            ctx.fillStyle = `rgba(255, 170, 0, ${slideAlpha})`;
+            ctx.font = '0.75rem "Courier New", monospace';
+            ctx.fillText('[PRESS ENTER TO CONTINUE]', canvas.width/2, canvas.height - 50);
         }
 
-        // --- 2.5D ONESHOT / ISOMETRIC RPG WORLD RENDERER ---
+        // --- 2.5D RPG WORLD RENDERER (SKETCH & INK THEME) ---
         function renderRPGWorld() {
-            // 2.5D Grid Floor (Perspective effect)
-            const gridSpacing = 40;
-            ctx.strokeStyle = 'rgba(30, 41, 59, 0.4)';
+            // Rough, Unfinished Pencil-Sketch Grid Floor
+            const spacing = 35;
+            ctx.strokeStyle = 'rgba(250, 250, 250, 0.15)'; // Sketch pencil color
             ctx.lineWidth = 1;
 
-            // Draw Perspective Grid Floor
-            for (let x = -200; x < canvas.width + 200; x += gridSpacing) {
+            for (let x = -200; x < canvas.width + 200; x += spacing) {
                 ctx.beginPath();
                 ctx.moveTo(x, 100);
-                ctx.lineTo(x + (x - canvas.width/2) * 0.3, canvas.height);
+                ctx.lineTo(x + (x - canvas.width/2) * 0.4, canvas.height); // Iso perspective
                 ctx.stroke();
             }
 
-            for (let y = 100; y < canvas.height; y += 30) {
+            for (let y = 100; y < canvas.height; y += 28) {
                 ctx.beginPath();
                 ctx.moveTo(0, y);
                 ctx.lineTo(canvas.width, y);
@@ -556,50 +489,40 @@
                 } else {
                     drawWorldObject(obj);
 
-                    // Check interaction proximity
+                    // Proximity check
                     const dist = Math.hypot(player.x - obj.x, player.y - obj.y);
                     if (dist < 45) {
                         currentInteractObject = obj;
                         // Prompt tag above object
                         ctx.fillStyle = '#ffaa00';
-                        ctx.font = 'bold 0.75rem sans-serif';
+                        ctx.font = 'bold 0.75rem monospace';
                         ctx.textAlign = 'center';
-                        ctx.fillText('[SPACE] INTERACT', obj.x, obj.y - 45);
+                        ctx.fillText('[ENTER] INTERACT', obj.x, obj.y - 45);
                     }
                 }
             });
         }
 
-        // --- DRAW 2.5D ORB-68 PLAYER ---
+        // --- DRAW 2.5D ORB-68 INK BLOT ---
         function drawPlayer25D() {
-            player.bounce = Math.sin(Date.now() * 0.008) * 4;
+            const bounce = Math.sin(Date.now() * 0.008) * 3;
 
-            // Kinetic Pulse Ring (Ability E)
-            if (player.pulseRing > 0) {
-                ctx.strokeStyle = `rgba(0, 243, 255, ${player.pulseRing / 35})`;
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(player.x, player.y, (35 - player.pulseRing) * 2.5, 0, Math.PI*2);
-                ctx.stroke();
-                player.pulseRing--;
-            }
-
-            // Ground Shadow (Adds 2.5D depth perception)
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            // Simple Ground Shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
             ctx.beginPath();
             ctx.ellipse(player.x, player.y + 4, 16, 7, 0, 0, Math.PI*2);
             ctx.fill();
 
-            // Orb-68 Droplet Body (Floating with bounce)
-            const py = player.y - 12 + player.bounce;
+            // Orb-68 Ink Blot (Bouncy liquid physics feel)
+            const py = player.y - 12 + bounce;
             ctx.fillStyle = '#00f3ff';
             ctx.beginPath();
             ctx.moveTo(player.x, py - 18);
-            ctx.bezierCurveTo(player.x + 14, py - 2, player.x + 16, py + 14, player.x, py + 14);
-            ctx.bezierCurveTo(player.x - 16, py + 14, player.x - 14, py - 2, player.x, py - 18);
+            ctx.bezierCurveTo(player.x + 16, py - 2, player.x + 18, py + 14, player.x, py + 14);
+            ctx.bezierCurveTo(player.x - 18, py + 14, player.x - 16, py - 2, player.x, py - 18);
             ctx.fill();
 
-            // Glowing Eyes
+            // Eyes
             ctx.fillStyle = '#fff';
             ctx.beginPath();
             ctx.arc(player.x - 4, py + 1, 3, 0, Math.PI*2);
@@ -612,10 +535,10 @@
             ctx.fill();
         }
 
-        // --- DRAW ENVIRONMENT OBJECTS ---
+        // --- DRAW ISOMETRIC ENVIRONMENT OBJECTS ---
         function drawWorldObject(obj) {
-            // Shadow
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            // Simple Shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
             ctx.beginPath();
             ctx.ellipse(obj.x, obj.y + 4, 18, 8, 0, 0, Math.PI*2);
             ctx.fill();
@@ -623,52 +546,46 @@
             ctx.save();
             ctx.translate(obj.x, obj.y);
 
-            if (obj.type === 'crystal') {
+            if (obj.type === 'inkwell') {
+                // Purple Inkwell residude
                 ctx.fillStyle = obj.color;
-                ctx.beginPath();
-                ctx.moveTo(0, -32); ctx.lineTo(14, -14); ctx.lineTo(0, 4); ctx.lineTo(-14, -14);
-                ctx.closePath();
-                ctx.fill();
+                ctx.fillRect(-12, -20, 24, 20);
+                // Glass lip
+                ctx.fillStyle = '#000'; ctx.fillRect(-14, -22, 28, 4);
+                ctx.shadowColor = obj.color; ctx.shadowBlur = 10;
             } 
             else if (obj.type === 'vektor_npc') {
-                // Vektor standing in world
+                // Vektor standing (Scribbled Humanoid)
                 ctx.fillStyle = obj.color;
                 ctx.fillRect(-6, -20, 12, 20);
                 // Hat
                 ctx.fillStyle = '#1e293b';
-                ctx.fillRect(-12, -24, 24, 4);
-                ctx.fillRect(-7, -32, 14, 8);
+                ctx.fillRect(-12, -24, 24, 4); // Brim
+                ctx.fillRect(-7, -32, 14, 8); // Top
             } 
-            else if (obj.type === 'ghost_npc') {
-                // Shadow Ghost in world
-                ctx.fillStyle = obj.color;
-                ctx.beginPath(); ctx.arc(0, -16, 12, Math.PI, 0); ctx.lineTo(12, 0); ctx.lineTo(-12, 0); ctx.fill();
-                // Sunglasses
-                ctx.fillStyle = '#000'; ctx.fillRect(-8, -18, 16, 5);
-            }
-            else if (obj.type === 'monolith') {
-                ctx.fillStyle = '#0f172a';
+            else if (obj.type === 'grammatical_error') {
+                // Grammatical Error Anomaly drawing
                 ctx.strokeStyle = obj.color;
-                ctx.lineWidth = 1.5;
-                ctx.fillRect(-14, -40, 28, 40);
-                ctx.strokeRect(-14, -40, 28, 40);
+                ctx.lineWidth = 1;
+                ctx.font = 'bold 1rem "Courier New"';
+                ctx.textAlign = 'center';
+                ctx.strokeText("Grammar!", 0, Math.sin(Date.now()*0.005)*8 - 15);
+                ctx.strokeRect(-10, Math.sin(Date.now()*0.005)*8 - 30, 20, 20);
             }
 
             ctx.restore();
         }
 
-        // --- RPG PLAYER PHYSICS & MOVEMENT ---
+        // --- RPG PLAYER PHYSICS ---
         function updatePlayerPhysics() {
-            player.vx = 0;
-            player.vy = 0;
+            player.vx = 0; player.vy = 0;
 
             if (keys['KeyA'] || keys['ArrowLeft']) player.vx = -player.speed;
             if (keys['KeyD'] || keys['ArrowRight']) player.vx = player.speed;
-            if (keys['KeyW'] || keys['ArrowUp']) player.vy = -player.speed * 0.75; // Isometric damping
+            if (keys['KeyW'] || keys['ArrowUp']) player.vy = -player.speed * 0.75; // Iso perspective dampening
             if (keys['KeyS'] || keys['ArrowDown']) player.vy = player.speed * 0.75;
 
-            player.x += player.vx;
-            player.y += player.vy;
+            player.x += player.vx; player.y += player.vy;
 
             // Boundaries
             if (player.x < 40) player.x = 40;
