@@ -3,469 +3,332 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CYBER-DUNGEON :: PROTOCOL X</title>
+    <title>NEXUS // CREATIVE WORKSPACE v4.0</title>
     <style>
         :root {
-            --green: #10b981;
-            --emerald: #059669;
-            --red: #ef4444;
-            --amber: #f59e0b;
-            --cyan: #06b6d4;
-            --bg: #030712;
-            --font: 'Courier New', Courier, monospace;
+            --bg: #090d16;
+            --panel: #111827;
+            --panel-border: #1f2937;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.4);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            --code-font: 'Cascadia Code', 'Fira Code', monospace;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        [data-theme="emerald"] {
+            --accent: #10b981;
+            --accent-glow: rgba(16, 185, 129, 0.4);
+        }
+        [data-theme="amber"] {
+            --accent: #f59e0b;
+            --accent-glow: rgba(245, 158, 11, 0.4);
+        }
 
-        html, body {
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
             width: 100vw; height: 100vh; overflow: hidden;
-            background: var(--bg); color: var(--green);
-            font-family: var(--font);
-            display: flex; justify-content: center; align-items: center;
+            background: var(--bg); color: var(--text-main);
+            font-family: var(--font); display: flex; flex-direction: column;
         }
 
-        .terminal-viewport {
-            width: 100vw; height: 100vh; max-width: 1000px; max-height: 650px;
-            position: relative; background: #000;
-            border: 2px solid #1e293b;
-            box-shadow: 0 0 50px rgba(16, 185, 129, 0.2);
+        /* Ambient Background Canvas */
+        #bgCanvas {
+            position: absolute; inset: 0; z-index: 0; pointer-events: none;
+        }
+
+        /* Top Navbar */
+        header {
+            position: relative; z-index: 10; height: 50px;
+            background: rgba(17, 24, 39, 0.8); backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--panel-border);
+            display: flex; justify-content: space-between; align-items: center; padding: 0 20px;
+        }
+        .brand { font-weight: 800; letter-spacing: 1.5px; font-size: 0.95rem; color: #fff; }
+        .brand span { color: var(--accent); }
+
+        .nav-controls { display: flex; gap: 10px; align-items: center; }
+        .btn {
+            background: #1f2937; color: var(--text-main); border: 1px solid #374151;
+            padding: 6px 14px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .btn:hover { border-color: var(--accent); color: #fff; box-shadow: 0 0 10px var(--accent-glow); }
+        .btn-primary { background: var(--accent); color: #000; border: none; }
+        .btn-primary:hover { background: #60a5fa; color: #000; }
+
+        /* Main Workspace Layout */
+        main {
+            position: relative; z-index: 5; flex: 1; display: grid;
+            grid-template-columns: 260px 1fr 300px; gap: 12px; padding: 12px; overflow: hidden;
+        }
+
+        .panel {
+            background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(12px);
+            border: 1px solid var(--panel-border); border-radius: 10px;
             display: flex; flex-direction: column; overflow: hidden;
         }
 
-        /* Scanline Overlay for CRT Look */
-        .scanline-overlay {
-            position: absolute; inset: 0;
-            background: linear-gradient(
-                rgba(18, 16, 16, 0) 50%, 
-                rgba(0, 0, 0, 0.35) 50%
-            );
-            background-size: 100% 4px;
-            pointer-events: none; z-index: 20;
-        }
-
-        canvas#view {
-            width: 100%; height: calc(100% - 70px);
-            image-rendering: pixelated; display: block; cursor: crosshair;
-        }
-
-        /* RETRO HUD BAR */
-        .hud-bar {
-            height: 70px; background: #0f172a; border-top: 2px solid #1e293b;
+        .panel-header {
+            padding: 12px 16px; border-bottom: 1px solid var(--panel-border);
+            font-size: 0.75rem; font-weight: 700; letter-spacing: 1px; color: var(--text-muted);
             display: flex; justify-content: space-between; align-items: center;
-            padding: 0 20px; z-index: 10;
         }
 
-        .hud-card {
-            display: flex; flex-direction: column; gap: 4px;
-            background: #020617; border: 1px solid #1e293b;
-            padding: 6px 14px; border-radius: 4px; min-width: 140px;
+        /* Sidebar Item List */
+        .tree-list { padding: 8px; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+        .tree-item {
+            padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer;
+            color: var(--text-muted); transition: all 0.15s; display: flex; align-items: center; gap: 8px;
+        }
+        .tree-item:hover, .tree-item.active { background: rgba(255, 255, 255, 0.05); color: var(--text-main); }
+        .tree-item.active { border-left: 3px solid var(--accent); }
+
+        /* Document Editor Area */
+        .editor-container { flex: 1; display: flex; flex-direction: column; padding: 16px; }
+        .doc-title {
+            background: transparent; border: none; outline: none;
+            color: var(--text-main); font-size: 1.4rem; font-weight: 700; margin-bottom: 12px;
+            font-family: var(--font);
+        }
+        .editor-textarea {
+            flex: 1; background: transparent; border: none; outline: none;
+            color: var(--text-main); font-family: var(--code-font); font-size: 0.95rem;
+            line-height: 1.6; resize: none;
         }
 
-        .hud-title { font-size: 0.65rem; color: #64748b; letter-spacing: 1px; }
-        .hud-val { font-size: 1.1rem; font-weight: bold; color: var(--green); }
+        /* Widgets Sidebar */
+        .widget { padding: 16px; border-bottom: 1px solid var(--panel-border); }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+        .stat-box { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; text-align: center; }
+        .stat-num { font-size: 1.2rem; font-weight: 700; color: var(--accent); }
+        .stat-lbl { font-size: 0.65rem; color: var(--text-muted); }
 
-        .progress-bar {
-            width: 100%; height: 6px; background: #1e293b; border-radius: 3px; overflow: hidden;
-        }
-        .progress-fill { height: 100%; width: 100%; background: var(--green); transition: width 0.1s linear; }
-
-        .crosshair {
-            position: absolute; top: calc(50% - 35px); left: 50%;
-            transform: translate(-50%, -50%);
-            width: 12px; height: 12px;
-            pointer-events: none; z-index: 15;
-        }
-        .crosshair::before, .crosshair::after {
-            content: ''; position: absolute; background: rgba(16, 185, 129, 0.7);
-        }
-        .crosshair::before { top: 5px; left: 0; width: 12px; height: 2px; }
-        .crosshair::after { top: 0; left: 5px; width: 2px; height: 12px; }
-
-        .modal-overlay {
-            position: absolute; inset: 0; background: rgba(2, 6, 23, 0.92);
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            z-index: 30; gap: 16px; text-align: center; padding: 20px;
-        }
-
-        .start-btn {
-            background: var(--green); color: #020617; padding: 12px 28px; font-weight: bold;
-            font-family: var(--font); border: none; cursor: pointer; text-transform: uppercase;
-            font-size: 1rem; border-radius: 4px; transition: all 0.2s;
-        }
-        .start-btn:hover { background: #34d399; box-shadow: 0 0 15px rgba(16, 185, 129, 0.5); }
-
-        .controls-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-            font-size: 0.75rem; color: #94a3b8; text-align: left;
-            background: rgba(15, 23, 42, 0.6); padding: 12px; border: 1px solid #1e293b; border-radius: 4px;
+        /* Footer Bar */
+        footer {
+            position: relative; z-index: 10; height: 32px;
+            background: rgba(17, 24, 39, 0.9); border-top: 1px solid var(--panel-border);
+            display: flex; justify-content: space-between; align-items: center; padding: 0 16px;
+            font-size: 0.75rem; color: var(--text-muted);
         }
     </style>
 </head>
 <body>
 
-    <div class="terminal-viewport">
-        <div class="scanline-overlay"></div>
-        <div class="crosshair"></div>
+    <canvas id="bgCanvas"></canvas>
 
-        <canvas id="view" width="320" height="200"></canvas>
-
-        <div class="hud-bar">
-            <div class="hud-card">
-                <div class="hud-title">VITAL MATRIX</div>
-                <div class="hud-val" id="hpVal">100 HP</div>
-                <div class="progress-bar"><div class="progress-fill" id="hpBar"></div></div>
-            </div>
-
-            <div class="hud-card">
-                <div class="hud-title">PLASMA CHARGES</div>
-                <div class="hud-val" id="ammoVal" style="color: var(--cyan);">60</div>
-            </div>
-
-            <div class="hud-card">
-                <div class="hud-title">CORE PURGE</div>
-                <div class="hud-val" id="scoreVal" style="color: var(--amber);">0 / 4</div>
-            </div>
+    <header>
+        <div class="brand">NEXUS <span>STUDIO</span></div>
+        <div class="nav-controls">
+            <button class="btn" onclick="toggleTheme('default')">Blue</button>
+            <button class="btn" onclick="toggleTheme('emerald')">Emerald</button>
+            <button class="btn" onclick="toggleTheme('amber')">Amber</button>
+            <button class="btn btn-primary" onclick="exportDocument()">Export Doc</button>
         </div>
+    </header>
 
-        <div class="modal-overlay" id="prompt">
-            <h1 style="letter-spacing: 3px; color: var(--green);">CYBER-DUNGEON :: SECTOR 09</h1>
-            <p style="font-size: 0.85rem; color: #94a3b8;">Purge anomalous rogue AI nodes guarding the core mainframe.</p>
+    <main>
+        <!-- Sidebar Navigation -->
+        <section class="panel">
+            <div class="panel-header">PROJECT ARCHIVE</div>
+            <ul class="tree-list">
+                <li class="tree-item active" onclick="loadDoc('lore')">📁 World Building & Lore</li>
+                <li class="tree-item" onclick="loadDoc('mechanics')">⚙️ Core Systems & Mechanics</li>
+                <li class="tree-item" onclick="loadDoc('entities')">👾 Entity Manifest</li>
+                <li class="tree-item" onclick="loadDoc('notes')">📝 Scratchpad</li>
+            </ul>
+        </section>
 
-            <div class="controls-grid">
-                <div><strong>[W / A / S / D]</strong> Move / Strafe</div>
-                <div><strong>[MOUSE / Q / E]</strong> Look / Turn</div>
-                <div><strong>[LEFT CLICK / SPACE]</strong> Fire Weapon</div>
-                <div><strong>[SHIFT]</strong> Sprint Dash</div>
+        <!-- Main Editor -->
+        <section class="panel">
+            <div class="panel-header">
+                <span>ACTIVE WORKSPACE</span>
+                <span id="saveState" style="color: var(--accent);">SAVED</span>
+            </div>
+            <div class="editor-container">
+                <input type="text" id="docTitle" class="doc-title" value="World Building & Lore">
+                <textarea id="editor" class="editor-textarea" placeholder="Draft your notes, mechanics, or lore..."></textarea>
+            </div>
+        </section>
+
+        <!-- Widgets Sidebar -->
+        <section class="panel">
+            <div class="panel-header">METRICS & TOOLS</div>
+            
+            <div class="widget">
+                <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">LIVE STATS</div>
+                <div class="stat-grid">
+                    <div class="stat-box">
+                        <div class="stat-num" id="wordCount">0</div>
+                        <div class="stat-lbl">WORDS</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-num" id="charCount">0</div>
+                        <div class="stat-lbl">CHARS</div>
+                    </div>
+                </div>
             </div>
 
-            <button class="start-btn" id="startBtn">BOOT ENGINE & LOCK</button>
-        </div>
-    </div>
+            <div class="widget" style="flex: 1;">
+                <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 8px;">AMBIENT AUDIO</div>
+                <button class="btn" style="width: 100%; margin-bottom: 8px;" onclick="toggleAudio()">Toggle Cyber Synth</button>
+                <p style="font-size: 0.7rem; color: var(--text-muted); line-height: 1.4;">Generates procedural background ambient drone using Web Audio API.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div>SYSTEM STATUS: ONLINE</div>
+        <div id="clock">00:00:00</div>
+    </footer>
 
     <script>
-        const canvas = document.getElementById('view');
-        const ctx = canvas.getContext('2d');
-        const prompt = document.getElementById('prompt');
-        const startBtn = document.getElementById('startBtn');
-
-        const hpVal = document.getElementById('hpVal');
-        const hpBar = document.getElementById('hpBar');
-        const ammoVal = document.getElementById('ammoVal');
-        const scoreVal = document.getElementById('scoreVal');
-
-        // Audio Engine Synthesizer
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        let audioCtx = null;
-
-        function playSound(type) {
-            if (!audioCtx) return;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            const now = audioCtx.currentTime;
-
-            if (type === 'shoot') {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(450, now);
-                osc.frequency.exponentialRampToValueAtTime(50, now + 0.12);
-                gain.gain.setValueAtTime(0.12, now);
-                gain.gain.linearRampToValueAtTime(0, now + 0.12);
-                osc.start(now); osc.stop(now + 0.12);
-            } else if (type === 'hit') {
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(200, now);
-                osc.frequency.setValueAtTime(80, now + 0.08);
-                gain.gain.setValueAtTime(0.15, now);
-                gain.gain.linearRampToValueAtTime(0, now + 0.08);
-                osc.start(now); osc.stop(now + 0.08);
-            } else if (type === 'damage') {
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(100, now);
-                osc.frequency.exponentialRampToValueAtTime(30, now + 0.2);
-                gain.gain.setValueAtTime(0.2, now);
-                gain.gain.linearRampToValueAtTime(0, now + 0.2);
-                osc.start(now); osc.stop(now + 0.2);
+        // Document Storage System
+        const docs = {
+            lore: {
+                title: "World Building & Lore",
+                content: "# Sector Overview\nDrafting structural parameters, environmental conditions, and narrative rules..."
+            },
+            mechanics: {
+                title: "Core Systems & Mechanics",
+                content: "# Gameplay Loops\n- Physics interaction model\n- Energy consumption mechanics\n- Player movement profiles"
+            },
+            entities: {
+                title: "Entity Manifest",
+                content: "# Threat Classifications\n- Class Alpha: Passive entities\n- Class Gamma: Anomalous roaming units"
+            },
+            notes: {
+                title: "Scratchpad",
+                content: "// Quick ideas, temporary code snippets, and design blueprints."
             }
-        }
-
-        // Map Data (1 = Wall, 2 = Core Node, 0 = Empty)
-        const MAP_SIZE = 12;
-        const map = [
-            1,1,1,1,1,1,1,1,1,1,1,1,
-            1,0,0,0,1,0,0,0,0,0,0,1,
-            1,0,1,0,1,0,1,1,1,1,0,1,
-            1,0,1,0,0,0,0,0,0,1,0,1,
-            1,0,1,1,1,1,0,1,0,1,0,1,
-            1,0,0,0,0,1,0,1,0,0,0,1,
-            1,1,1,1,0,1,0,1,1,1,0,1,
-            1,0,0,0,0,0,0,0,0,1,0,1,
-            1,0,1,1,1,1,1,1,0,1,0,1,
-            1,0,1,0,0,0,0,1,0,0,0,1,
-            1,0,0,0,1,1,0,0,0,1,0,1,
-            1,1,1,1,1,1,1,1,1,1,1,1
-        ];
-
-        // Player Attributes
-        const player = {
-            x: 2.5, y: 2.5,
-            dirX: -1, dirY: 0,
-            planeX: 0, planeY: 0.66,
-            hp: 100, ammo: 60, score: 0
         };
 
-        // Rogue AI Sentinels (Sprites)
-        const sentinels = [
-            { x: 5.5, y: 1.5, active: true, hp: 30 },
-            { x: 10.5, y: 3.5, active: true, hp: 30 },
-            { x: 1.5, y: 9.5, active: true, hp: 30 },
-            { x: 8.5, y: 9.5, active: true, hp: 30 }
-        ];
+        let activeDocKey = 'lore';
 
-        let gunBob = 0;
-        let recoil = 0;
-        let isShooting = false;
-        let gameActive = false;
+        const editor = document.getElementById('editor');
+        const docTitle = document.getElementById('docTitle');
+        const wordCount = document.getElementById('wordCount');
+        const charCount = document.getElementById('charCount');
+        const saveState = document.getElementById('saveState');
 
-        // Input Mapping
-        const keys = {};
-        window.addEventListener('keydown', e => {
-            keys[e.code] = true;
-            if (e.code === 'Space' && gameActive) {
-                e.preventDefault();
-                firePlasma();
-            }
-        });
-        window.addEventListener('keyup', e => keys[e.code] = false);
+        function loadDoc(key) {
+            docs[activeDocKey].content = editor.value;
+            docs[activeDocKey].title = docTitle.value;
 
-        document.addEventListener('mousemove', e => {
-            if (!gameActive) return;
-            if (document.pointerLockElement === canvas || document.pointerLockElement === document.body) {
-                rotatePlayer(e.movementX * -0.003);
-            }
-        });
+            activeDocKey = key;
+            docTitle.value = docs[key].title;
+            editor.value = docs[key].content;
 
-        function rotatePlayer(angle) {
-            const oldDirX = player.dirX;
-            player.dirX = player.dirX * Math.cos(angle) - player.dirY * Math.sin(angle);
-            player.dirY = oldDirX * Math.sin(angle) + player.dirY * Math.cos(angle);
-            const oldPlaneX = player.planeX;
-            player.planeX = player.planeX * Math.cos(angle) - player.planeY * Math.sin(angle);
-            player.planeY = oldPlaneX * Math.sin(angle) + player.planeY * Math.cos(angle);
-        }
-
-        function firePlasma() {
-            if (player.ammo <= 0 || isShooting) return;
-
-            player.ammo--;
-            isShooting = true;
-            recoil = 14;
-            ammoVal.innerText = player.ammo;
-            playSound('shoot');
-
-            sentinels.forEach(s => {
-                if (!s.active) return;
-                const dx = s.x - player.x;
-                const dy = s.y - player.y;
-                const dist = Math.sqrt(dx*dx + dy*dy);
-
-                const angleToSprite = Math.atan2(dy, dx);
-                const playerAngle = Math.atan2(player.dirY, player.dirX);
-                let diff = Math.abs(angleToSprite - playerAngle);
-                if (diff > Math.PI) diff = Math.PI * 2 - diff;
-
-                if (diff < 0.28 && dist < 7) {
-                    s.hp -= 15;
-                    playSound('hit');
-                    if (s.hp <= 0) {
-                        s.active = false;
-                        player.score++;
-                        scoreVal.innerText = `${player.score} / ${sentinels.length}`;
-                    }
-                }
+            document.querySelectorAll('.tree-item').forEach((item, idx) => {
+                item.classList.toggle('active', Object.keys(docs)[idx] === key);
             });
 
-            setTimeout(() => isShooting = false, 120);
+            updateStats();
         }
 
-        canvas.addEventListener('mousedown', () => {
-            if (gameActive) firePlasma();
-        });
+        function updateStats() {
+            const text = editor.value;
+            charCount.innerText = text.length;
+            const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+            wordCount.innerText = words.length;
 
-        startBtn.addEventListener('click', () => {
-            if (!audioCtx) audioCtx = new AudioCtx();
-            prompt.style.display = 'none';
-            gameActive = true;
-            try { canvas.requestPointerLock(); } catch(e) {}
-            window.focus();
-        });
+            saveState.innerText = "SAVING...";
+            saveState.style.color = "#f59e0b";
+            setTimeout(() => {
+                saveState.innerText = "SAVED";
+                saveState.style.color = "var(--accent)";
+            }, 300);
+        }
 
-        canvas.addEventListener('click', () => {
-            if (gameActive) {
-                try { canvas.requestPointerLock(); } catch(e) {}
-            }
-        });
+        editor.addEventListener('input', updateStats);
 
-        function updatePhysics() {
-            if (!gameActive) return;
+        function toggleTheme(themeName) {
+            if (themeName === 'default') document.body.removeAttribute('data-theme');
+            else document.body.setAttribute('data-theme', themeName);
+        }
 
-            const speedMultiplier = keys['ShiftLeft'] ? 1.6 : 1.0;
-            const moveSpeed = 0.04 * speedMultiplier;
-            const rotSpeed = 0.04;
-            let moveX = 0, moveY = 0;
+        function exportDocument() {
+            const blob = new Blob([`${docTitle.value}\n\n${editor.value}`], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${docTitle.value.toLowerCase().replace(/\s+/g, '_')}.md`;
+            a.click();
+        }
 
-            if (keys['KeyW'] || keys['ArrowUp']) { moveX += player.dirX * moveSpeed; moveY += player.dirY * moveSpeed; }
-            if (keys['KeyS'] || keys['ArrowDown']) { moveX -= player.dirX * moveSpeed; moveY -= player.dirY * moveSpeed; }
-            if (keys['KeyD']) { moveX += player.planeX * moveSpeed; moveY += player.planeY * moveSpeed; }
-            if (keys['KeyA']) { moveX -= player.planeX * moveSpeed; moveY -= player.planeY * moveSpeed; }
+        // Clock Update
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toTimeString().split(' ')[0];
+        }, 1000);
 
-            if (keys['KeyQ'] || keys['ArrowLeft']) rotatePlayer(rotSpeed);
-            if (keys['KeyE'] || keys['ArrowRight']) rotatePlayer(-rotSpeed);
+        // Background Starfield Animation
+        const bgCanvas = document.getElementById('bgCanvas');
+        const bgCtx = bgCanvas.getContext('2d');
+        let stars = [];
 
-            // Wall Collision
-            if (map[Math.floor(player.y) * MAP_SIZE + Math.floor(player.x + moveX * 2)] === 0) {
-                player.x += moveX;
-            }
-            if (map[Math.floor(player.y + moveY * 2) * MAP_SIZE + Math.floor(player.x)] === 0) {
-                player.y += moveY;
-            }
+        function resizeBg() {
+            bgCanvas.width = window.innerWidth;
+            bgCanvas.height = window.innerHeight;
+            stars = Array.from({ length: 120 }, () => ({
+                x: Math.random() * bgCanvas.width,
+                y: Math.random() * bgCanvas.height,
+                size: Math.random() * 1.5 + 0.5,
+                alpha: Math.random(),
+                speed: Math.random() * 0.02 + 0.005
+            }));
+        }
 
-            if (moveX !== 0 || moveY !== 0) gunBob += 0.16 * speedMultiplier;
-            else gunBob *= 0.8;
-
-            if (recoil > 0) recoil -= 1.8;
-
-            // Enemy AI Chasing Logic
-            sentinels.forEach(s => {
-                if (!s.active) return;
-                const dx = player.x - s.x;
-                const dy = player.y - s.y;
-                const dist = Math.sqrt(dx*dx + dy*dy);
-
-                if (dist < 4.5 && dist > 0.6) {
-                    s.x += (dx / dist) * 0.012;
-                    s.y += (dy / dist) * 0.012;
-                } else if (dist <= 0.6) {
-                    player.hp = Math.max(0, player.hp - 0.4);
-                    hpVal.innerText = `${Math.ceil(player.hp)} HP`;
-                    hpBar.style.width = `${player.hp}%`;
-                    playSound('damage');
-                }
+        function renderBg() {
+            bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+            stars.forEach(star => {
+                star.alpha += star.speed;
+                if (star.alpha > 1 || star.alpha < 0) star.speed = -star.speed;
+                bgCtx.fillStyle = `rgba(255, 255, 255, ${Math.abs(star.alpha) * 0.4})`;
+                bgCtx.fillRect(star.x, star.y, star.size, star.size);
             });
+            requestAnimationFrame(renderBg);
         }
 
-        function renderRaycaster() {
-            const w = canvas.width;
-            const h = canvas.height;
-            const zBuffer = new Array(w);
+        window.addEventListener('resize', resizeBg);
+        resizeBg();
+        renderBg();
 
-            // Floor & Ceiling Gradients
-            ctx.fillStyle = '#020617'; ctx.fillRect(0, 0, w, h / 2);
-            ctx.fillStyle = '#090d16'; ctx.fillRect(0, h / 2, w, h / 2);
+        // Ambient Audio Engine
+        let audioCtx = null;
+        let isAudioPlaying = false;
+        let osc1, osc2, gainNode;
 
-            // Raycasting Loop
-            for (let x = 0; x < w; x++) {
-                const cameraX = 2 * x / w - 1;
-                const rayDirX = player.dirX + player.planeX * cameraX;
-                const rayDirY = player.dirY + player.planeY * cameraX;
+        function toggleAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                osc1 = audioCtx.createOscillator();
+                osc2 = audioCtx.createOscillator();
+                gainNode = audioCtx.createGain();
 
-                let mapX = Math.floor(player.x);
-                let mapY = Math.floor(player.y);
+                osc1.type = 'sine'; osc1.frequency.setValueAtTime(55, audioCtx.currentTime); // A1 note
+                osc2.type = 'triangle'; osc2.frequency.setValueAtTime(110, audioCtx.currentTime);
 
-                const deltaDistX = Math.abs(1 / rayDirX);
-                const deltaDistY = Math.abs(1 / rayDirY);
+                gainNode.gain.setValueAtTime(0.03, audioCtx.currentTime);
+                osc1.connect(gainNode); osc2.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
 
-                let stepX, stepY, sideDistX, sideDistY;
-
-                if (rayDirX < 0) {
-                    stepX = -1; sideDistX = (player.x - mapX) * deltaDistX;
+                osc1.start(); osc2.start();
+                isAudioPlaying = true;
+            } else {
+                if (isAudioPlaying) {
+                    gainNode.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+                    isAudioPlaying = false;
                 } else {
-                    stepX = 1; sideDistX = (mapX + 1.0 - player.x) * deltaDistX;
+                    gainNode.gain.linearRampToValueAtTime(0.03, audioCtx.currentTime + 0.5);
+                    isAudioPlaying = true;
                 }
-                if (rayDirY < 0) {
-                    stepY = -1; sideDistY = (player.y - mapY) * deltaDistY;
-                } else {
-                    stepY = 1; sideDistY = (mapY + 1.0 - player.y) * deltaDistY;
-                }
-
-                let hit = 0, side = 0;
-                while (hit === 0) {
-                    if (sideDistX < sideDistY) {
-                        sideDistX += deltaDistX; mapX += stepX; side = 0;
-                    } else {
-                        sideDistY += deltaDistY; mapY += stepY; side = 1;
-                    }
-                    if (map[mapY * MAP_SIZE + mapX] > 0) hit = 1;
-                }
-
-                const perpWallDist = side === 0 
-                    ? (mapX - player.x + (1 - stepX) / 2) / rayDirX
-                    : (mapY - player.y + (1 - stepY) / 2) / rayDirY;
-
-                zBuffer[x] = perpWallDist;
-
-                const lineHeight = Math.floor(h / perpWallDist);
-                const drawStart = Math.max(0, -lineHeight / 2 + h / 2);
-                const drawEnd = Math.min(h, lineHeight / 2 + h / 2);
-
-                const shade = Math.min(1, 4.0 / perpWallDist);
-                ctx.fillStyle = side === 1 
-                    ? `rgba(5, 150, 105, ${shade})` 
-                    : `rgba(16, 185, 129, ${shade})`;
-                ctx.fillRect(x, drawStart, 1, drawEnd - drawStart);
-            }
-
-            // Sentinel Sprites Rendering
-            sentinels.forEach(s => {
-                if (!s.active) return;
-                const spriteX = s.x - player.x;
-                const spriteY = s.y - player.y;
-
-                const invDet = 1.0 / (player.planeX * player.dirY - player.dirX * player.planeY);
-                const transformX = invDet * (player.dirY * spriteX - player.dirX * spriteY);
-                const transformY = invDet * (-player.planeY * spriteX + player.planeX * spriteY);
-
-                if (transformY > 0) {
-                    const spriteScreenX = Math.floor((w / 2) * (1 + transformX / transformY));
-                    const spriteHeight = Math.abs(Math.floor(h / transformY));
-                    const drawStartY = Math.max(0, -spriteHeight / 2 + h / 2);
-                    const drawEndY = Math.min(h, spriteHeight / 2 + h / 2);
-
-                    const spriteWidth = Math.abs(Math.floor(h / transformY));
-                    const drawStartX = Math.max(0, -spriteWidth / 2 + spriteScreenX);
-                    const drawEndX = Math.min(w, spriteWidth / 2 + spriteScreenX);
-
-                    for (let stripe = drawStartX; stripe < drawEndX; stripe++) {
-                        if (transformY < zBuffer[stripe]) {
-                            ctx.fillStyle = '#ef4444';
-                            ctx.fillRect(stripe, drawStartY, 1, drawEndY - drawStartY);
-                        }
-                    }
-                }
-            });
-
-            // Weapon Render (Cyber Blaster)
-            const gunX = w / 2 - 18 + Math.cos(gunBob) * 4;
-            const gunY = h - 45 + Math.sin(gunBob * 2) * 3 + recoil;
-
-            ctx.fillStyle = '#1e293b';
-            ctx.fillRect(gunX + 10, gunY, 18, 32);
-            ctx.fillStyle = '#06b6d4';
-            ctx.fillRect(gunX + 15, gunY - 14, 8, 22);
-
-            // Muzzle Flash
-            if (recoil > 6) {
-                ctx.fillStyle = '#38bdf8';
-                ctx.fillRect(gunX + 11, gunY - 24, 16, 12);
             }
         }
 
-        function gameLoop() {
-            updatePhysics();
-            renderRaycaster();
-            requestAnimationFrame(gameLoop);
-        }
-
-        gameLoop();
+        // Initialize First Doc
+        loadDoc('lore');
     </script>
 </body>
 </html>
