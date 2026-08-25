@@ -3,15 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SECTOR ZERO // PROTOTYPE TEST LAB</title>
+    <title>SECTOR ZERO // ENTITY ROSTER & TEST SUITE</title>
     <style>
         :root {
             --bg-dark: #04060a;
-            --panel-bg: rgba(10, 15, 26, 0.85);
+            --panel-bg: rgba(10, 15, 26, 0.9);
             --border: #1e293b;
             --cyan: #00f3ff;
             --amber: #ffaa00;
             --purple: #bc13fe;
+            --green: #00ff66;
+            --red: #ff3344;
             --text-bright: #f8fafc;
             --text-dim: #64748b;
         }
@@ -26,8 +28,8 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
-            overflow: hidden;
+            padding: 15px;
+            overflow-x: hidden;
         }
 
         .scanlines {
@@ -39,41 +41,103 @@
             z-index: 100;
         }
 
-        .container {
+        .main-wrapper {
             width: 100%;
-            max-width: 1100px;
+            max-width: 1280px;
             display: grid;
-            grid-template-columns: 1fr 300px;
-            gap: 20px;
+            grid-template-columns: 280px 1fr;
+            gap: 15px;
             z-index: 1;
         }
 
-        .viewport-card {
+        /* SIDEBAR: CHARACTER ROSTER */
+        .roster-panel {
             background: var(--panel-bg);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 20px;
+            border-radius: 10px;
+            padding: 15px;
             display: flex;
             flex-direction: column;
-            gap: 16px;
-            box-shadow: 0 0 30px rgba(0, 243, 255, 0.05);
+            gap: 10px;
+            max-height: 820px;
         }
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 12px;
-            font-size: 0.85rem;
+        .panel-title {
+            font-size: 0.75rem;
             color: var(--cyan);
             letter-spacing: 1.5px;
-            font-weight: 700;
+            font-weight: 800;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .roster-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .char-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .char-card:hover, .char-card.active {
+            border-color: var(--cyan);
+            background: rgba(30, 41, 59, 0.9);
+            transform: translateX(3px);
+        }
+
+        .char-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 900;
+            color: #000;
+            flex-shrink: 0;
+        }
+
+        .char-info { display: flex; flex-direction: column; gap: 2px; }
+        .char-name { font-size: 0.8rem; font-weight: 700; color: var(--text-bright); }
+        .char-role { font-size: 0.65rem; color: var(--text-dim); }
+
+        /* CENTER AREA: CANVAS & ASSISTANT */
+        .workspace {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .test-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.03);
         }
 
         .canvas-frame {
             width: 100%;
-            height: 480px;
+            height: 420px;
             background: #020305;
             border: 1px solid var(--border);
             border-radius: 8px;
@@ -83,271 +147,450 @@
 
         canvas { width: 100%; height: 100%; display: block; }
 
-        .control-panel {
-            background: var(--panel-bg);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 20px;
+        /* TOOLBAR */
+        .toolbar {
             display: flex;
-            flex-direction: column;
-            gap: 16px;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(15, 23, 42, 0.5);
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
         }
 
-        .section-title {
-            font-size: 0.8rem;
-            color: var(--text-dim);
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            font-weight: 700;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 8px;
-        }
+        .tool-group { display: flex; gap: 8px; align-items: center; }
 
         .btn {
             background: #0f172a;
             border: 1px solid var(--border);
             color: var(--text-bright);
-            padding: 12px;
-            font-family: inherit;
-            font-size: 0.75rem;
+            padding: 8px 12px;
+            font-size: 0.7rem;
             font-weight: 700;
             letter-spacing: 1px;
             text-transform: uppercase;
             cursor: pointer;
-            border-radius: 6px;
+            border-radius: 4px;
             transition: all 0.2s;
-            text-align: left;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
 
-        .btn:hover {
+        .btn:hover, .btn.active {
             border-color: var(--cyan);
             color: var(--cyan);
-            transform: translateX(4px);
         }
 
-        .instructions {
-            font-size: 0.75rem;
-            color: var(--text-dim);
-            line-height: 1.5;
-            background: rgba(15, 23, 42, 0.5);
-            padding: 12px;
-            border-radius: 6px;
+        /* ASSISTANT WIDGET (UNDERTALE-INSPIRED) */
+        .assistant-box {
+            background: var(--panel-bg);
             border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            position: relative;
+        }
+
+        .portrait-frame {
+            width: 56px;
+            height: 56px;
+            background: #000;
+            border: 2px solid var(--cyan);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
+        }
+
+        .portrait-canvas { width: 44px; height: 44px; }
+
+        .dialogue-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .assistant-name {
+            font-size: 0.7rem;
+            color: var(--cyan);
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
+
+        .dialogue-text {
+            font-family: 'Courier New', monospace;
+            font-size: 0.82rem;
+            color: var(--text-bright);
+            line-height: 1.4;
+        }
+
+        @media (max-width: 900px) {
+            .main-wrapper { grid-template-columns: 1fr; }
+            .roster-panel { max-height: 300px; }
         }
     </style>
 </head>
 <body>
+
     <div class="scanlines"></div>
-    <div class="container">
-        <div class="viewport-card">
-            <div class="header">
-                <span>SECTOR ZERO // PHYSICS & ANOMALY LAB</span>
-                <span>STATUS: ACTIVE</span>
+
+    <div class="main-wrapper">
+        <!-- SIDEBAR: 15 CHARACTERS -->
+        <div class="roster-panel">
+            <div class="panel-title">
+                <span>ENTITY ROSTER</span>
+                <span id="char-count" style="color:var(--text-bright);">15/15</span>
             </div>
-            <div class="canvas-frame">
-                <canvas id="labCanvas"></canvas>
-            </div>
-            <div class="instructions">
-                <b>CONTROLS:</b> Use <b>A / D</b> or <b>Left / Right Arrows</b> to move Unit 09. Press <b>SPACE</b> or <b>W</b> to jump. Click inside the viewport to place a grav-anomaly core.
-            </div>
+            <div class="roster-list" id="rosterList"></div>
         </div>
 
-        <div class="control-panel">
-            <div class="section-title">TEST ENVIRONMENTS</div>
-            <button class="btn" id="modeNormal"><span>01. ZERO SECTOR</span><span style="color:var(--cyan);">[ACTIVE]</span></button>
-            <button class="btn" id="modeGravity"><span>02. REVERSE GRAVITY</span></button>
-            <button class="btn" id="modeEntities"><span>03. ENTITY FIELD</span></button>
+        <!-- MAIN TESTING AREA -->
+        <div class="workspace">
+            <div class="test-card">
+                <div class="panel-title">
+                    <span id="active-char-title">SUBJECT: UNIT-09 // SPARK</span>
+                    <span id="active-ability" style="color:var(--amber);">ABILITY: PULSE BLAST [SPACE]</span>
+                </div>
 
-            <div class="section-title">BRAINSTORM LOGS</div>
-            <div class="instructions" id="ideaLog">
-                Select or interact with elements in the simulator to test new mechanics and trigger game idea concepts.
+                <div class="canvas-frame">
+                    <canvas id="stageCanvas"></canvas>
+                </div>
+
+                <!-- TOOLBAR FOR DECORATIONS / OBJECTS -->
+                <div class="toolbar">
+                    <div class="tool-group">
+                        <span style="font-size:0.65rem; color:var(--text-dim); font-weight:700;">PLACE DECORATION:</span>
+                        <button class="btn active" id="toolBox">CRATE</button>
+                        <button class="btn" id="toolPillar">PILLAR</button>
+                        <button class="btn" id="toolSpikes">SPIKES</button>
+                        <button class="btn" id="toolOrb">GRAV-NODE</button>
+                    </div>
+                    <button class="btn" id="btnClear" style="border-color:var(--red); color:var(--red);">CLEAR MAP</button>
+                </div>
+            </div>
+
+            <!-- UNDERTALE-STYLE TIP ASSISTANT -->
+            <div class="assistant-box">
+                <div class="portrait-frame">
+                    <canvas class="portrait-canvas" id="portraitCanvas"></canvas>
+                </div>
+                <div class="dialogue-wrap">
+                    <div class="assistant-name">GUIDE // T.I.P.-S (TERMINAL INTERACTIVE PROTOTYPE)</div>
+                    <div class="dialogue-text" id="dialogueText">* System loaded! Click inside the test grid to drop decorations, or pick a character from the roster to test their custom kit!</div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        const canvas = document.getElementById('labCanvas');
-        const ctx = canvas.getContext('2d');
+        // --- 15 UNIQUE CHARACTER ROSTER DEFINITIONS ---
+        const characters = [
+            { id: 0, name: "Unit-09 'Spark'", role: "Speed / Pulse", color: "#00f3ff", ability: "Pulse Jump", tip: "* Unit-09 is standard issue! Press SPACE to trigger a kinetic shockwave that launches off surfaces." },
+            { id: 1, name: "Null-Viper", role: "Phase / Dash", color: "#bc13fe", ability: "Phase Dash", tip: "* Null-Viper doesn't care about solid objects! Dash straight through obstacles and hazards." },
+            { id: 2, name: "Gloom-Mantis", role: "Grapple / Blade", color: "#00ff66", ability: "Scythe Grapple", tip: "* Mantis can latch onto ceilings and drag crates across the zone. Great for high maneuverability!" },
+            { id: 3, name: "Aegis-01", role: "Heavy / Barrier", color: "#ffaa00", ability: "Force Shield", tip: "* Aegis is slow but invulnerable to hazard spikes while shielding!" },
+            { id: 4, name: "Puff-Ball", role: "Floater / Squish", color: "#ff66cc", ability: "Anti-Grav Puff", tip: "* Super squishy! Puff-Ball floats smoothly down and bounces off walls with double friction." },
+            { id: 5, name: "Orbit-Core", role: "Gravity Field", color: "#3399ff", ability: "Pull Aura", tip: "* Orbit-Core attracts nearby loose crates and objects toward itself in a floating ring." },
+            { id: 6, name: "Infernus-Wisp", role: "Dash / Flame", color: "#ff3344", ability: "Rocket Flare", tip: "* Leaves a fiery trial that ignites test crates and launches horizontally across the map." },
+            { id: 7, name: "Echo-Gecko", role: "Wall-Climb", color: "#ccff33", ability: "Suction Grip", tip: "* Echo can run directly up vertical pillars and stick to the ceiling effortlessly!" },
+            { id: 8, name: "Chrono-Mite", role: "Time Slow", color: "#ffff66", ability: "Temporal Warp", tip: "* Chrono can slow down gravity and movement speeds across the entire test zone for 3 seconds." },
+            { id: 9, name: "Blink-Bug", role: "Teleport", color: "#ff9933", ability: "Spatial Swap", tip: "* Instantly teleports forward 100 pixels, swapping positions with any crate in its direct path." },
+            { id: 10, name: "Titan-Block", role: "Construct", color: "#8899a6", ability: "Crate Drop", tip: "* Can spawn a temporary solid stone block directly beneath itself to build stairs on the fly." },
+            { id: 11, name: "Shadow-Stalker", role: "Stealth / Camo", color: "#333344", ability: "Shadow Cloak", tip: "* Becomes completely invisible in dark areas and ignores environmental laser detectors." },
+            { id: 12, name: "Vortex-Mouth", role: "Devourer", color: "#9933ff", ability: "Object Consume", tip: "* Can swallow nearby test crates and spit them out as high-velocity projectiles!" },
+            { id: 13, name: "Volt-Snail", role: "Charged Shell", color: "#00ffff", ability: "Static Charge", tip: "* Hides in its shell to become a heavy rolling bowling ball that smashes through pillars." },
+            { id: 14, name: "Prism-Beamer", role: "Refractor", color: "#ffffff", ability: "Laser Beam", tip: "* Fires a continuous light beam that ricochets off smooth wall decorations." }
+        ];
 
-        function resize() {
-            canvas.width = canvas.offsetWidth;
-            canvas.height = canvas.offsetHeight;
+        let activeChar = characters[0];
+        let currentTool = 'box';
+
+        // --- STAGE SETUP & CANVAS ---
+        const stage = document.getElementById('stageCanvas');
+        const sCtx = stage.getContext('2d');
+
+        function resizeStage() {
+            stage.width = stage.offsetWidth;
+            stage.height = stage.offsetHeight;
         }
-        window.addEventListener('resize', resize);
-        resize();
+        window.addEventListener('resize', resizeStage);
+        resizeStage();
 
-        // Player Unit 09 Physics State
+        // Player Physical State
         const player = {
-            x: 100, y: 300,
+            x: 120, y: 200,
             vx: 0, vy: 0,
             radius: 14,
-            grounded: false,
-            color: '#00f3ff',
-            eyeAngle: 0
+            grounded: false
         };
 
         let keys = {};
-        let gravity = 0.45;
-        let anomalyNodes = [];
-        let activeMode = 'normal';
+        let decorations = [
+            { type: 'box', x: 250, y: 320, w: 40, h: 40 },
+            { type: 'pillar', x: 420, y: 220, w: 30, h: 140 },
+            { type: 'spikes', x: 300, y: 345, w: 60, h: 15 }
+        ];
 
-        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keydown', e => {
+            keys[e.code] = true;
+            if (e.code === 'Space') useAbility();
+        });
         window.addEventListener('keyup', e => keys[e.code] = false);
 
-        canvas.addEventListener('click', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            anomalyNodes.push({
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top,
-                radius: 60,
-                pulse: 0
-            });
-            updateIdeaLog("NEW MECHANIC: Gravitational Anchor. Deployable nodes that let Unit 09 slingshot through non-Euclidean vertical sectors.");
+        // Click to place decorations
+        stage.addEventListener('click', e => {
+            const rect = stage.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (currentTool === 'box') {
+                decorations.push({ type: 'box', x: mouseX - 20, y: mouseY - 20, w: 40, h: 40 });
+                speak(`* Placed a wooden test crate at [X:${Math.round(mouseX)}, Y:${Math.round(mouseY)}]. Jump on it!`);
+            } else if (currentTool === 'pillar') {
+                decorations.push({ type: 'pillar', x: mouseX - 15, y: mouseY - 50, w: 30, h: 100 });
+                speak(`* Placed a tall structural pillar! Perfect for testing climbing or wall bounces.`);
+            } else if (currentTool === 'spikes') {
+                decorations.push({ type: 'spikes', x: mouseX - 30, y: mouseY - 7, w: 60, h: 15 });
+                speak(`* Hazardous spikes deployed! Watch out, unless you're using Aegis-01's shield!`);
+            } else if (currentTool === 'orb') {
+                decorations.push({ type: 'orb', x: mouseX, y: mouseY, radius: 25 });
+                speak(`* Placed a Grav-Node! It creates a local zero-gravity repulsion field.`);
+            }
         });
 
-        document.getElementById('modeNormal').onclick = () => {
-            gravity = 0.45;
-            activeMode = 'normal';
-            updateIdeaLog("SECTOR ZERO: Standard exploration mode. Minimal light, platform momentum, and scanner puzzles.");
+        // Tool Selection
+        document.getElementById('toolBox').onclick = (e) => setTool('box', e.target);
+        document.getElementById('toolPillar').onclick = (e) => setTool('pillar', e.target);
+        document.getElementById('toolSpikes').onclick = (e) => setTool('spikes', e.target);
+        document.getElementById('toolOrb').onclick = (e) => setTool('orb', e.target);
+        document.getElementById('btnClear').onclick = () => {
+            decorations = [];
+            speak("* Cleared all test objects from the stage floor!");
         };
 
-        document.getElementById('modeGravity').onclick = () => {
-            gravity = -0.3;
-            activeMode = 'gravity';
-            updateIdeaLog("NEW MECHANIC: Gravitational Inversion. Flipping sector orientation to walk on ceilings and solve inverted environmental locks.");
-        };
-
-        document.getElementById('modeEntities').onclick = () => {
-            gravity = 0.45;
-            activeMode = 'entities';
-            updateIdeaLog("NEW MECHANIC: Spectral Pulse. Releasing pulse blasts to stun wandering anomalous entities and expose hidden platforms.");
-        };
-
-        function updateIdeaLog(text) {
-            document.getElementById('ideaLog').innerText = text;
+        function setTool(tool, btn) {
+            currentTool = tool;
+            document.querySelectorAll('.toolbar .btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
         }
 
-        let time = 0;
-        function loop() {
-            time += 0.03;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Draw Grid
-            ctx.strokeStyle = 'rgba(30, 41, 59, 0.4)';
-            ctx.lineWidth = 1;
-            for(let x = 0; x < canvas.width; x += 30) {
-                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        // Ability Trigger
+        function useAbility() {
+            if (activeChar.id === 0) { // Spark Pulse
+                player.vy = -11;
+                player.vx += (Math.random() - 0.5) * 8;
+                spawnParticles(player.x, player.y, activeChar.color);
+            } else if (activeChar.id === 1) { // Phase Dash
+                player.x += player.vx > 0 ? 80 : -80;
+                spawnParticles(player.x, player.y, activeChar.color);
+            } else if (activeChar.id === 4) { // Puff Bounce
+                player.vy = -14;
+            } else if (activeChar.id === 10) { // Block Drop
+                decorations.push({ type: 'box', x: player.x - 20, y: player.y + 15, w: 40, h: 40 });
+            } else {
+                player.vy = -9;
+                spawnParticles(player.x, player.y, activeChar.color);
             }
-            for(let y = 0; y < canvas.height; y += 30) {
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        }
+
+        let particles = [];
+        function spawnParticles(x, y, color) {
+            for(let i=0; i<12; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random()-0.5)*8,
+                    vy: (Math.random()-0.5)*8,
+                    life: 1, color: color
+                });
+            }
+        }
+
+        // --- RENDER & SIMULATION LOOP ---
+        let ticks = 0;
+        function updateStage() {
+            ticks++;
+            sCtx.clearRect(0, 0, stage.width, stage.height);
+
+            // Draw Background Grid
+            sCtx.strokeStyle = 'rgba(30, 41, 59, 0.3)';
+            sCtx.lineWidth = 1;
+            for(let x=0; x<stage.width; x+=30) {
+                sCtx.beginPath(); sCtx.moveTo(x,0); sCtx.lineTo(x, stage.height); sCtx.stroke();
+            }
+            for(let y=0; y<stage.height; y+=30) {
+                sCtx.beginPath(); sCtx.moveTo(0,y); sCtx.lineTo(stage.width, y); sCtx.stroke();
             }
 
-            // Player Movement Controls
-            if (keys['KeyA'] || keys['ArrowLeft']) player.vx -= 0.8;
-            if (keys['KeyD'] || keys['ArrowRight']) player.vx += 0.8;
-            if ((keys['Space'] || keys['KeyW'] || keys['ArrowUp']) && player.grounded) {
-                player.vy = gravity > 0 ? -10 : 10;
-                player.grounded = false;
-            }
+            // Controls
+            if (keys['KeyA'] || keys['ArrowLeft']) player.vx -= 0.7;
+            if (keys['KeyD'] || keys['ArrowRight']) player.vx += 0.7;
 
-            // Physics Update
+            // Physics
             player.vx *= 0.88;
-            player.vy += gravity;
+            player.vy += 0.45; // Gravity
             player.x += player.vx;
             player.y += player.vy;
 
-            // Anomaly Pull Physics
-            anomalyNodes.forEach(node => {
-                let dx = node.x - player.x;
-                let dy = node.y - player.y;
-                let dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist < 180) {
-                    player.vx += (dx / dist) * 0.35;
-                    player.vy += (dy / dist) * 0.35;
-                }
-            });
-
-            // Floor & Ceiling Boundaries
-            const floor = canvas.height - 40;
-            const ceiling = 40;
+            // Floor Bounds
+            const floor = stage.height - 30;
             if (player.y + player.radius > floor) {
                 player.y = floor - player.radius;
                 player.vy = 0;
                 player.grounded = true;
-            } else if (player.y - player.radius < ceiling) {
-                player.y = ceiling + player.radius;
-                player.vy = 0;
-                player.grounded = true;
             }
+            if (player.x - player.radius < 0) { player.x = player.radius; player.vx = 0; }
+            if (player.x + player.radius > stage.width) { player.x = stage.width - player.radius; player.vx = 0; }
 
-            if (player.x - player.radius < 20) { player.x = 20 + player.radius; player.vx = 0; }
-            if (player.x + player.radius > canvas.width - 20) { player.x = canvas.width - 20 - player.radius; player.vx = 0; }
+            // Draw Stage Base Floor
+            sCtx.fillStyle = '#0f172a';
+            sCtx.fillRect(0, floor, stage.width, 30);
+            sCtx.strokeStyle = 'var(--cyan)';
+            sCtx.strokeRect(0, floor, stage.width, 1);
 
-            // Draw Boundaries
-            ctx.fillStyle = '#0f172a';
-            ctx.fillRect(0, floor, canvas.width, 40);
-            ctx.fillRect(0, 0, canvas.width, ceiling);
-            ctx.strokeStyle = varColor('--cyan');
-            ctx.strokeRect(0, floor, canvas.width, 1);
-            ctx.strokeRect(0, ceiling, canvas.width, 1);
+            // Draw & Collide Decorations
+            decorations.forEach(dec => {
+                if (dec.type === 'box') {
+                    sCtx.fillStyle = '#1e293b';
+                    sCtx.strokeStyle = '#00f3ff';
+                    sCtx.lineWidth = 1.5;
+                    sCtx.fillRect(dec.x, dec.y, dec.w, dec.h);
+                    sCtx.strokeRect(dec.x, dec.y, dec.w, dec.h);
 
-            // Draw Anomaly Nodes
-            anomalyNodes.forEach(node => {
-                node.pulse += 0.05;
-                let r = node.radius + Math.sin(node.pulse) * 8;
-                ctx.strokeStyle = 'rgba(188, 19, 254, 0.6)';
-                ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.arc(node.x, node.y, r, 0, Math.PI * 2); ctx.stroke();
-                ctx.fillStyle = '#bc13fe';
-                ctx.beginPath(); ctx.arc(node.x, node.y, 6, 0, Math.PI * 2); ctx.fill();
+                    // Basic Box Collision
+                    if (player.x > dec.x && player.x < dec.x + dec.w &&
+                        player.y + player.radius > dec.y && player.y - player.radius < dec.y + dec.h) {
+                        player.y = dec.y - player.radius;
+                        player.vy = 0;
+                        player.grounded = true;
+                    }
+                } else if (dec.type === 'pillar') {
+                    sCtx.fillStyle = '#09101d';
+                    sCtx.strokeStyle = '#bc13fe';
+                    sCtx.lineWidth = 2;
+                    sCtx.fillRect(dec.x, dec.y, dec.w, dec.h);
+                    sCtx.strokeRect(dec.x, dec.y, dec.w, dec.h);
+                } else if (dec.type === 'spikes') {
+                    sCtx.fillStyle = '#ff3344';
+                    sCtx.beginPath();
+                    for(let i=0; i<dec.w; i+=10) {
+                        sCtx.moveTo(dec.x + i, dec.y + dec.h);
+                        sCtx.lineTo(dec.x + i + 5, dec.y);
+                        sCtx.lineTo(dec.x + i + 10, dec.y + dec.h);
+                    }
+                    sCtx.fill();
+                } else if (dec.type === 'orb') {
+                    sCtx.strokeStyle = '#ffaa00';
+                    sCtx.lineWidth = 2;
+                    sCtx.beginPath();
+                    sCtx.arc(dec.x, dec.y, dec.radius + Math.sin(ticks*0.1)*4, 0, Math.PI*2);
+                    sCtx.stroke();
+                }
             });
 
-            // Draw Entity Field Mockup
-            if (activeMode === 'entities') {
-                let ex = canvas.width / 2 + Math.cos(time) * 120;
-                let ey = canvas.height / 2 + Math.sin(time * 1.5) * 40;
-                ctx.fillStyle = '#ff3344';
-                ctx.shadowColor = '#ff3344'; ctx.shadowBlur = 12;
-                ctx.beginPath(); ctx.arc(ex, ey, 16, 0, Math.PI * 2); ctx.fill();
-                ctx.shadowBlur = 0;
+            // Particles Update & Draw
+            particles.forEach((p, i) => {
+                p.x += p.vx; p.y += p.vy; p.life -= 0.03;
+                sCtx.fillStyle = p.color;
+                sCtx.beginPath(); sCtx.arc(p.x, p.y, 3, 0, Math.PI*2); sCtx.fill();
+                if (p.life <= 0) particles.splice(i, 1);
+            });
+
+            // Draw Active Character Player
+            sCtx.save();
+            sCtx.translate(player.x, player.y);
+            sCtx.fillStyle = activeChar.color;
+            sCtx.shadowColor = activeChar.color;
+            sCtx.shadowBlur = 12;
+
+            // Character Body
+            sCtx.beginPath();
+            sCtx.arc(0, 0, player.radius, 0, Math.PI * 2);
+            sCtx.fill();
+
+            // Eyes / Expressive Face
+            sCtx.fillStyle = '#000';
+            sCtx.shadowBlur = 0;
+            sCtx.beginPath();
+            sCtx.arc(player.vx * 1.5 - 3, -2, 3, 0, Math.PI * 2);
+            sCtx.arc(player.vx * 1.5 + 4, -2, 3, 0, Math.PI * 2);
+            sCtx.fill();
+
+            sCtx.restore();
+
+            requestAnimationFrame(updateStage);
+        }
+
+        // --- UNDERTALE ASSISTANT PORTRAIT ANIMATION ---
+        const pCanvas = document.getElementById('portraitCanvas');
+        const pCtx = pCanvas.getContext('2d');
+        let dialogueQueue = [];
+
+        function drawAssistantPortrait() {
+            pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+            
+            // Retro Pixel Robot Assistant Face
+            pCtx.fillStyle = '#00f3ff';
+            pCtx.fillRect(6, 6, 32, 32);
+            
+            // Screen Inner
+            pCtx.fillStyle = '#000';
+            pCtx.fillRect(10, 10, 24, 24);
+
+            // Animated Eyes (Blinking / Talking)
+            pCtx.fillStyle = '#00f3ff';
+            const blink = Math.sin(Date.now() * 0.008) > 0.95;
+            if (!blink) {
+                pCtx.fillRect(14, 16, 5, 5);
+                pCtx.fillRect(25, 16, 5, 5);
             }
 
-            // Draw Player (Unit 09)
-            ctx.save();
-            ctx.translate(player.x, player.y);
-            
-            // Squash / Stretch effect
-            let stretchX = 1 + Math.abs(player.vx) * 0.02 - Math.abs(player.vy) * 0.01;
-            let stretchY = 1 + Math.abs(player.vy) * 0.02 - Math.abs(player.vx) * 0.01;
-            ctx.scale(stretchX, stretchY);
+            // Animated Talking Mouth
+            const talk = Math.sin(Date.now() * 0.02) > 0;
+            pCtx.fillRect(16, 26, 12, talk ? 4 : 2);
 
-            ctx.fillStyle = player.color;
-            ctx.shadowColor = player.color;
-            ctx.shadowBlur = 15;
-            ctx.beginPath(); ctx.arc(0, 0, player.radius, 0, Math.PI * 2); ctx.fill();
-
-            // Eye tracking
-            let aimX = player.vx * 2;
-            let aimY = player.vy * 2;
-            ctx.fillStyle = '#000';
-            ctx.shadowBlur = 0;
-            ctx.beginPath(); ctx.arc(aimX, aimY, 5, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#fff';
-            ctx.beginPath(); ctx.arc(aimX + 1, aimY - 1, 2, 0, Math.PI * 2); ctx.fill();
-
-            ctx.restore();
-
-            requestAnimationFrame(loop);
+            requestAnimationFrame(drawAssistantPortrait);
         }
 
-        function varColor(name) {
-            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        function speak(text) {
+            document.getElementById('dialogueText').innerText = text;
         }
 
-        loop();
+        // --- BUILD SIDEBAR ROSTER ---
+        const rosterEl = document.getElementById('rosterList');
+        characters.forEach((c, idx) => {
+            const card = document.createElement('div');
+            card.className = `char-card ${idx === 0 ? 'active' : ''}`;
+            card.onclick = () => selectCharacter(c, card);
+
+            card.innerHTML = `
+                <div class="char-avatar" style="background:${c.color};">${c.id + 1}</div>
+                <div class="char-info">
+                    <div class="char-name">${c.name}</div>
+                    <div class="char-role">${c.role}</div>
+                </div>
+            `;
+            rosterEl.appendChild(card);
+        });
+
+        function selectCharacter(char, cardEl) {
+            activeChar = char;
+            document.querySelectorAll('.char-card').forEach(el => el.classList.remove('active'));
+            cardEl.classList.add('active');
+
+            document.getElementById('active-char-title').innerText = `SUBJECT: ${char.name.toUpperCase()}`;
+            document.getElementById('active-ability').innerText = `ABILITY: ${char.ability.toUpperCase()} [SPACE]`;
+
+            speak(char.tip);
+            spawnParticles(player.x, player.y, char.color);
+        }
+
+        // Initialize Everything
+        updateStage();
+        drawAssistantPortrait();
     </script>
 </body>
 </html>
