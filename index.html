@@ -90,7 +90,7 @@
         }
     </style>
 
-    <!-- Reliable Three.js CDN with fallback -->
+    <!-- Reliable Three.js CDN -->
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
 </head>
 <body>
@@ -108,7 +108,6 @@
     </div>
 
     <script>
-        // Check if Three.js loaded properly
         if (typeof THREE === 'undefined') {
             document.getElementById('error-msg').style.display = 'block';
         } else {
@@ -116,7 +115,7 @@
         }
 
         function initGame() {
-            // --- 1. SETUP ENGINE & PIXELATED RENDERER ---
+            // --- 1. SETUP ENGINE & RENDERER ---
             const container = document.getElementById('canvas-container');
             const scene = new THREE.Scene();
             scene.background = new THREE.Color(0x0a0c14);
@@ -127,7 +126,6 @@
             const renderer = new THREE.WebGLRenderer({ antialias: false });
             renderer.setSize(window.innerWidth, window.innerHeight);
             
-            // Pixelated scale setting
             const PIXEL_SCALE = 0.5;
             renderer.setPixelRatio(window.devicePixelRatio * PIXEL_SCALE);
             renderer.domElement.style.width = "100%";
@@ -196,74 +194,88 @@
             );
             baseplate.add(wireframe);
 
-            // --- 4. KAWM MATERIAL & CHARACTER RIG BUILD ---
-            const kawmMaterial = new THREE.MeshStandardMaterial({
+            // --- 4. ROUNDED STICKMAN BUILD ---
+            const stickmanMaterial = new THREE.MeshStandardMaterial({
                 color: 0xffffff,
                 emissive: 0xffffff,
-                emissiveIntensity: 0.4,
-                roughness: 0.1,
+                emissiveIntensity: 0.35,
+                roughness: 0.2,
                 metalness: 0.1,
             });
 
             const character = new THREE.Group();
             scene.add(character);
 
-            function createLimb(width, length) {
+            // Helper to build rounded limbs with spherical joint caps
+            function createCapsuleLimb(radius, length) {
                 const group = new THREE.Group();
-                const mesh = new THREE.Mesh(new THREE.CylinderGeometry(width, width, length, 8), kawmMaterial);
-                mesh.castShadow = true;
-                mesh.position.y = -length / 2;
-                group.add(mesh);
-                return { group, mesh };
+                const cylGeo = new THREE.CylinderGeometry(radius, radius, length, 12);
+                const capGeo = new THREE.SphereGeometry(radius, 12, 12);
+
+                const cylinder = new THREE.Mesh(cylGeo, stickmanMaterial);
+                cylinder.position.y = -length / 2;
+                cylinder.castShadow = true;
+                group.add(cylinder);
+
+                const topCap = new THREE.Mesh(capGeo, stickmanMaterial);
+                topCap.position.y = 0;
+                topCap.castShadow = true;
+                group.add(topCap);
+
+                const botCap = new THREE.Mesh(capGeo, stickmanMaterial);
+                botCap.position.y = -length;
+                botCap.castShadow = true;
+                group.add(botCap);
+
+                return group;
             }
 
-            // Head
+            // Head - Resized to proportional ratio and lowered to connect directly to torso
             const headGroup = new THREE.Group();
-            const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 16), kawmMaterial);
-            headMesh.position.y = 2.4;
+            const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), stickmanMaterial);
+            headMesh.position.y = 1.95;
             headMesh.castShadow = true;
             headGroup.add(headMesh);
             character.add(headGroup);
 
-            // Torso
-            const torsoMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.9, 8), kawmMaterial);
-            torsoMesh.position.y = 1.5;
-            torsoMesh.castShadow = true;
-            character.add(torsoMesh);
+            // Torso (Main Spine)
+            const torsoGroup = createCapsuleLimb(0.1, 0.85);
+            torsoGroup.position.y = 1.85;
+            character.add(torsoGroup);
 
             // Arms
-            const armLUpper = createLimb(0.12, 0.55);
-            armLUpper.group.position.set(0.38, 1.85, 0);
-            character.add(armLUpper.group);
+            const armLUpper = createCapsuleLimb(0.065, 0.45);
+            armLUpper.position.set(0.18, 1.75, 0);
+            character.add(armLUpper);
 
-            const armLLower = createLimb(0.1, 0.5);
-            armLLower.group.position.set(0, -0.55, 0);
-            armLUpper.group.add(armLLower.group);
+            const armLLower = createCapsuleLimb(0.055, 0.45);
+            armLLower.position.set(0, -0.45, 0);
+            armLUpper.add(armLLower);
 
-            const armRUpper = createLimb(0.12, 0.55);
-            armRUpper.group.position.set(-0.38, 1.85, 0);
-            character.add(armRUpper.group);
+            const armRUpper = createCapsuleLimb(0.065, 0.45);
+            armRUpper.position.set(-0.18, 1.75, 0);
+            character.add(armRUpper);
 
-            const armRLower = createLimb(0.1, 0.5);
-            armRLower.group.position.set(0, -0.55, 0);
-            armRUpper.group.add(armRLower.group);
+            const armRLower = createCapsuleLimb(0.055, 0.45);
+            armRLower.position.set(0, -0.45, 0);
+            armRUpper.add(armRLower);
 
             // Legs
-            const legLUpper = createLimb(0.14, 0.6);
-            legLUpper.group.position.set(0.2, 1.0, 0);
-            character.add(legLUpper.group);
+            const legLUpper = createCapsuleLimb(0.075, 0.5);
+            legLUpper.position.set(0.12, 1.0, 0);
+            character.add(legLUpper);
 
-            const legLLower = createLimb(0.12, 0.55);
-            legLLower.group.position.set(0, -0.6, 0);
-            legLUpper.group.add(legLLower.group);
+            const legLLower = createCapsuleLimb(0.065, 0.5);
+            legLLower.position.set(0, -0.5, 0);
+            legLUpper.add(legLLower);
 
-            const legRUpper = createLimb(0.14, 0.6);
-            legRUpper.group.position.set(-0.2, 1.0, 0);
-            character.add(legRUpper.group);
+            const legRUpper = createCapsuleLimb(0.075, 0.5);
+            legRUpper.position.set(-0.12, 1.0, 0);
+            character.add(legRUpper);
 
-            const legRLower = createLimb(0.12, 0.55);
-            legRLower.group.position.set(0, -0.6, 0);
-            legRUpper.group.add(legRLower.group);
+            const legRLower = createCapsuleLimb(0.065, 0.5);
+            legRLower.position.set(0, -0.5, 0);
+            legRUpper.add(legRLower);
 
             // --- 5. CONTROLS ---
             const keys = { w: false, a: false, s: false, d: false, shift: false, space: false };
@@ -338,59 +350,59 @@
                 const cosCycle = Math.cos(animTime);
 
                 if (!isGrounded) {
-                    torsoMesh.rotation.x = lerp(torsoMesh.rotation.x, 0.2, 0.2);
-                    armLUpper.group.rotation.x = lerp(armLUpper.group.rotation.x, -2.5, 0.2);
-                    armRUpper.group.rotation.x = lerp(armRUpper.group.rotation.x, -2.5, 0.2);
-                    armLUpper.group.rotation.z = lerp(armLUpper.group.rotation.z, 0.4, 0.2);
-                    armRUpper.group.rotation.z = lerp(armRUpper.group.rotation.z, -0.4, 0.2);
+                    torsoGroup.rotation.x = lerp(torsoGroup.rotation.x, 0.2, 0.2);
+                    armLUpper.rotation.x = lerp(armLUpper.rotation.x, -2.5, 0.2);
+                    armRUpper.rotation.x = lerp(armRUpper.rotation.x, -2.5, 0.2);
+                    armLUpper.rotation.z = lerp(armLUpper.rotation.z, 0.4, 0.2);
+                    armRUpper.rotation.z = lerp(armRUpper.rotation.z, -0.4, 0.2);
 
-                    legLUpper.group.rotation.x = lerp(legLUpper.group.rotation.x, 0.6, 0.2);
-                    legRUpper.group.rotation.x = lerp(legRUpper.group.rotation.x, -0.4, 0.2);
-                    legLLower.group.rotation.x = lerp(legLLower.group.rotation.x, -0.8, 0.2);
-                    legRLower.group.rotation.x = lerp(legRLower.group.rotation.x, -0.3, 0.2);
+                    legLUpper.rotation.x = lerp(legLUpper.rotation.x, 0.6, 0.2);
+                    legRUpper.rotation.x = lerp(legRUpper.rotation.x, -0.4, 0.2);
+                    legLLower.rotation.x = lerp(legLLower.rotation.x, -0.8, 0.2);
+                    legRLower.rotation.x = lerp(legRLower.rotation.x, -0.3, 0.2);
 
                 } else if (isMoving) {
                     const stride = isRunning ? 1.1 : 0.65;
                     const bodyTilt = isRunning ? 0.35 : 0.12;
 
-                    torsoMesh.position.y = 1.5 + Math.abs(cosCycle) * (isRunning ? 0.15 : 0.08);
-                    torsoMesh.rotation.x = lerp(torsoMesh.rotation.x, bodyTilt, 0.15);
+                    torsoGroup.position.y = 1.85 + Math.abs(cosCycle) * (isRunning ? 0.15 : 0.08);
+                    torsoGroup.rotation.x = lerp(torsoGroup.rotation.x, bodyTilt, 0.15);
 
-                    legLUpper.group.rotation.x = cycle * stride;
-                    legRUpper.group.rotation.x = -cycle * stride;
-                    legLLower.group.rotation.x = (cycle > 0 ? -cycle * 0.8 : 0);
-                    legRLower.group.rotation.x = (-cycle > 0 ? cycle * 0.8 : 0);
+                    legLUpper.rotation.x = cycle * stride;
+                    legRUpper.rotation.x = -cycle * stride;
+                    legLLower.rotation.x = (cycle > 0 ? -cycle * 0.8 : 0);
+                    legRLower.rotation.x = (-cycle > 0 ? cycle * 0.8 : 0);
 
-                    armLUpper.group.rotation.x = -cycle * stride * 0.9;
-                    armRUpper.group.rotation.x = cycle * stride * 0.9;
-                    armLUpper.group.rotation.z = lerp(armLUpper.group.rotation.z, 0.1, 0.1);
-                    armRUpper.group.rotation.z = lerp(armRUpper.group.rotation.z, -0.1, 0.1);
+                    armLUpper.rotation.x = -cycle * stride * 0.9;
+                    armRUpper.rotation.x = cycle * stride * 0.9;
+                    armLUpper.rotation.z = lerp(armLUpper.rotation.z, 0.1, 0.1);
+                    armRUpper.rotation.z = lerp(armRUpper.rotation.z, -0.1, 0.1);
 
-                    armLLower.group.rotation.x = -Math.abs(cycle) * 0.5;
-                    armRLower.group.rotation.x = -Math.abs(cycle) * 0.5;
+                    armLLower.rotation.x = -Math.abs(cycle) * 0.5;
+                    armRLower.rotation.x = -Math.abs(cycle) * 0.5;
 
-                    headGroup.position.y = 2.4 + Math.sin(animTime * 2) * 0.04;
+                    headGroup.position.y = 1.95 + Math.sin(animTime * 2) * 0.04;
 
                 } else {
                     const breath = Math.sin(animTime) * 0.05;
 
-                    torsoMesh.position.y = lerp(torsoMesh.position.y, 1.5 + breath, 0.1);
-                    torsoMesh.rotation.x = lerp(torsoMesh.rotation.x, 0, 0.1);
+                    torsoGroup.position.y = lerp(torsoGroup.position.y, 1.85 + breath, 0.1);
+                    torsoGroup.rotation.x = lerp(torsoGroup.rotation.x, 0, 0.1);
 
-                    armLUpper.group.rotation.x = lerp(armLUpper.group.rotation.x, 0, 0.1);
-                    armRUpper.group.rotation.x = lerp(armRUpper.group.rotation.x, 0, 0.1);
-                    armLUpper.group.rotation.z = lerp(armLUpper.group.rotation.z, 0.18 + breath * 0.5, 0.1);
-                    armRUpper.group.rotation.z = lerp(armRUpper.group.rotation.z, -0.18 - breath * 0.5, 0.1);
+                    armLUpper.rotation.x = lerp(armLUpper.rotation.x, 0, 0.1);
+                    armRUpper.rotation.x = lerp(armRUpper.rotation.x, 0, 0.1);
+                    armLUpper.rotation.z = lerp(armLUpper.rotation.z, 0.18 + breath * 0.5, 0.1);
+                    armRUpper.rotation.z = lerp(armRUpper.rotation.z, -0.18 - breath * 0.5, 0.1);
 
-                    armLLower.group.rotation.x = lerp(armLLower.group.rotation.x, -0.1, 0.1);
-                    armRLower.group.rotation.x = lerp(armRLower.group.rotation.x, -0.1, 0.1);
+                    armLLower.rotation.x = lerp(armLLower.rotation.x, -0.1, 0.1);
+                    armRLower.rotation.x = lerp(armRLower.rotation.x, -0.1, 0.1);
 
-                    legLUpper.group.rotation.x = lerp(legLUpper.group.rotation.x, 0, 0.1);
-                    legRUpper.group.rotation.x = lerp(legRUpper.group.rotation.x, 0, 0.1);
-                    legLLower.group.rotation.x = lerp(legLLower.group.rotation.x, 0, 0.1);
-                    legRLower.group.rotation.x = lerp(legRLower.group.rotation.x, 0, 0.1);
+                    legLUpper.rotation.x = lerp(legLUpper.rotation.x, 0, 0.1);
+                    legRUpper.rotation.x = lerp(legRUpper.rotation.x, 0, 0.1);
+                    legLLower.rotation.x = lerp(legLLower.rotation.x, 0, 0.1);
+                    legRLower.rotation.x = lerp(legRLower.rotation.x, 0, 0.1);
 
-                    headGroup.position.y = 2.4 + breath * 0.6;
+                    headGroup.position.y = 1.95 + breath * 0.6;
                 }
             }
 
@@ -404,8 +416,10 @@
 
                 let moveX = 0;
                 let moveZ = 0;
-                if (keys.w) moveZ -= 1;
-                if (keys.s) moveZ += 1;
+                
+                // Fixed Forward/Backward key mappings: W moves forward (-Z), S moves backward (+Z)
+                if (keys.w) moveZ += 1;
+                if (keys.s) moveZ -= 1;
                 if (keys.a) moveX -= 1;
                 if (keys.d) moveX += 1;
 
