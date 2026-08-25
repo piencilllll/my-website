@@ -3,362 +3,397 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CLASSIFIED PROTOCOL :: TERMINAL 07</title>
+    <title>THE CUTTING ROOM: RAGDOLL RECOVERY</title>
     <style>
         :root {
-            --bg-color: #05070a;
-            --panel-bg: rgba(10, 15, 24, 0.85);
-            --border-color: #1e293b;
-            --accent-cyan: #00f3ff;
-            --accent-amber: #ffaa00;
-            --accent-purple: #bc13fe;
-            --text-main: #cbd5e1;
-            --font-mono: 'Courier New', Courier, monospace;
+            --bg: #030712;
+            --cyan: #00f3ff;
+            --amber: #ffaa00;
+            --purple: #bc13fe;
+            --font: 'Courier New', Courier, monospace;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
 
-        body, html {
+        html, body {
             width: 100vw; height: 100vh; overflow: hidden;
-            background-color: var(--bg-color); color: var(--text-main);
-            font-family: var(--font-mono);
+            background: var(--bg); color: #fff;
+            font-family: var(--font);
             display: flex; justify-content: center; align-items: center;
             cursor: none;
         }
 
-        /* CRT Filter Overlay */
-        .scanlines {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
-            background-size: 100% 3px, 6px 100%;
-            pointer-events: none; z-index: 50;
-        }
-
         .viewport {
-            width: 95vw; height: 90vh; max-width: 1100px; max-height: 700px;
-            background: var(--panel-bg);
-            border: 2px solid #334155;
-            box-shadow: 0 0 40px rgba(0, 243, 255, 0.08);
-            display: flex; flex-direction: column;
-            position: relative; overflow: hidden;
-            border-radius: 6px;
+            width: 100vw; height: 100vh; max-width: 1000px; max-height: 650px;
+            position: relative; background: #000;
+            border: 2px solid #1e293b;
+            box-shadow: 0 0 35px rgba(0, 243, 255, 0.1);
+            display: flex; flex-direction: column; overflow: hidden;
         }
 
-        /* Top Status Bar */
-        .status-bar {
-            height: 36px; background: #090d14; border-bottom: 2px solid #1e293b;
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 0 16px; font-size: 0.75rem; letter-spacing: 2px;
-        }
-        .status-node { color: var(--accent-cyan); display: flex; align-items: center; gap: 8px; }
-        .node-pulse { width: 8px; height: 8px; background: var(--accent-cyan); border-radius: 50%; box-shadow: 0 0 8px var(--accent-cyan); animation: blink 1s infinite alternate; }
+        canvas#gameCanvas { width: 100%; height: 100%; display: block; }
 
-        /* Workspace Grid */
-        .workspace {
-            display: flex; flex: 1; height: calc(100% - 36px);
+        .hud-overlay {
+            position: absolute; top: 16px; left: 20px; right: 20px;
+            display: flex; justify-content: space-between; align-items: flex-start;
+            pointer-events: none; z-index: 10;
         }
 
-        /* Sidebar Navigation */
-        .sidebar {
-            width: 280px; background: rgba(5, 8, 14, 0.6);
-            border-right: 2px solid #1e293b; padding: 16px;
-            display: flex; flex-direction: column; gap: 12px;
+        .hud-card {
+            background: rgba(15, 23, 42, 0.85); border: 1px solid #334155;
+            padding: 10px 14px; border-radius: 4px; display: flex; flex-direction: column; gap: 4px;
         }
 
-        .section-header {
-            font-size: 0.7rem; color: #64748b; letter-spacing: 2px;
-            margin-bottom: 4px; text-transform: uppercase;
+        .hud-title { font-size: 0.8rem; font-weight: bold; color: var(--cyan); letter-spacing: 1px; }
+        .hud-sub { font-size: 0.7rem; color: #94a3b8; }
+
+        .dialogue-box {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: 90%; height: 120px;
+            background: rgba(3, 7, 18, 0.95);
+            border: 2px solid #fff; border-radius: 6px;
+            padding: 14px 18px; display: none; gap: 16px; align-items: center;
+            z-index: 20;
         }
 
-        .nav-btn {
-            background: rgba(15, 23, 42, 0.8); border: 1px solid #1e293b;
-            color: #94a3b8; padding: 12px 14px; text-align: left;
-            font-family: var(--font-mono); font-size: 0.8rem;
-            cursor: none; border-radius: 4px; transition: all 0.2s;
-            display: flex; justify-content: space-between; align-items: center;
+        .portrait {
+            width: 70px; height: 70px; border: 2px solid #fff; background: #000;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
 
-        .nav-btn:hover, .nav-btn.active {
-            border-color: var(--accent-cyan); color: #fff;
-            background: rgba(0, 243, 255, 0.05);
-            box-shadow: 0 0 10px rgba(0, 243, 255, 0.15);
-        }
-
-        .nav-btn.active { border-left: 4px solid var(--accent-cyan); }
-
-        /* Main Display Panel */
-        .main-panel {
-            flex: 1; padding: 24px; display: flex; flex-direction: column;
-            gap: 20px; position: relative; overflow-y: auto;
-        }
-
-        /* Display Cards & Canvas Viewers */
-        .canvas-card {
-            background: rgba(2, 6, 23, 0.7); border: 1px solid #1e293b;
-            border-radius: 4px; padding: 16px; position: relative;
-            display: flex; flex-direction: column; gap: 12px;
-        }
-
-        .card-header {
-            display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid #1e293b; padding-bottom: 8px;
-        }
-        .card-title { font-size: 0.85rem; font-weight: bold; color: var(--accent-amber); letter-spacing: 1px; }
-
-        canvas#visualizerCanvas {
-            width: 100%; height: 200px; background: #000;
-            border: 1px solid #0f172a; border-radius: 4px;
-        }
-
-        /* Interactivity Controls */
-        .control-row {
-            display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
-        }
-
-        .action-btn {
-            background: rgba(30, 41, 59, 0.6); border: 1px solid var(--accent-cyan);
-            color: var(--accent-cyan); padding: 8px 16px; font-family: var(--font-mono);
-            font-size: 0.75rem; letter-spacing: 1px; cursor: none;
-            border-radius: 3px; transition: all 0.2s;
-        }
-        .action-btn:hover {
-            background: var(--accent-cyan); color: #000;
-            box-shadow: 0 0 12px rgba(0, 243, 255, 0.4);
-        }
-
-        /* Dynamic Logs Log */
-        .console-output {
-            background: #000; border: 1px solid #1e293b;
-            height: 140px; border-radius: 4px; padding: 12px;
-            font-size: 0.75rem; color: #4ade80; overflow-y: auto;
-            display: flex; flex-direction: column; gap: 4px;
-        }
-
-        .redacted {
-            background: #334155; color: #334155; cursor: none; transition: all 0.3s;
-            padding: 0 4px; border-radius: 2px;
-        }
-        .redacted:hover { background: transparent; color: var(--accent-amber); }
+        .dialogue-body { display: flex; flex-direction: column; justify-content: space-between; height: 100%; flex: 1; }
+        .speaker { font-size: 0.85rem; font-weight: bold; letter-spacing: 2px; }
+        .text-content { font-size: 0.95rem; line-height: 1.4; color: #f8fafc; }
+        .prompt { font-size: 0.68rem; color: var(--amber); align-self: flex-end; animation: blink 0.8s infinite alternate; }
 
         @keyframes blink { from { opacity: 0.2; } to { opacity: 1; } }
     </style>
 </head>
 <body>
 
-    <div class="scanlines"></div>
-
     <div class="viewport">
-        <!-- Status Bar -->
-        <div class="status-bar">
-            <div class="status-node">
-                <div class="node-pulse"></div>
-                <span>DATABASE :: STANZAS // ARCHIVE 09</span>
+        <canvas id="gameCanvas"></canvas>
+
+        <div class="hud-overlay">
+            <div class="hud-card">
+                <div class="hud-title">ACT 1: STABILIZING THE DRAFT</div>
+                <div class="hud-sub">[A/D] MOVE | [W/SPACE] JUMP | [E] INTERACT</div>
             </div>
-            <div style="color: #64748b;" id="clockDisplay">00:00:00</div>
+            <div class="hud-card" style="align-items: flex-end;">
+                <div class="hud-title" style="color: var(--amber);" id="coreTracker">CORES: 0 / 3</div>
+                <div class="hud-sub" id="objectiveText">Find and absorb unstable white ink cores</div>
+            </div>
         </div>
 
-        <div class="workspace">
-            <!-- Sidebar Navigation -->
-            <div class="sidebar">
-                <div class="section-header">ARCHIVE FILES</div>
-                <button class="nav-btn active" data-target="entity">
-                    <span>> ENTITY_68.LOG</span><span style="color:var(--accent-cyan);">[SRC]</span>
-                </button>
-                <button class="nav-btn" data-target="synth">
-                    <span>> AUDIO_MONITOR.WAV</span><span style="color:var(--accent-amber);">[AUX]</span>
-                </button>
-                <button class="nav-btn" data-target="stanza">
-                    <span>> STANZA_MAP.SYS</span><span style="color:var(--accent-purple);">[MAP]</span>
-                </button>
-            </div>
-
-            <!-- Main Interactive Content Panel -->
-            <div class="main-panel">
-                
-                <!-- VISUALIZER CARD -->
-                <div class="canvas-card">
-                    <div class="card-header">
-                        <span class="card-title" id="panelTitle">ENTITY ANATOMICAL WAVEFORM</span>
-                        <span style="font-size: 0.7rem; color: #64748b;">LIVE FEED</span>
-                    </div>
-                    <canvas id="visualizerCanvas"></canvas>
-                    <div class="control-row">
-                        <button class="action-btn" id="btnPulse">EMIT PULSE</button>
-                        <button class="action-btn" id="btnFrequency" style="border-color:var(--accent-amber); color:var(--accent-amber);">MODULATE</button>
-                    </div>
-                </div>
-
-                <!-- TEXT & LOG CARD -->
-                <div class="canvas-card">
-                    <div class="card-header">
-                        <span class="card-title" style="color: var(--accent-cyan);">DECRYPTED LOG DATA</span>
-                        <span style="font-size: 0.7rem; color: #64748b;">HOVER REDACTED TO DECRYPT</span>
-                    </div>
-                    <p style="font-size: 0.8rem; line-height: 1.5; color: #94a3b8;">
-                        Subject <span class="redacted">ORB-68</span> detected inside dark transition zone. Energy emissions align with <span class="redacted">KINETICALLY UNIFIED MATTER</span>. Threat level remains stable unless exposed to severe structural shifts.
-                    </p>
-                    <div class="console-output" id="consoleLogs">
-                        <div>[SYSTEM]: Terminal link established.</div>
-                        <div>[SYSTEM]: Listening on synthetic audio channels...</div>
-                    </div>
-                </div>
-
+        <div class="dialogue-box" id="dialogueBox">
+            <div class="portrait" id="portraitBox"></div>
+            <div class="dialogue-body">
+                <div class="speaker" id="speakerName">...</div>
+                <div class="text-content" id="dialogueText">...</div>
+                <div class="prompt">[PRESS E OR SPACE TO CONTINUE]</div>
             </div>
         </div>
     </div>
 
     <script>
-        // Custom Pixel Cursor
-        const cursor = document.createElement('div');
-        cursor.style.position = 'fixed';
-        cursor.style.width = '8px';
-        cursor.style.height = '8px';
-        cursor.style.background = '#00f3ff';
-        cursor.style.pointerEvents = 'none';
-        cursor.style.zIndex = '9999';
-        cursor.style.boxShadow = '0 0 8px #00f3ff';
-        document.body.appendChild(cursor);
-
-        window.addEventListener('mousemove', e => {
-            cursor.style.left = e.clientX + 'px';
-            cursor.style.top = e.clientY + 'px';
-        });
-
-        // Real-Time Clock
-        function updateClock() {
-            const now = new Date();
-            document.getElementById('clockDisplay').innerText = now.toTimeString().split(' ')[0];
-        }
-        setInterval(updateClock, 1000);
-        updateClock();
-
-        // Canvas Engine & Audio Visualizer
-        const canvas = document.getElementById('visualizerCanvas');
+        const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        
-        function resizeCanvas() {
+        const dialogueBox = document.getElementById('dialogueBox');
+        const speakerName = document.getElementById('speakerName');
+        const dialogueText = document.getElementById('dialogueText');
+        const portraitBox = document.getElementById('portraitBox');
+        const coreTracker = document.getElementById('coreTracker');
+        const objectiveText = document.getElementById('objectiveText');
+
+        function resize() {
             canvas.width = canvas.offsetWidth;
             canvas.height = canvas.offsetHeight;
         }
-        resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('resize', resize);
+        resize();
 
-        let activeMode = 'entity';
-        let animTimer = 0;
-        let frequencyMod = 1;
-
-        // Audio Synth Context
+        // Audio Synth
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx = null;
-
-        function triggerSound(freq, type = 'sine') {
+        function playSound(type) {
             if (!audioCtx) audioCtx = new AudioContext();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.type = type;
-            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.3);
-        }
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
 
-        // Render Modes
-        function render() {
-            animTimer += 0.04;
-            ctx.fillStyle = '#020617';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            const cx = canvas.width / 2;
-            const cy = canvas.height / 2;
-
-            if (activeMode === 'entity') {
-                // Orbital Entity Silhouette
-                ctx.strokeStyle = '#00f3ff';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                for (let i = 0; i <= Math.PI * 2; i += 0.05) {
-                    const r = 50 + Math.sin(i * 8 + animTimer * 2) * (6 * frequencyMod);
-                    const x = cx + Math.cos(i) * r;
-                    const y = cy + Math.sin(i) * r;
-                    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-                }
-                ctx.closePath();
-                ctx.stroke();
-
-                // Core Eye
-                ctx.fillStyle = '#ffaa00';
-                ctx.beginPath();
-                ctx.arc(cx, cy, 8 + Math.sin(animTimer * 4) * 2, 0, Math.PI * 2);
-                ctx.fill();
-
-            } else if (activeMode === 'synth') {
-                // Audio Waveform Spectrum
-                ctx.strokeStyle = '#ffaa00';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                for (let x = 0; x < canvas.width; x += 10) {
-                    const y = cy + Math.sin(x * 0.03 * frequencyMod + animTimer * 3) * 40;
-                    if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-                }
-                ctx.stroke();
-
-            } else if (activeMode === 'stanza') {
-                // Grid Anomaly Radar Map
-                ctx.strokeStyle = 'rgba(188, 19, 254, 0.4)';
-                ctx.lineWidth = 1;
-                for (let g = -canvas.width; g < canvas.width; g += 30) {
-                    ctx.beginPath(); ctx.moveTo(g + (animTimer * 20) % 30, 0); ctx.lineTo(g + (animTimer * 20) % 30, canvas.height); ctx.stroke();
-                }
-                ctx.strokeStyle = '#bc13fe';
-                ctx.beginPath();
-                ctx.arc(cx, cy, (animTimer * 30) % (canvas.height / 2), 0, Math.PI * 2);
-                ctx.stroke();
+            if (type === 'jump') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(250, now);
+                osc.frequency.exponentialRampToValueAtTime(500, now + 0.15);
+                gain.gain.setValueAtTime(0.08, now); gain.gain.linearRampToValueAtTime(0, now + 0.15);
+                osc.start(now); osc.stop(now + 0.15);
+            } else if (type === 'collect') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.setValueAtTime(659.25, now + 0.08);
+                gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.2);
+                osc.start(now); osc.stop(now + 0.2);
+            } else if (type === 'talk') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(180, now);
+                gain.gain.setValueAtTime(0.04, now); gain.gain.linearRampToValueAtTime(0, now + 0.04);
+                osc.start(now); osc.stop(now + 0.04);
             }
-
-            requestAnimationFrame(render);
-        }
-        render();
-
-        // UI Interactions
-        const consoleLogs = document.getElementById('consoleLogs');
-        function logMessage(text) {
-            const entry = document.createElement('div');
-            entry.innerText = `[${new Date().toLocaleTimeString()}]: ${text}`;
-            consoleLogs.appendChild(entry);
-            consoleLogs.scrollTop = consoleLogs.scrollHeight;
         }
 
-        document.querySelectorAll('.nav-btn').forEach(btn => {
-            btn.addEventListener('click', e => {
-                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-                const targetBtn = e.currentTarget;
-                targetBtn.classList.add('active');
-                
-                activeMode = targetBtn.getAttribute('data-target');
-                document.getElementById('panelTitle').innerText = 
-                    activeMode === 'entity' ? 'ENTITY ANATOMICAL WAVEFORM' :
-                    activeMode === 'synth' ? 'SYNTHETIC SPECTRUM MONITOR' : 'STANZA METRIC GRID';
-                
-                triggerSound(440, 'triangle');
-                logMessage(`Switched telemetry panel to ${activeMode.toUpperCase()}`);
-            });
+        // Custom Pixel Cursor
+        const mouse = { x: 0, y: 0 };
+        window.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left; mouse.y = e.clientY - rect.top;
         });
 
-        document.getElementById('btnPulse').onclick = () => {
-            frequencyMod = 2.5;
-            triggerSound(600, 'sine');
-            logMessage('Energy pulse emitted through local sector.');
-            setTimeout(() => frequencyMod = 1, 800);
+        // Key State
+        const keys = {};
+        window.addEventListener('keydown', e => {
+            keys[e.code] = true;
+            if (e.code === 'KeyE' || e.code === 'Space') handleInteraction();
+        });
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        // Physics Ragdoll Character (Orb-68)
+        const orb = {
+            x: 100, y: 450, vx: 0, vy: 0,
+            radius: 18, grounded: false,
+            // Squish physics properties
+            scaleX: 1, scaleY: 1,
+            rotation: 0, vRot: 0
         };
 
-        document.getElementById('btnFrequency').onclick = () => {
-            frequencyMod = frequencyMod === 1 ? 1.8 : 1;
-            triggerSound(220, 'sawtooth');
-            logMessage(`Frequency modulation set to ${frequencyMod}x`);
-        };
+        const GRAVITY = 0.45;
+        const FRICTION = 0.85;
+
+        // Level Platforms
+        const platforms = [
+            { x: 0, y: 560, w: 1000, h: 90 }, // Main Floor
+            { x: 220, y: 440, w: 140, h: 16 },
+            { x: 440, y: 340, w: 160, h: 16 },
+            { x: 700, y: 260, w: 180, h: 16 },
+            { x: 80, y: 240, w: 130, h: 16 }
+        ];
+
+        // Collectibles & NPCs
+        let coresCollected = 0;
+        const cores = [
+            { x: 280, y: 400, collected: false },
+            { x: 520, y: 300, collected: false },
+            { x: 140, y: 200, collected: false }
+        ];
+
+        const vektor = { x: 820, y: 204, w: 28, h: 56 };
+
+        // Dialogue System
+        let inDialogue = false;
+        let dialogueTree = [];
+        let dialogueIndex = 0;
+
+        const introDialogue = [
+            { speaker: "Vektor", text: "Orb! You're awake. Don't let your ragdoll core collapse. The draft is destabilizing!", color: "#ffaa00" },
+            { speaker: "Orb-68", text: "* (I feel bouncy... like an unrendered sketch.)", color: "#00f3ff" },
+            { speaker: "Vektor", text: "Jump up the platforms and absorb the 3 White Ink Cores to lock down this stanza!", color: "#ffaa00" }
+        ];
+
+        const victoryDialogue = [
+            { speaker: "Vektor", text: "Excellent work! All three cores are absorbed. The stanza floor stabilized.", color: "#ffaa00" },
+            { speaker: "Orb-68", text: "* (We saved this layer from being erased!)", color: "#00f3ff" }
+        ];
+
+        function triggerDialogue(lines) {
+            inDialogue = true;
+            dialogueTree = lines;
+            dialogueIndex = 0;
+            dialogueBox.style.display = 'flex';
+            renderDialogueStep();
+        }
+
+        function renderDialogueStep() {
+            const current = dialogueTree[dialogueIndex];
+            speakerName.innerText = current.speaker.toUpperCase();
+            speakerName.style.color = current.color;
+            dialogueText.innerText = current.text;
+            playSound('talk');
+
+            portraitBox.innerHTML = current.speaker === 'Vektor' 
+                ? '<div style="width:24px;height:24px;background:#ffaa00;"></div>'
+                : '<div style="width:24px;height:24px;background:#00f3ff;border-radius:50%;"></div>';
+        }
+
+        function handleInteraction() {
+            if (inDialogue) {
+                dialogueIndex++;
+                if (dialogueIndex < dialogueTree.length) {
+                    renderDialogueStep();
+                } else {
+                    inDialogue = false;
+                    dialogueBox.style.display = 'none';
+                }
+                return;
+            }
+
+            // Check NPC interaction
+            const distToVektor = Math.hypot(orb.x - (vektor.x + 14), orb.y - (vektor.y + 28));
+            if (distToVektor < 60) {
+                if (coresCollected === 3) {
+                    triggerDialogue(victoryDialogue);
+                } else {
+                    triggerDialogue(introDialogue);
+                }
+            }
+        }
+
+        // --- MAIN GAME LOOP ---
+        function updatePhysics() {
+            if (inDialogue) return;
+
+            // Horizontal Controls
+            if (keys['KeyA'] || keys['ArrowLeft']) {
+                orb.vx -= 0.7;
+                orb.vRot -= 0.05;
+            }
+            if (keys['KeyD'] || keys['ArrowRight']) {
+                orb.vx += 0.7;
+                orb.vRot += 0.05;
+            }
+
+            // Jump
+            if ((keys['KeyW'] || keys['Space'] || keys['ArrowUp']) && orb.grounded) {
+                orb.vy = -11;
+                orb.grounded = false;
+                orb.scaleX = 0.6; // Stretch up
+                orb.scaleY = 1.4;
+                playSound('jump');
+            }
+
+            // Physics integration
+            orb.vy += GRAVITY;
+            orb.vx *= FRICTION;
+            orb.x += orb.vx;
+            orb.y += orb.vy;
+
+            orb.rotation += orb.vRot;
+            orb.vRot *= 0.92;
+
+            // Spring return for squish physics
+            orb.scaleX += (1 - orb.scaleX) * 0.12;
+            orb.scaleY += (1 - orb.scaleY) * 0.12;
+
+            // Platform Collisions
+            orb.grounded = false;
+            platforms.forEach(plat => {
+                if (orb.x + orb.radius > plat.x && orb.x - orb.radius < plat.x + plat.w) {
+                    if (orb.y + orb.radius >= plat.y && orb.y - orb.radius < plat.y + plat.h && orb.vy > 0) {
+                        orb.y = plat.y - orb.radius;
+                        if (orb.vy > 2) {
+                            // Impact squish
+                            orb.scaleX = 1.3;
+                            orb.scaleY = 0.7;
+                        }
+                        orb.vy = 0;
+                        orb.grounded = true;
+                    }
+                }
+            });
+
+            // Boundary limits
+            orb.x = Math.max(orb.radius, Math.min(canvas.width - orb.radius, orb.x));
+
+            // Core Pickup Checks
+            cores.forEach(c => {
+                if (!c.collected) {
+                    const d = Math.hypot(orb.x - c.x, orb.y - c.y);
+                    if (d < orb.radius + 14) {
+                        c.collected = true;
+                        coresCollected++;
+                        playSound('collect');
+                        coreTracker.innerText = `CORES: ${coresCollected} / 3`;
+                        if (coresCollected === 3) {
+                            objectiveText.innerText = "Talk to Vektor to complete lockdown!";
+                            objectiveText.style.color = "var(--cyan)";
+                        }
+                    }
+                }
+            });
+        }
+
+        let time = 0;
+        function render() {
+            time += 0.04;
+            ctx.fillStyle = '#030712';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Background Atmospheric Grid
+            ctx.strokeStyle = 'rgba(30, 41, 59, 0.4)'; ctx.lineWidth = 1;
+            for(let x=0; x<canvas.width; x+=40) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+
+            // Draw Platforms
+            platforms.forEach(plat => {
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
+                ctx.strokeStyle = '#334155'; ctx.lineWidth = 2;
+                ctx.strokeRect(plat.x, plat.y, plat.w, plat.h);
+            });
+
+            // Draw Cores
+            cores.forEach(c => {
+                if (!c.collected) {
+                    const floatY = c.y + Math.sin(time * 4) * 5;
+                    ctx.fillStyle = '#fff';
+                    ctx.shadowColor = '#00f3ff'; ctx.shadowBlur = 12;
+                    ctx.beginPath(); ctx.arc(c.x, floatY, 8, 0, Math.PI * 2); ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            });
+
+            // Draw Vektor NPC
+            ctx.fillStyle = '#ffaa00';
+            ctx.fillRect(vektor.x, vektor.y, vektor.w, vektor.h);
+            ctx.fillStyle = '#000'; // Eyes
+            ctx.fillRect(vektor.x + 6, vektor.y + 12, 4, 6);
+            ctx.fillRect(vektor.x + 18, vektor.y + 12, 4, 6);
+
+            const distToV = Math.hypot(orb.x - (vektor.x + 14), orb.y - (vektor.y + 28));
+            if (distToV < 60) {
+                ctx.fillStyle = '#fff'; ctx.font = 'bold 0.75rem "Courier New"'; ctx.textAlign = 'center';
+                ctx.fillText('[E] TALK', vektor.x + 14, vektor.y - 12);
+            }
+
+            // Draw Ragdoll Orb-68
+            ctx.save();
+            ctx.translate(orb.x, orb.y);
+            ctx.rotate(orb.rotation);
+            ctx.scale(orb.scaleX, orb.scaleY);
+
+            // Outer Squishy Shell
+            ctx.fillStyle = '#00f3ff';
+            ctx.shadowColor = '#00f3ff'; ctx.shadowBlur = 15;
+            ctx.beginPath(); ctx.arc(0, 0, orb.radius, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Expressive Eyes
+            ctx.fillStyle = '#000';
+            ctx.fillRect(-6, -4, 4, 7);
+            ctx.fillRect(3, -4, 4, 7);
+
+            ctx.restore();
+
+            // Custom Pixel Cursor
+            ctx.fillStyle = '#00f3ff';
+            ctx.fillRect(mouse.x, mouse.y, 8, 2);
+            ctx.fillRect(mouse.x, mouse.y, 2, 8);
+
+            updatePhysics();
+            requestAnimationFrame(render);
+        }
+
+        // Auto Start Dialogue on Load
+        setTimeout(() => triggerDialogue(introDialogue), 500);
+
+        render();
     </script>
 </body>
 </html>
