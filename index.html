@@ -3,73 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SECTOR ZERO // ENTITY ROSTER & TEST SUITE</title>
+    <title>SECTOR ZERO // UNIQUE SUBJECT LAB</title>
     <style>
         :root {
             --bg-dark: #04060a;
-            --panel-bg: rgba(10, 15, 26, 0.9);
+            --panel-bg: rgba(10, 15, 26, 0.92);
             --border: #1e293b;
             --cyan: #00f3ff;
             --amber: #ffaa00;
             --purple: #bc13fe;
             --green: #00ff66;
             --red: #ff3344;
+            --pink: #ff66cc;
             --text-bright: #f8fafc;
             --text-dim: #64748b;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body {
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden; /* Prevents page scrolling/sliding */
             background-color: var(--bg-dark);
             color: var(--text-bright);
             font-family: 'Segoe UI', system-ui, sans-serif;
-            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 15px;
-            overflow-x: hidden;
+            padding: 12px;
         }
 
         .scanlines {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
-            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0, 0, 0, 0.3) 50%, rgba(0, 0, 0, 0.3));
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0, 0, 0, 0.35) 50%, rgba(0, 0, 0, 0.35));
             background-size: 100% 4px;
             pointer-events: none;
             z-index: 100;
         }
 
-        .main-wrapper {
+        .app-container {
             width: 100%;
-            max-width: 1280px;
+            max-width: 1200px;
+            height: 100%;
+            max-height: 720px;
             display: grid;
-            grid-template-columns: 280px 1fr;
-            gap: 15px;
+            grid-template-columns: 260px 1fr;
+            gap: 12px;
             z-index: 1;
         }
 
-        /* SIDEBAR: CHARACTER ROSTER */
+        /* ROSTER SIDEBAR */
         .roster-panel {
             background: var(--panel-bg);
             border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 15px;
+            border-radius: 8px;
+            padding: 10px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            max-height: 820px;
+            gap: 8px;
+            height: 100%;
         }
 
-        .panel-title {
-            font-size: 0.75rem;
+        .panel-header {
+            font-size: 0.7rem;
             color: var(--cyan);
             letter-spacing: 1.5px;
             font-weight: 800;
             text-transform: uppercase;
             border-bottom: 1px solid var(--border);
-            padding-bottom: 8px;
+            padding-bottom: 6px;
             display: flex;
             justify-content: space-between;
         }
@@ -78,144 +82,149 @@
             display: flex;
             flex-direction: column;
             gap: 6px;
+            flex: 1;
             overflow-y: auto;
-            padding-right: 4px;
         }
 
         .char-card {
             background: rgba(15, 23, 42, 0.6);
             border: 1px solid var(--border);
             border-radius: 6px;
-            padding: 8px 10px;
+            padding: 8px;
             cursor: pointer;
             transition: all 0.2s;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .char-card:hover, .char-card.active {
             border-color: var(--cyan);
             background: rgba(30, 41, 59, 0.9);
-            transform: translateX(3px);
         }
 
-        .char-avatar {
+        .char-icon {
             width: 28px;
             height: 28px;
-            border-radius: 50%;
+            border-radius: 4px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             font-weight: 900;
             color: #000;
             flex-shrink: 0;
         }
 
         .char-info { display: flex; flex-direction: column; gap: 2px; }
-        .char-name { font-size: 0.8rem; font-weight: 700; color: var(--text-bright); }
-        .char-role { font-size: 0.65rem; color: var(--text-dim); }
+        .char-name { font-size: 0.75rem; font-weight: 700; color: var(--text-bright); }
+        .char-archetype { font-size: 0.6rem; color: var(--text-dim); }
 
-        /* CENTER AREA: CANVAS & ASSISTANT */
+        /* MAIN WORKSPACE */
         .workspace {
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 10px;
+            height: 100%;
         }
 
-        .test-card {
+        .stage-card {
             background: var(--panel-bg);
             border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 15px;
+            border-radius: 8px;
+            padding: 10px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            box-shadow: 0 0 30px rgba(0, 243, 255, 0.03);
+            gap: 8px;
+            flex: 1;
         }
 
-        .canvas-frame {
+        .canvas-container {
+            flex: 1;
             width: 100%;
-            height: 420px;
             background: #020305;
             border: 1px solid var(--border);
-            border-radius: 8px;
+            border-radius: 6px;
             position: relative;
             overflow: hidden;
         }
 
-        canvas { width: 100%; height: 100%; display: block; }
-
-        /* TOOLBAR */
-        .toolbar {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            background: rgba(15, 23, 42, 0.5);
-            padding: 10px;
-            border-radius: 6px;
-            border: 1px solid var(--border);
+        canvas#stageCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
         }
 
-        .tool-group { display: flex; gap: 8px; align-items: center; }
+        /* CONTROLS BAR */
+        .controls-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.5);
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            font-size: 0.65rem;
+        }
 
-        .btn {
+        .key-badge {
+            background: #0f172a;
+            border: 1px solid var(--cyan);
+            color: var(--cyan);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        .tool-btn {
             background: #0f172a;
             border: 1px solid var(--border);
             color: var(--text-bright);
-            padding: 8px 12px;
-            font-size: 0.7rem;
+            padding: 5px 10px;
+            font-size: 0.65rem;
             font-weight: 700;
-            letter-spacing: 1px;
-            text-transform: uppercase;
             cursor: pointer;
             border-radius: 4px;
-            transition: all 0.2s;
         }
 
-        .btn:hover, .btn.active {
+        .tool-btn.active, .tool-btn:hover {
             border-color: var(--cyan);
             color: var(--cyan);
         }
 
-        /* ASSISTANT WIDGET (UNDERTALE-INSPIRED) */
-        .assistant-box {
+        /* UNDERTALE ASSISTANT WIDGET */
+        .assistant-card {
             background: var(--panel-bg);
             border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 12px 16px;
+            border-radius: 8px;
+            padding: 8px 12px;
             display: flex;
             align-items: center;
-            gap: 15px;
-            position: relative;
+            gap: 12px;
+            height: 72px;
         }
 
         .portrait-frame {
-            width: 56px;
-            height: 56px;
+            width: 52px;
+            height: 52px;
             background: #000;
             border: 2px solid var(--cyan);
-            border-radius: 6px;
+            border-radius: 4px;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
         }
-
-        .portrait-canvas { width: 44px; height: 44px; }
 
         .dialogue-wrap {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 2px;
         }
 
         .assistant-name {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: var(--cyan);
             font-weight: 800;
             letter-spacing: 1px;
@@ -223,14 +232,9 @@
 
         .dialogue-text {
             font-family: 'Courier New', monospace;
-            font-size: 0.82rem;
+            font-size: 0.75rem;
             color: var(--text-bright);
-            line-height: 1.4;
-        }
-
-        @media (max-width: 900px) {
-            .main-wrapper { grid-template-columns: 1fr; }
-            .roster-panel { max-height: 300px; }
+            line-height: 1.3;
         }
     </style>
 </head>
@@ -238,78 +242,119 @@
 
     <div class="scanlines"></div>
 
-    <div class="main-wrapper">
-        <!-- SIDEBAR: 15 CHARACTERS -->
+    <div class="app-container">
+        <!-- SIDEBAR: 7 DISTINCT SUBJECTS -->
         <div class="roster-panel">
-            <div class="panel-title">
-                <span>ENTITY ROSTER</span>
-                <span id="char-count" style="color:var(--text-bright);">15/15</span>
+            <div class="panel-header">
+                <span>SUBJECT ROSTER</span>
+                <span style="color:var(--text-bright);">7/7</span>
             </div>
             <div class="roster-list" id="rosterList"></div>
         </div>
 
-        <!-- MAIN TESTING AREA -->
+        <!-- WORKSPACE AREA -->
         <div class="workspace">
-            <div class="test-card">
-                <div class="panel-title">
-                    <span id="active-char-title">SUBJECT: UNIT-09 // SPARK</span>
-                    <span id="active-ability" style="color:var(--amber);">ABILITY: PULSE BLAST [SPACE]</span>
+            <div class="stage-card">
+                <div class="panel-header">
+                    <span id="subjectTitle">SUBJECT 01 // ORB-88 (PHYSICS SPHERE)</span>
+                    <span id="subjectKeys" style="color:var(--amber);">KEYS: [A/D] MOVE | [SPACE] JUMP | [E] HYPER-BOUNCE</span>
                 </div>
 
-                <div class="canvas-frame">
+                <div class="canvas-container">
                     <canvas id="stageCanvas"></canvas>
                 </div>
 
-                <!-- TOOLBAR FOR DECORATIONS / OBJECTS -->
-                <div class="toolbar">
-                    <div class="tool-group">
-                        <span style="font-size:0.65rem; color:var(--text-dim); font-weight:700;">PLACE DECORATION:</span>
-                        <button class="btn active" id="toolBox">CRATE</button>
-                        <button class="btn" id="toolPillar">PILLAR</button>
-                        <button class="btn" id="toolSpikes">SPIKES</button>
-                        <button class="btn" id="toolOrb">GRAV-NODE</button>
+                <!-- CONTROLS & SPAWNER BAR -->
+                <div class="controls-bar">
+                    <div style="display:flex; gap:12px; align-items:center;">
+                        <span>CONTROLS: <span class="key-badge">A / D</span> MOVE | <span class="key-badge">W / SPACE</span> JUMP | <span class="key-badge">E</span> ABILITY 1 | <span class="key-badge">Q</span> ABILITY 2</span>
                     </div>
-                    <button class="btn" id="btnClear" style="border-color:var(--red); color:var(--red);">CLEAR MAP</button>
+                    <div style="display:flex; gap:6px;">
+                        <button class="tool-btn active" id="btnCrate">PLACE CRATE</button>
+                        <button class="tool-btn" id="btnOrb">PLACE GRAV-NODE</button>
+                        <button class="tool-btn" id="btnClear" style="border-color:var(--red); color:var(--red);">CLEAR</button>
+                    </div>
                 </div>
             </div>
 
-            <!-- UNDERTALE-STYLE TIP ASSISTANT -->
-            <div class="assistant-box">
+            <!-- UNDERTALE-STYLE ASSISTANT -->
+            <div class="assistant-card">
                 <div class="portrait-frame">
-                    <canvas class="portrait-canvas" id="portraitCanvas"></canvas>
+                    <canvas id="portraitCanvas" width="44" height="44"></canvas>
                 </div>
                 <div class="dialogue-wrap">
-                    <div class="assistant-name">GUIDE // T.I.P.-S (TERMINAL INTERACTIVE PROTOTYPE)</div>
-                    <div class="dialogue-text" id="dialogueText">* System loaded! Click inside the test grid to drop decorations, or pick a character from the roster to test their custom kit!</div>
+                    <div class="assistant-name">GUIDE // T.I.P.-S</div>
+                    <div class="dialogue-text" id="dialogueText">* Welcome to the testing chamber! Select a subject on the left or press E/Q to trigger unique ability engines.</div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // --- 15 UNIQUE CHARACTER ROSTER DEFINITIONS ---
-        const characters = [
-            { id: 0, name: "Unit-09 'Spark'", role: "Speed / Pulse", color: "#00f3ff", ability: "Pulse Jump", tip: "* Unit-09 is standard issue! Press SPACE to trigger a kinetic shockwave that launches off surfaces." },
-            { id: 1, name: "Null-Viper", role: "Phase / Dash", color: "#bc13fe", ability: "Phase Dash", tip: "* Null-Viper doesn't care about solid objects! Dash straight through obstacles and hazards." },
-            { id: 2, name: "Gloom-Mantis", role: "Grapple / Blade", color: "#00ff66", ability: "Scythe Grapple", tip: "* Mantis can latch onto ceilings and drag crates across the zone. Great for high maneuverability!" },
-            { id: 3, name: "Aegis-01", role: "Heavy / Barrier", color: "#ffaa00", ability: "Force Shield", tip: "* Aegis is slow but invulnerable to hazard spikes while shielding!" },
-            { id: 4, name: "Puff-Ball", role: "Floater / Squish", color: "#ff66cc", ability: "Anti-Grav Puff", tip: "* Super squishy! Puff-Ball floats smoothly down and bounces off walls with double friction." },
-            { id: 5, name: "Orbit-Core", role: "Gravity Field", color: "#3399ff", ability: "Pull Aura", tip: "* Orbit-Core attracts nearby loose crates and objects toward itself in a floating ring." },
-            { id: 6, name: "Infernus-Wisp", role: "Dash / Flame", color: "#ff3344", ability: "Rocket Flare", tip: "* Leaves a fiery trial that ignites test crates and launches horizontally across the map." },
-            { id: 7, name: "Echo-Gecko", role: "Wall-Climb", color: "#ccff33", ability: "Suction Grip", tip: "* Echo can run directly up vertical pillars and stick to the ceiling effortlessly!" },
-            { id: 8, name: "Chrono-Mite", role: "Time Slow", color: "#ffff66", ability: "Temporal Warp", tip: "* Chrono can slow down gravity and movement speeds across the entire test zone for 3 seconds." },
-            { id: 9, name: "Blink-Bug", role: "Teleport", color: "#ff9933", ability: "Spatial Swap", tip: "* Instantly teleports forward 100 pixels, swapping positions with any crate in its direct path." },
-            { id: 10, name: "Titan-Block", role: "Construct", color: "#8899a6", ability: "Crate Drop", tip: "* Can spawn a temporary solid stone block directly beneath itself to build stairs on the fly." },
-            { id: 11, name: "Shadow-Stalker", role: "Stealth / Camo", color: "#333344", ability: "Shadow Cloak", tip: "* Becomes completely invisible in dark areas and ignores environmental laser detectors." },
-            { id: 12, name: "Vortex-Mouth", role: "Devourer", color: "#9933ff", ability: "Object Consume", tip: "* Can swallow nearby test crates and spit them out as high-velocity projectiles!" },
-            { id: 13, name: "Volt-Snail", role: "Charged Shell", color: "#00ffff", ability: "Static Charge", tip: "* Hides in its shell to become a heavy rolling bowling ball that smashes through pillars." },
-            { id: 14, name: "Prism-Beamer", role: "Refractor", color: "#ffffff", ability: "Laser Beam", tip: "* Fires a continuous light beam that ricochets off smooth wall decorations." }
+        // --- 7 DISTINCT ANATOMY & PHYSICS SUBJECTS ---
+        const subjects = [
+            {
+                id: 0,
+                name: "Orb-88",
+                type: "Bouncy Sphere",
+                color: "#00f3ff",
+                keys: "KEYS: [A/D] Roll | [SPACE] Jump | [E] Hyper Bounce | [Q] Slam Blast",
+                tip: "* Orb-88 is pure squishy sphere physics! Press E to launch high into the air, or Q to slam down!"
+            },
+            {
+                id: 1,
+                name: "Vektor",
+                type: "Humanoid Fighter",
+                color: "#ffaa00",
+                keys: "KEYS: [A/D] Walk | [SPACE] Jump | [E] Sword Slash | [Q] Shield Lock",
+                tip: "* Vektor has a humanoid frame with jointed arms. Press E to swing a energy blade that cuts objects!"
+            },
+            {
+                id: 2,
+                name: "Giga-Slime",
+                type: "Fluid Blob",
+                color: "#00ff66",
+                keys: "KEYS: [A/D] Slosh | [SPACE] Split Jump | [E] Dissolve | [Q] Expand",
+                tip: "* Giga-Slime deforms softly along surfaces. Press E to split into tiny mini-blobs and re-absorb!"
+            },
+            {
+                id: 3,
+                name: "Chrono-Drone",
+                type: "Mechanical Hovercraft",
+                color: "#bc13fe",
+                keys: "KEYS: [A/D] Thrust | [SPACE] Hover | [E] Time Freeze Zone | [Q] Dash",
+                tip: "* Chrono-Drone ignores floor gravity. Press E to deploy a bubble that slows physics inside it!"
+            },
+            {
+                id: 4,
+                name: "Chitin-Runner",
+                type: "Multi-Legged Insect",
+                color: "#ff3344",
+                keys: "KEYS: [A/D] Scuttle | [SPACE] Wall Leap | [E] Ceiling Climb | [Q] Web Sling",
+                tip: "* Chitin-Runner scuttles with animated spider legs! Press E to latch and run on vertical walls!"
+            },
+            {
+                id: 5,
+                name: "Shadow-Ghost",
+                type: "Spectral Smoke",
+                color: "#ff66cc",
+                keys: "KEYS: [A/D] Float | [SPACE] Rise | [E] Phase Through Walls | [Q] Possess Crate",
+                tip: "* Shadow-Ghost has no physical mass. Press E to turn intangible and pass straight through obstacles!"
+            },
+            {
+                id: 6,
+                name: "Kinetix",
+                type: "Modular Cubic Golem",
+                color: "#ffffff",
+                keys: "KEYS: [A/D] Step | [SPACE] Heavy Leap | [E] Spawn Block Stairs | [Q] Earthquake",
+                tip: "* Kinetix is a heavy modular golem. Press E to stack stone blocks beneath yourself instantly!"
+            }
         ];
 
-        let activeChar = characters[0];
-        let currentTool = 'box';
+        let activeSubject = subjects[0];
+        let currentTool = 'crate';
 
-        // --- STAGE SETUP & CANVAS ---
+        // Stage setup
         const stage = document.getElementById('stageCanvas');
         const sCtx = stage.getContext('2d');
 
@@ -318,125 +363,105 @@
             stage.height = stage.offsetHeight;
         }
         window.addEventListener('resize', resizeStage);
-        resizeStage();
+        setTimeout(resizeStage, 50);
 
-        // Player Physical State
+        // Player physics state
         const player = {
-            x: 120, y: 200,
+            x: 120, y: 150,
             vx: 0, vy: 0,
-            radius: 14,
-            grounded: false
+            radius: 16,
+            grounded: false,
+            rotation: 0,
+            animTimer: 0
         };
 
         let keys = {};
         let decorations = [
-            { type: 'box', x: 250, y: 320, w: 40, h: 40 },
-            { type: 'pillar', x: 420, y: 220, w: 30, h: 140 },
-            { type: 'spikes', x: 300, y: 345, w: 60, h: 15 }
+            { type: 'crate', x: 260, y: 220, w: 40, h: 40 }
         ];
 
         window.addEventListener('keydown', e => {
             keys[e.code] = true;
-            if (e.code === 'Space') useAbility();
+            if (e.code === 'KeyE') triggerAbility1();
+            if (e.code === 'KeyQ') triggerAbility2();
+            if (e.code === 'Space' || e.code === 'KeyW') {
+                if (player.grounded || activeSubject.id === 3) {
+                    player.vy = -9.5;
+                    player.grounded = false;
+                }
+            }
         });
+
         window.addEventListener('keyup', e => keys[e.code] = false);
 
-        // Click to place decorations
         stage.addEventListener('click', e => {
             const rect = stage.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
 
-            if (currentTool === 'box') {
-                decorations.push({ type: 'box', x: mouseX - 20, y: mouseY - 20, w: 40, h: 40 });
-                speak(`* Placed a wooden test crate at [X:${Math.round(mouseX)}, Y:${Math.round(mouseY)}]. Jump on it!`);
-            } else if (currentTool === 'pillar') {
-                decorations.push({ type: 'pillar', x: mouseX - 15, y: mouseY - 50, w: 30, h: 100 });
-                speak(`* Placed a tall structural pillar! Perfect for testing climbing or wall bounces.`);
-            } else if (currentTool === 'spikes') {
-                decorations.push({ type: 'spikes', x: mouseX - 30, y: mouseY - 7, w: 60, h: 15 });
-                speak(`* Hazardous spikes deployed! Watch out, unless you're using Aegis-01's shield!`);
+            if (currentTool === 'crate') {
+                decorations.push({ type: 'crate', x: mx - 20, y: my - 20, w: 40, h: 40 });
+                speak(`* Placed a wooden crate at [${Math.round(mx)}, ${Math.round(my)}].`);
             } else if (currentTool === 'orb') {
-                decorations.push({ type: 'orb', x: mouseX, y: mouseY, radius: 25 });
-                speak(`* Placed a Grav-Node! It creates a local zero-gravity repulsion field.`);
+                decorations.push({ type: 'orb', x: mx, y: my, radius: 30 });
+                speak(`* Deployed Zero-G Attraction Orb!`);
             }
         });
 
-        // Tool Selection
-        document.getElementById('toolBox').onclick = (e) => setTool('box', e.target);
-        document.getElementById('toolPillar').onclick = (e) => setTool('pillar', e.target);
-        document.getElementById('toolSpikes').onclick = (e) => setTool('spikes', e.target);
-        document.getElementById('toolOrb').onclick = (e) => setTool('orb', e.target);
-        document.getElementById('btnClear').onclick = () => {
-            decorations = [];
-            speak("* Cleared all test objects from the stage floor!");
-        };
+        document.getElementById('btnCrate').onclick = () => { currentTool = 'crate'; setToolBtn('btnCrate'); };
+        document.getElementById('btnOrb').onclick = () => { currentTool = 'orb'; setToolBtn('btnOrb'); };
+        document.getElementById('btnClear').onclick = () => { decorations = []; speak("* Map cleared!"); };
 
-        function setTool(tool, btn) {
-            currentTool = tool;
-            document.querySelectorAll('.toolbar .btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+        function setToolBtn(id) {
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
         }
 
-        // Ability Trigger
-        function useAbility() {
-            if (activeChar.id === 0) { // Spark Pulse
-                player.vy = -11;
-                player.vx += (Math.random() - 0.5) * 8;
-                spawnParticles(player.x, player.y, activeChar.color);
-            } else if (activeChar.id === 1) { // Phase Dash
-                player.x += player.vx > 0 ? 80 : -80;
-                spawnParticles(player.x, player.y, activeChar.color);
-            } else if (activeChar.id === 4) { // Puff Bounce
-                player.vy = -14;
-            } else if (activeChar.id === 10) { // Block Drop
-                decorations.push({ type: 'box', x: player.x - 20, y: player.y + 15, w: 40, h: 40 });
-            } else {
-                player.vy = -9;
-                spawnParticles(player.x, player.y, activeChar.color);
+        // Abilities
+        function triggerAbility1() {
+            if (activeSubject.id === 0) { player.vy = -14; speak("* Orb-88 HYPER BOUNCE activated!"); }
+            else if (activeSubject.id === 1) { speak("* Vektor performed an ENERGY SLASH!"); }
+            else if (activeSubject.id === 2) { speak("* Giga-Slime DISSOLVED into mini blobs!"); }
+            else if (activeSubject.id === 3) { speak("* Chrono-Drone deployed TIME SLOW FIELD!"); }
+            else if (activeSubject.id === 4) { player.vy = -11; speak("* Chitin-Runner LATTER-CLIMBED vertical surfaces!"); }
+            else if (activeSubject.id === 5) { speak("* Shadow-Ghost PHASED through obstacles!"); }
+            else if (activeSubject.id === 6) { 
+                decorations.push({ type: 'crate', x: player.x - 20, y: player.y + 15, w: 40, h: 40 });
+                speak("* Kinetix CONSTRUCTED a stone pillar!");
             }
         }
 
-        let particles = [];
-        function spawnParticles(x, y, color) {
-            for(let i=0; i<12; i++) {
-                particles.push({
-                    x: x, y: y,
-                    vx: (Math.random()-0.5)*8,
-                    vy: (Math.random()-0.5)*8,
-                    life: 1, color: color
-                });
-            }
+        function triggerAbility2() {
+            if (activeSubject.id === 0) { player.vy = 16; speak("* Orb-88 SLAM BLAST!"); }
+            else { player.vx = player.vx > 0 ? 12 : -12; speak(`* ${activeSubject.name} used SPECIAL MANEUVER!`); }
         }
 
-        // --- RENDER & SIMULATION LOOP ---
-        let ticks = 0;
-        function updateStage() {
-            ticks++;
+        // --- MAIN SIMULATION & DRAWING LOOP ---
+        function loop() {
+            player.animTimer += 0.05;
             sCtx.clearRect(0, 0, stage.width, stage.height);
 
-            // Draw Background Grid
-            sCtx.strokeStyle = 'rgba(30, 41, 59, 0.3)';
+            // Grid
+            sCtx.strokeStyle = 'rgba(30, 41, 59, 0.25)';
             sCtx.lineWidth = 1;
-            for(let x=0; x<stage.width; x+=30) {
+            for(let x=0; x<stage.width; x+=25) {
                 sCtx.beginPath(); sCtx.moveTo(x,0); sCtx.lineTo(x, stage.height); sCtx.stroke();
             }
-            for(let y=0; y<stage.height; y+=30) {
+            for(let y=0; y<stage.height; y+=25) {
                 sCtx.beginPath(); sCtx.moveTo(0,y); sCtx.lineTo(stage.width, y); sCtx.stroke();
             }
 
-            // Controls
-            if (keys['KeyA'] || keys['ArrowLeft']) player.vx -= 0.7;
-            if (keys['KeyD'] || keys['ArrowRight']) player.vx += 0.7;
+            // Movement Physics
+            if (keys['KeyA'] || keys['ArrowLeft']) player.vx -= 0.6;
+            if (keys['KeyD'] || keys['ArrowRight']) player.vx += 0.6;
 
-            // Physics
             player.vx *= 0.88;
-            player.vy += 0.45; // Gravity
+            player.vy += (activeSubject.id === 3) ? 0.05 : 0.42; // Drone hovers
             player.x += player.vx;
             player.y += player.vy;
 
-            // Floor Bounds
-            const floor = stage.height - 30;
+            // Floor Collision
+            const floor = stage.height - 25;
             if (player.y + player.radius > floor) {
                 player.y = floor - player.radius;
                 player.vy = 0;
@@ -445,114 +470,128 @@
             if (player.x - player.radius < 0) { player.x = player.radius; player.vx = 0; }
             if (player.x + player.radius > stage.width) { player.x = stage.width - player.radius; player.vx = 0; }
 
-            // Draw Stage Base Floor
+            // Draw Stage Floor
             sCtx.fillStyle = '#0f172a';
-            sCtx.fillRect(0, floor, stage.width, 30);
+            sCtx.fillRect(0, floor, stage.width, 25);
             sCtx.strokeStyle = 'var(--cyan)';
             sCtx.strokeRect(0, floor, stage.width, 1);
 
-            // Draw & Collide Decorations
-            decorations.forEach(dec => {
-                if (dec.type === 'box') {
+            // Render Decorations & Crate Collisions
+            decorations.forEach(d => {
+                if (d.type === 'crate') {
                     sCtx.fillStyle = '#1e293b';
                     sCtx.strokeStyle = '#00f3ff';
                     sCtx.lineWidth = 1.5;
-                    sCtx.fillRect(dec.x, dec.y, dec.w, dec.h);
-                    sCtx.strokeRect(dec.x, dec.y, dec.w, dec.h);
+                    sCtx.fillRect(d.x, d.y, d.w, d.h);
+                    sCtx.strokeRect(d.x, d.y, d.w, d.h);
 
-                    // Basic Box Collision
-                    if (player.x > dec.x && player.x < dec.x + dec.w &&
-                        player.y + player.radius > dec.y && player.y - player.radius < dec.y + dec.h) {
-                        player.y = dec.y - player.radius;
-                        player.vy = 0;
-                        player.grounded = true;
+                    // Top collision
+                    if (player.x > d.x && player.x < d.x + d.w &&
+                        player.y + player.radius > d.y && player.y - player.radius < d.y + d.h) {
+                        if (activeSubject.id !== 5) { // Ghost ignores
+                            player.y = d.y - player.radius;
+                            player.vy = 0;
+                            player.grounded = true;
+                        }
                     }
-                } else if (dec.type === 'pillar') {
-                    sCtx.fillStyle = '#09101d';
-                    sCtx.strokeStyle = '#bc13fe';
-                    sCtx.lineWidth = 2;
-                    sCtx.fillRect(dec.x, dec.y, dec.w, dec.h);
-                    sCtx.strokeRect(dec.x, dec.y, dec.w, dec.h);
-                } else if (dec.type === 'spikes') {
-                    sCtx.fillStyle = '#ff3344';
-                    sCtx.beginPath();
-                    for(let i=0; i<dec.w; i+=10) {
-                        sCtx.moveTo(dec.x + i, dec.y + dec.h);
-                        sCtx.lineTo(dec.x + i + 5, dec.y);
-                        sCtx.lineTo(dec.x + i + 10, dec.y + dec.h);
-                    }
-                    sCtx.fill();
-                } else if (dec.type === 'orb') {
+                } else if (d.type === 'orb') {
                     sCtx.strokeStyle = '#ffaa00';
                     sCtx.lineWidth = 2;
                     sCtx.beginPath();
-                    sCtx.arc(dec.x, dec.y, dec.radius + Math.sin(ticks*0.1)*4, 0, Math.PI*2);
+                    sCtx.arc(d.x, d.y, d.radius + Math.sin(player.animTimer*2)*4, 0, Math.PI*2);
                     sCtx.stroke();
                 }
             });
 
-            // Particles Update & Draw
-            particles.forEach((p, i) => {
-                p.x += p.vx; p.y += p.vy; p.life -= 0.03;
-                sCtx.fillStyle = p.color;
-                sCtx.beginPath(); sCtx.arc(p.x, p.y, 3, 0, Math.PI*2); sCtx.fill();
-                if (p.life <= 0) particles.splice(i, 1);
-            });
-
-            // Draw Active Character Player
+            // --- DRAW UNIQUE CHARACTER ANATOMIES ---
             sCtx.save();
             sCtx.translate(player.x, player.y);
-            sCtx.fillStyle = activeChar.color;
-            sCtx.shadowColor = activeChar.color;
-            sCtx.shadowBlur = 12;
 
-            // Character Body
-            sCtx.beginPath();
-            sCtx.arc(0, 0, player.radius, 0, Math.PI * 2);
-            sCtx.fill();
-
-            // Eyes / Expressive Face
-            sCtx.fillStyle = '#000';
-            sCtx.shadowBlur = 0;
-            sCtx.beginPath();
-            sCtx.arc(player.vx * 1.5 - 3, -2, 3, 0, Math.PI * 2);
-            sCtx.arc(player.vx * 1.5 + 4, -2, 3, 0, Math.PI * 2);
-            sCtx.fill();
+            if (activeSubject.id === 0) { // ORB-88 (SPHERE)
+                player.rotation += player.vx * 0.05;
+                sCtx.rotate(player.rotation);
+                sCtx.fillStyle = activeSubject.color;
+                sCtx.beginPath(); sCtx.arc(0, 0, player.radius, 0, Math.PI*2); sCtx.fill();
+                sCtx.fillStyle = '#000';
+                sCtx.fillRect(-4, -6, 8, 4); // Visor line
+            } 
+            else if (activeSubject.id === 1) { // VEKTOR (HUMANOID)
+                sCtx.fillStyle = activeSubject.color;
+                // Head
+                sCtx.fillRect(-6, -22, 12, 10);
+                // Body
+                sCtx.fillRect(-8, -12, 16, 16);
+                // Legs (Animated Walk)
+                let legL = Math.sin(player.animTimer * 10) * 6;
+                sCtx.fillRect(-6, 4, 4, 10 + legL);
+                sCtx.fillRect(2, 4, 4, 10 - legL);
+            }
+            else if (activeSubject.id === 2) { // GIGA-SLIME (BLOB)
+                sCtx.fillStyle = activeSubject.color;
+                let squish = Math.sin(player.animTimer * 6) * 3;
+                sCtx.beginPath();
+                sCtx.ellipse(0, 4, player.radius + squish, player.radius - squish, 0, 0, Math.PI*2);
+                sCtx.fill();
+            }
+            else if (activeSubject.id === 3) { // CHRONO-DRONE (HOVER)
+                sCtx.fillStyle = activeSubject.color;
+                sCtx.beginPath(); sCtx.moveTo(-16, 0); sCtx.lineTo(0, -12); sCtx.lineTo(16, 0); sCtx.lineTo(0, 10); sCtx.closePath(); sCtx.fill();
+                // Thruster Glow
+                sCtx.fillStyle = '#00f3ff';
+                sCtx.fillRect(-4, 10, 8, 4 + Math.sin(player.animTimer*15)*3);
+            }
+            else if (activeSubject.id === 4) { // CHITIN-RUNNER (INSECT)
+                sCtx.fillStyle = activeSubject.color;
+                sCtx.fillRect(-10, -8, 20, 12);
+                // Animated Spider Legs
+                sCtx.strokeStyle = activeSubject.color;
+                sCtx.lineWidth = 2;
+                for(let i = -1; i <= 1; i++) {
+                    let legY = Math.sin(player.animTimer * 12 + i) * 6;
+                    sCtx.beginPath(); sCtx.moveTo(i*8, 0); sCtx.lineTo(i*12 - 4, 12 + legY); sCtx.stroke();
+                }
+            }
+            else if (activeSubject.id === 5) { // SHADOW-GHOST (SPECTRAL)
+                sCtx.fillStyle = 'rgba(255, 102, 204, 0.7)';
+                sCtx.beginPath();
+                sCtx.arc(0, -4, 14, Math.PI, 0);
+                sCtx.lineTo(14, 12); sCtx.lineTo(0, 6); sCtx.lineTo(-14, 12);
+                sCtx.closePath(); sCtx.fill();
+            }
+            else if (activeSubject.id === 6) { // KINETIX (CUBIC GOLEM)
+                sCtx.fillStyle = activeSubject.color;
+                sCtx.strokeStyle = '#000';
+                sCtx.fillRect(-14, -14, 28, 28);
+                sCtx.strokeRect(-14, -14, 28, 28);
+            }
 
             sCtx.restore();
 
-            requestAnimationFrame(updateStage);
+            requestAnimationFrame(loop);
         }
 
-        // --- UNDERTALE ASSISTANT PORTRAIT ANIMATION ---
+        // --- UNDERTALE PORTRAIT ANIMATION ---
         const pCanvas = document.getElementById('portraitCanvas');
         const pCtx = pCanvas.getContext('2d');
-        let dialogueQueue = [];
 
-        function drawAssistantPortrait() {
+        function drawPortrait() {
             pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
-            
-            // Retro Pixel Robot Assistant Face
             pCtx.fillStyle = '#00f3ff';
-            pCtx.fillRect(6, 6, 32, 32);
-            
-            // Screen Inner
+            pCtx.fillRect(4, 4, 36, 36);
             pCtx.fillStyle = '#000';
-            pCtx.fillRect(10, 10, 24, 24);
+            pCtx.fillRect(8, 8, 28, 28);
 
-            // Animated Eyes (Blinking / Talking)
+            // Blinking
             pCtx.fillStyle = '#00f3ff';
-            const blink = Math.sin(Date.now() * 0.008) > 0.95;
-            if (!blink) {
-                pCtx.fillRect(14, 16, 5, 5);
-                pCtx.fillRect(25, 16, 5, 5);
+            if (Math.sin(Date.now() * 0.006) < 0.92) {
+                pCtx.fillRect(12, 14, 6, 6);
+                pCtx.fillRect(26, 14, 6, 6);
             }
-
-            // Animated Talking Mouth
-            const talk = Math.sin(Date.now() * 0.02) > 0;
+            // Mouth Talk
+            let talk = Math.sin(Date.now() * 0.02) > 0;
             pCtx.fillRect(16, 26, 12, talk ? 4 : 2);
 
-            requestAnimationFrame(drawAssistantPortrait);
+            requestAnimationFrame(drawPortrait);
         }
 
         function speak(text) {
@@ -561,36 +600,34 @@
 
         // --- BUILD SIDEBAR ROSTER ---
         const rosterEl = document.getElementById('rosterList');
-        characters.forEach((c, idx) => {
+        subjects.forEach((s, idx) => {
             const card = document.createElement('div');
             card.className = `char-card ${idx === 0 ? 'active' : ''}`;
-            card.onclick = () => selectCharacter(c, card);
+            card.onclick = () => selectSubject(s, card);
 
             card.innerHTML = `
-                <div class="char-avatar" style="background:${c.color};">${c.id + 1}</div>
+                <div class="char-icon" style="background:${s.color};">${s.id + 1}</div>
                 <div class="char-info">
-                    <div class="char-name">${c.name}</div>
-                    <div class="char-role">${c.role}</div>
+                    <div class="char-name">${s.name}</div>
+                    <div class="char-archetype">${s.type}</div>
                 </div>
             `;
             rosterEl.appendChild(card);
         });
 
-        function selectCharacter(char, cardEl) {
-            activeChar = char;
+        function selectSubject(s, cardEl) {
+            activeSubject = s;
             document.querySelectorAll('.char-card').forEach(el => el.classList.remove('active'));
             cardEl.classList.add('active');
 
-            document.getElementById('active-char-title').innerText = `SUBJECT: ${char.name.toUpperCase()}`;
-            document.getElementById('active-ability').innerText = `ABILITY: ${char.ability.toUpperCase()} [SPACE]`;
+            document.getElementById('subjectTitle').innerText = `SUBJECT 0${s.id + 1} // ${s.name.toUpperCase()} (${s.type.toUpperCase()})`;
+            document.getElementById('subjectKeys').innerText = s.keys;
 
-            speak(char.tip);
-            spawnParticles(player.x, player.y, char.color);
+            speak(s.tip);
         }
 
-        // Initialize Everything
-        updateStage();
-        drawAssistantPortrait();
+        loop();
+        drawPortrait();
     </script>
 </body>
 </html>
