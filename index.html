@@ -3,14 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KINETIC SEA // SMOOTH VOYAGE PROTOCOL</title>
+    <title>KINETIC SEA // DELTARUNE EDITION</title>
     <style>
         :root {
-            --accent: #ef4444;
-            --green: #22c55e;
-            --purple: #a855f7;
-            --panel: rgba(15, 23, 42, 0.85);
-            --border: rgba(255, 255, 255, 0.15);
+            --panel: #000000;
+            --border: #ffffff;
             --font: 'Courier New', Courier, monospace;
         }
 
@@ -20,7 +17,7 @@
         #webgl-canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; cursor: grab; }
         #webgl-canvas:active { cursor: grabbing; }
 
-        /* UI OVERLAYS */
+        /* HUD OVERLAY */
         .hud-layer {
             position: absolute; inset: 0; pointer-events: none;
             display: flex; flex-direction: column; justify-content: space-between;
@@ -28,41 +25,57 @@
         }
 
         .hud-card {
-            background: var(--panel); border: 1px solid var(--border);
-            backdrop-filter: blur(8px); padding: 12px 18px; border-radius: 8px;
-            pointer-events: auto; max-width: 320px;
+            background: rgba(0, 0, 0, 0.8); border: 2px solid var(--border);
+            padding: 10px 16px; border-radius: 4px; pointer-events: auto; max-width: 320px;
         }
 
-        .hud-title { font-size: 0.75rem; color: #9ca3af; letter-spacing: 1px; margin-bottom: 4px; }
-        .hud-val { font-size: 1.1rem; font-weight: bold; color: #f3f4f6; }
-
-        .controls-hint {
-            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-            background: var(--panel); border: 1px solid var(--border);
-            padding: 10px 20px; border-radius: 20px; font-size: 0.8rem; text-align: center;
-        }
+        .hud-title { font-size: 0.75rem; color: #aaa; letter-spacing: 1px; }
+        .hud-val { font-size: 1rem; font-weight: bold; color: #fff; margin-top: 2px; }
 
         .interaction-prompt {
-            position: absolute; top: 60%; left: 50%; transform: translate(-50%, -50%);
-            background: var(--purple); color: #fff; font-weight: bold; padding: 8px 16px;
-            border-radius: 20px; font-size: 0.85rem; display: none; box-shadow: 0 0 15px rgba(168, 85, 247, 0.5);
+            position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%);
+            background: #000; border: 2px solid #fff; color: #ffff00; font-weight: bold; padding: 8px 16px;
+            font-size: 0.9rem; display: none; box-shadow: 4px 4px 0px #000; z-index: 15;
         }
 
-        /* MODALS */
-        .modal-box {
-            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-            width: 90%; max-width: 500px; background: var(--panel);
-            border: 2px solid var(--green); border-radius: 10px; padding: 16px;
-            display: none; flex-direction: column; gap: 8px; pointer-events: auto;
-            box-shadow: 0 0 30px rgba(34, 197, 94, 0.2); z-index: 20;
+        /* UNDERTALE / DELTARUNE STYLE DIALOGUE BOX */
+        .undertale-box {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 650px; background: #000;
+            border: 4px solid #fff; border-radius: 6px; padding: 16px;
+            display: none; gap: 16px; pointer-events: auto;
+            box-shadow: 6px 6px 0px rgba(0,0,0,0.5); z-index: 30;
         }
 
-        .btn {
-            background: #1e293b; color: #fff; border: 1px solid var(--border);
-            padding: 8px 16px; border-radius: 6px; cursor: pointer; font-family: var(--font);
-            font-size: 0.8rem; font-weight: bold; transition: all 0.2s; pointer-events: auto;
+        /* Pixelated Face Portrait Canvas */
+        .portrait-frame {
+            width: 80px; height: 80px; border: 2px solid #fff;
+            background: #000; flex-shrink: 0; display: flex;
+            align-items: center; justify-content: center;
         }
-        .btn:hover { background: var(--green); color: #000; }
+        #faceCanvas { width: 72px; height: 72px; image-rendering: pixelated; }
+
+        .ut-content { display: flex; flex-direction: column; justify-content: space-between; flex-grow: 1; }
+        .ut-speaker { color: #ffff00; font-weight: bold; font-size: 1rem; margin-bottom: 6px; }
+        .ut-text { font-size: 1.05rem; line-height: 1.4; color: #fff; }
+
+        .ut-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
+        .ut-btn {
+            background: #000; color: #fff; border: 2px solid #fff;
+            padding: 6px 14px; cursor: pointer; font-family: var(--font);
+            font-size: 0.85rem; font-weight: bold; transition: all 0.1s;
+        }
+        .ut-btn:hover { background: #fff; color: #000; }
+
+        /* FISH CATCH MODAL WITH 3D TURNTABLE */
+        .fish-modal {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 90%; max-width: 520px; background: #000; border: 4px solid #38bdf8;
+            padding: 20px; display: none; flex-direction: column; align-items: center; gap: 12px;
+            z-index: 40; box-shadow: 8px 8px 0px rgba(0,0,0,0.8);
+        }
+
+        #fishCanvas { width: 180px; height: 140px; border: 2px dashed #38bdf8; background: #050b14; }
     </style>
 </head>
 <body>
@@ -74,48 +87,55 @@
             <div class="hud-card">
                 <div class="hud-title">ENVIRONMENT LOG</div>
                 <div class="hud-val" id="timeVal">PURPLE DAY</div>
-                <div style="font-size: 0.75rem; color: #38bdf8; margin-top: 4px;" id="weatherVal">CLEAR ATMOSPHERE</div>
+                <div style="font-size: 0.75rem; color: #38bdf8; margin-top: 4px;" id="weatherVal">METEO: CLEAR</div>
             </div>
 
             <div class="hud-card" style="text-align: right;">
                 <div class="hud-title">VESSEL TELEMETRY</div>
                 <div class="hud-val" id="speedVal">0.0 KTS</div>
-                <div style="font-size: 0.75rem; color: var(--green); margin-top: 4px;" id="modeVal">MODE: DECK WALK</div>
+                <div style="font-size: 0.75rem; color: #22c55e; margin-top: 4px;" id="modeVal">MODE: DECK WALK</div>
             </div>
         </div>
 
-        <div class="interaction-prompt" id="prompt">PRESS [E] TO INTERACT</div>
+        <div class="interaction-prompt" id="prompt">[E] INTERACT</div>
 
-        <div class="controls-hint">
-            <strong>[WASD]</strong> Move / Steer | <strong>[CLICK + DRAG]</strong> Smooth Camera Orbit | <strong>[E]</strong> Talk to Bob / Drive / Fish
+        <div style="position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); font-size: 0.75rem; color: #888;">
+            [WASD] Move/Steer | [CLICK+DRAG] Rotate Camera | [E] Interact
         </div>
     </div>
 
-    <!-- Dialogue Box -->
-    <div class="modal-box" id="dialogBox">
-        <div style="font-weight: bold; color: var(--green);">BOB THE KAWMLING</div>
-        <div style="font-size: 0.95rem; line-height: 1.4; color: #e5e7eb;" id="dialogText">"Notice how the fluid glows when the waves break? That's pure energy."</div>
-        <div style="display: flex; gap: 10px; margin-top: 10px;">
-            <button class="btn" onclick="nextDialogue()">TALK MORE</button>
-            <button class="btn" onclick="closeModal('dialogBox')">CLOSE</button>
+    <!-- Undertale-Style Dialogue Box -->
+    <div class="undertale-box" id="dialogBox">
+        <div class="portrait-frame">
+            <canvas id="faceCanvas" width="36" height="36"></canvas>
+        </div>
+        <div class="ut-content">
+            <div>
+                <div class="ut-speaker">BOB</div>
+                <div class="ut-text" id="dialogText">* Notice how the white sea glows when waves break? That's pure energy.</div>
+            </div>
+            <div class="ut-actions">
+                <button class="ut-btn" onclick="nextDialogue()">[TALK]</button>
+                <button class="ut-btn" onclick="closeModal('dialogBox')">[CLOSE]</button>
+            </div>
         </div>
     </div>
 
-    <!-- Catch Box -->
-    <div class="modal-box" id="catchBox" style="border-color: var(--accent);">
-        <div style="color: var(--accent); font-weight: bold;">SPECIMEN RECOVERED!</div>
-        <div id="fishName" style="font-size: 1.3rem; font-weight: bold;">LUMINESCENT SKIMMER</div>
-        <div id="fishDesc" style="font-size: 0.85rem; color: #9ca3af;">A sleek creature native to dense white fluid seas.</div>
-        <button class="btn" style="margin-top: 10px;" onclick="closeModal('catchBox')">SECURE CATCH</button>
+    <!-- Fish Catch Modal with 3D Preview -->
+    <div class="fish-modal" id="catchBox">
+        <div style="color: #38bdf8; font-weight: bold; font-size: 0.9rem; letter-spacing: 2px;">★ SPECIMEN CAUGHT! ★</div>
+        <canvas id="fishCanvas"></canvas>
+        <div id="fishName" style="font-size: 1.2rem; font-weight: bold; color: #ffff00;">LUMINESCENT SKIMMER</div>
+        <div id="fishDesc" style="font-size: 0.85rem; color: #ccc; text-align: center; line-height: 1.3;">A glossy creature native to dense white fluid seas.</div>
+        <button class="ut-btn" style="margin-top: 6px; width: 100%;" onclick="closeModal('catchBox')">[ SECURE CATCH ]</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
-        // --- 1. WEB AUDIO SYNTHESIZER ---
+        // --- 1. SOUND SYNTHESIZER ---
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         let audioCtx = null;
-
         function playSound(type) {
             if (!audioCtx) audioCtx = new AudioCtx();
             const now = audioCtx.currentTime;
@@ -125,21 +145,27 @@
 
             if (type === 'splash') {
                 osc.type = 'triangle';
-                osc.frequency.setValueAtTime(140, now);
-                osc.frequency.exponentialRampToValueAtTime(30, now + 0.4);
-                gain.gain.setValueAtTime(0.25, now);
-                gain.gain.linearRampToValueAtTime(0, now + 0.4);
-                osc.start(now); osc.stop(now + 0.4);
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(30, now + 0.35);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.35);
+                osc.start(now); osc.stop(now + 0.35);
             } else if (type === 'step') {
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(90, now);
-                gain.gain.setValueAtTime(0.04, now);
+                osc.frequency.setValueAtTime(100, now);
+                gain.gain.setValueAtTime(0.03, now);
                 gain.gain.linearRampToValueAtTime(0, now + 0.04);
                 osc.start(now); osc.stop(now + 0.04);
+            } else if (type === 'talk') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(180 + Math.random() * 40, now);
+                gain.gain.setValueAtTime(0.05, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.05);
+                osc.start(now); osc.stop(now + 0.05);
             }
         }
 
-        // --- 2. SCENE & RENDERER SETUP ---
+        // --- 2. SCENE SETUP ---
         const canvas = document.getElementById('webgl-canvas');
         const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -149,48 +175,39 @@
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-        // --- 3. CELESTIAL ENVIRONMENT ---
-        const purpleSky = new THREE.Color(0x2e104d);
+        // --- 3. ENVIRONMENT & CELESTIAL ELEMENTS ---
+        const purpleSky = new THREE.Color(0x2d104d);
         const nightSky = new THREE.Color(0x040208);
         scene.background = purpleSky.clone();
-        scene.fog = new THREE.FogExp2(0x2e104d, 0.005);
+        scene.fog = new THREE.FogExp2(0x2d104d, 0.005);
 
-        // Red Dwarf Star
-        const sunMesh = new THREE.Mesh(
-            new THREE.SphereGeometry(14, 32, 32),
-            new THREE.MeshBasicMaterial({ color: 0xef4444 })
-        );
-        sunMesh.position.set(0, 140, -400);
-        scene.add(sunMesh);
+        // Red Dwarf Sun
+        const sun = new THREE.Mesh(new THREE.SphereGeometry(14, 32, 32), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+        sun.position.set(0, 140, -400); scene.add(sun);
 
         // Planetary Rings & Moons
-        const ringMesh = new THREE.Mesh(
+        const ring = new THREE.Mesh(
             new THREE.RingGeometry(200, 280, 64),
             new THREE.MeshBasicMaterial({ color: 0xc084fc, side: THREE.DoubleSide, transparent: true, opacity: 0.35 })
         );
-        ringMesh.rotation.x = Math.PI / 2.2;
-        ringMesh.position.set(0, 220, -500);
-        scene.add(ringMesh);
+        ring.rotation.x = Math.PI / 2.2; ring.position.set(0, 220, -500); scene.add(ring);
 
         function addMoon(r, x, y, z, col) {
             const m = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 16), new THREE.MeshBasicMaterial({ color: col }));
-            m.position.set(x, y, z);
-            scene.add(m);
+            m.position.set(x, y, z); scene.add(m);
         }
         addMoon(8, -140, 160, -420, 0xe2e8f0);
         addMoon(5, -100, 180, -380, 0x94a3b8);
 
         scene.add(new THREE.AmbientLight(0xc084fc, 0.8));
         const dirLight = new THREE.DirectionalLight(0xef4444, 1.2);
-        dirLight.position.set(0, 100, -200);
-        scene.add(dirLight);
+        dirLight.position.set(0, 100, -200); scene.add(dirLight);
 
-        // --- 4. MILKY-WHITE OCEAN ENGINE ---
+        // --- 4. OCEAN ENGINE ---
         const oceanGeo = new THREE.PlaneGeometry(800, 800, 96, 96);
         oceanGeo.rotateX(-Math.PI / 2);
         const oceanMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.1, flatShading: true });
-        const ocean = new THREE.Mesh(oceanGeo, oceanMat);
-        scene.add(ocean);
+        const ocean = new THREE.Mesh(oceanGeo, oceanMat); scene.add(ocean);
 
         const posAttr = oceanGeo.attributes.position;
         const baseVerts = [];
@@ -200,35 +217,36 @@
             return Math.sin(x * 0.04 + t * 2) * 0.6 + Math.cos(z * 0.04 + t * 1.5) * 0.6;
         }
 
-        // --- 5. CLEAN & ELEGANT BOAT DESIGN ---
-        const boatGroup = new THREE.Group();
-        scene.add(boatGroup);
-
-        // Deck Hull
+        // --- 5. BOAT & DECK DESIGN ---
+        const boatGroup = new THREE.Group(); scene.add(boatGroup);
         const woodMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.6 });
-        const deckMesh = new THREE.Mesh(new THREE.BoxGeometry(6, 0.6, 14), woodMat);
-        deckMesh.position.y = 0.8;
-        boatGroup.add(deckMesh);
-
-        // Railings around boat (Collision visually mapped)
         const railMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.5 });
-        const leftRail = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 14), railMat); leftRail.position.set(-2.9, 1.4, 0);
-        const rightRail = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 14), railMat); rightRail.position.set(2.9, 1.4, 0);
-        const backRail = new THREE.Mesh(new THREE.BoxGeometry(6, 0.6, 0.2), railMat); backRail.position.set(0, 1.4, 6.9);
-        boatGroup.add(leftRail); boatGroup.add(rightRail); boatGroup.add(backRail);
 
-        // Steering Helm Wheel (Front Deck)
+        // Hull Deck
+        const deck = new THREE.Mesh(new THREE.BoxGeometry(6, 0.6, 14), woodMat);
+        deck.position.y = 0.8; boatGroup.add(deck);
+
+        // Railings
+        const lRail = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 14), railMat); lRail.position.set(-2.9, 1.4, 0);
+        const rRail = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 14), railMat); rRail.position.set(2.9, 1.4, 0);
+        const bRail = new THREE.Mesh(new THREE.BoxGeometry(6, 0.6, 0.2), railMat); bRail.position.set(0, 1.4, 6.9);
+        boatGroup.add(lRail); boatGroup.add(rRail); boatGroup.add(bRail);
+
+        // Steering Wheel
         const helmStand = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 1.2), woodMat);
-        helmStand.position.set(0, 1.7, -5.5);
-        boatGroup.add(helmStand);
+        helmStand.position.set(0, 1.7, -5.5); boatGroup.add(helmStand);
 
         const wheelGroup = new THREE.Group();
         const wheelRing = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.06, 8, 16), woodMat);
-        wheelGroup.add(wheelRing);
-        wheelGroup.position.set(0, 2.2, -5.3);
-        boatGroup.add(wheelGroup);
+        wheelGroup.add(wheelRing); wheelGroup.position.set(0, 2.2, -5.3); boatGroup.add(wheelGroup);
 
-        // Mast & Flag
+        // Bench for Bob
+        const benchGroup = new THREE.Group();
+        const benchSeat = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 2.2), woodMat); benchSeat.position.y = 1.3;
+        benchGroup.add(benchSeat);
+        benchGroup.position.set(2.2, 0, -1.5); boatGroup.add(benchGroup);
+
+        // Mast & Animated Flag
         const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 8), woodMat);
         mast.position.set(0, 4.8, 0); boatGroup.add(mast);
 
@@ -238,7 +256,7 @@
         fctx.fillStyle = '#ef4444'; fctx.fillRect(0, 0, 64, 64);
         fctx.fillStyle = '#22c55e'; fctx.fillRect(64, 0, 64, 64);
         fctx.fillStyle = '#ffffff'; fctx.beginPath(); fctx.arc(64, 32, 10, 0, Math.PI * 2); fctx.fill();
-        fctx.fillRect(58, 12, 3, 12); fctx.fillRect(67, 12, 3, 12); // Antlers
+        fctx.fillRect(58, 12, 3, 12); fctx.fillRect(67, 12, 3, 12);
 
         const flag = new THREE.Mesh(
             new THREE.PlaneGeometry(2, 1),
@@ -246,40 +264,142 @@
         );
         flag.position.set(1, 8, 0); boatGroup.add(flag);
 
-        // Fishing Rod (Mounted on boat side)
+        // Fishing Rod
         const rodGroup = new THREE.Group();
-        const rodPole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.02, 3.5), woodMat);
-        rodPole.rotation.z = -Math.PI / 4;
-        rodGroup.add(rodPole);
-        rodGroup.position.set(-2.8, 1.5, 3);
-        boatGroup.add(rodGroup);
+        const rodPole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.015, 3.5), woodMat);
+        rodPole.rotation.z = -Math.PI / 4; rodGroup.add(rodPole);
+        rodGroup.position.set(-2.8, 1.5, 3); boatGroup.add(rodGroup);
 
-        // --- 6. ANIMATED BOB THE KAWMLING ---
-        const bobGroup = new THREE.Group();
-        const kawmMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+        // --- 6. PERFECTLY PROPORTIONED 3D STICKMAN GENERATOR ---
+        const stickMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
 
-        const bobHead = new THREE.Mesh(new THREE.SphereGeometry(0.45, 16, 16), kawmMat); bobHead.position.y = 1.3; bobGroup.add(bobHead);
-        const bobTorso = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.9), kawmMat); bobTorso.position.y = 0.65; bobGroup.add(bobTorso);
+        function buildStickman() {
+            const group = new THREE.Group();
 
-        const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.8), kawmMat);
-        const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.8), kawmMat);
-        leftLeg.position.set(-0.15, 0.1, 0.3); leftLeg.rotation.x = Math.PI / 2;
-        rightLeg.position.set(0.15, 0.1, 0.3); rightLeg.rotation.x = Math.PI / 2;
-        bobGroup.add(leftLeg); bobGroup.add(rightLeg);
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16), stickMat);
+            head.position.y = 1.6; group.add(head);
 
-        bobGroup.position.set(2.7, 1.1, -2);
-        bobGroup.rotation.y = -Math.PI / 2;
-        boatGroup.add(bobGroup);
+            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.7), stickMat);
+            torso.position.y = 1.05; group.add(torso);
 
-        // --- 7. PLAYER CHARACTER ---
-        const playerGroup = new THREE.Group();
-        const playerBody = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.4), new THREE.MeshStandardMaterial({ color: 0x38bdf8 }));
-        playerBody.position.y = 0.7; playerGroup.add(playerBody);
+            // Left Arm
+            const lArm = new THREE.Group(); lArm.position.set(-0.1, 1.35, 0);
+            const lArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6), stickMat);
+            lArmMesh.position.y = -0.3; lArm.add(lArmMesh); group.add(lArm);
 
-        playerGroup.position.set(0, 1.1, 2);
-        boatGroup.add(playerGroup);
+            // Right Arm
+            const rArm = new THREE.Group(); rArm.position.set(0.1, 1.35, 0);
+            const rArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6), stickMat);
+            rArmMesh.position.y = -0.3; rArm.add(rArmMesh); group.add(rArm);
 
-        // --- 8. CONTROLS & CAMERA SYSTEM (SMOOTH DRAG ROTATION) ---
+            // Left Leg
+            const lLeg = new THREE.Group(); lLeg.position.set(-0.08, 0.7, 0);
+            const lLegMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.7), stickMat);
+            lLegMesh.position.y = -0.35; lLeg.add(lLegMesh); group.add(lLeg);
+
+            // Right Leg
+            const rLeg = new THREE.Group(); rLeg.position.set(0.08, 0.7, 0);
+            const rLegMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.7), stickMat);
+            rLegMesh.position.y = -0.35; rLeg.add(rLegMesh); group.add(rLeg);
+
+            return { group, head, torso, lArm, rArm, lLeg, rLeg };
+        }
+
+        // Create Player & Bob
+        const player = buildStickman(); player.group.position.set(0, 1.1, 2); boatGroup.add(player.group);
+        const bob = buildStickman(); bob.group.position.set(2.2, 1.35, -1.5); boatGroup.add(bob.group);
+
+        // Pose Bob Seated on Bench
+        bob.lLeg.rotation.x = Math.PI / 2; bob.rLeg.rotation.x = Math.PI / 2;
+        bob.lArm.rotation.x = 0.3; bob.rArm.rotation.x = 0.3;
+
+        // --- 7. UNDERTALE FACE PORTRAIT CANVAS DRAWING ---
+        const faceCanvas = document.getElementById('faceCanvas');
+        const fCtx = faceCanvas.getContext('2d');
+
+        function drawBobFace(expression) {
+            fCtx.fillStyle = '#000'; fCtx.fillRect(0, 0, 36, 36);
+            // Circle Stickman Head
+            fCtx.strokeStyle = '#fff'; fCtx.lineWidth = 2;
+            fCtx.beginPath(); fCtx.arc(18, 18, 12, 0, Math.PI * 2); fCtx.stroke();
+
+            // Eyebrows according to expression
+            fCtx.lineWidth = 2;
+            fCtx.beginPath();
+            if (expression === 'happy') {
+                fCtx.moveTo(11, 13); fCtx.lineTo(15, 11);
+                fCtx.moveTo(21, 11); fCtx.lineTo(25, 13);
+            } else if (expression === 'thoughtful') {
+                fCtx.moveTo(11, 11); fCtx.lineTo(15, 11);
+                fCtx.moveTo(21, 14); fCtx.lineTo(25, 12);
+            } else if (expression === 'surprised') {
+                fCtx.moveTo(11, 10); fCtx.lineTo(15, 8);
+                fCtx.moveTo(21, 8); fCtx.lineTo(25, 10);
+            } else { // Neutral
+                fCtx.moveTo(11, 12); fCtx.lineTo(15, 12);
+                fCtx.moveTo(21, 12); fCtx.lineTo(25, 12);
+            }
+            fCtx.stroke();
+        }
+        drawBobFace('neutral');
+
+        // --- 8. FISH TURNTABLE 3D PREVIEW SETUP ---
+        const fishCanvas = document.getElementById('fishCanvas');
+        const fishRenderer = new THREE.WebGLRenderer({ canvas: fishCanvas, antialias: true, alpha: true });
+        fishRenderer.setSize(180, 140);
+        const fishScene = new THREE.Scene();
+        const fishCam = new THREE.PerspectiveCamera(45, 180 / 140, 0.1, 10);
+        fishCam.position.z = 3;
+        fishScene.add(new THREE.AmbientLight(0xffffff, 1));
+
+        const fishMesh = new THREE.Mesh(
+            new THREE.ConeGeometry(0.4, 1.2, 6),
+            new THREE.MeshStandardMaterial({ color: 0x38bdf8, flatShading: true })
+        );
+        fishMesh.rotation.z = Math.PI / 2;
+        fishScene.add(fishMesh);
+
+        // --- 9. DIALOGUE & FISHING SYSTEMS ---
+        const bobDialogues = [
+            { text: "* Notice how the white sea glows when waves break? That's pure energy.", expr: "neutral" },
+            { text: "* This liquid isn't water... It's rich in Kinetically Unified Matter.", expr: "thoughtful" },
+            { text: "* See that red star overhead? It shines day and night through purple skies.", expr: "happy" },
+            { text: "* Did you feel a bite on your fishing rod? Cast it out into the deep!", expr: "surprised" }
+        ];
+        let bobIdx = 0;
+
+        function nextDialogue() {
+            playSound('talk');
+            bobIdx = (bobIdx + 1) % bobDialogues.length;
+            const current = bobDialogues[bobIdx];
+            document.getElementById('dialogText').innerText = current.text;
+            drawBobFace(current.expr);
+        }
+
+        const fishList = [
+            { name: "WHITE-FLUID SKIMMER", desc: "A sleek, glowing species adapted to high-density fluid friction.", col: 0x38bdf8 },
+            { name: "KAWM ORBITAL EEL", desc: "Serpentine entity with glowing bioluminescent purple stripes.", col: 0xc084fc },
+            { name: "RED STAR SUNFISH", desc: "Absorbs solar radiation directly from the red dwarf star.", col: 0xef4444 }
+        ];
+
+        let isFishingAnim = false;
+        function triggerFishing() {
+            playSound('splash');
+            isFishingAnim = true;
+            setTimeout(() => {
+                isFishingAnim = false;
+                const f = fishList[Math.floor(Math.random() * fishList.length)];
+                fishMesh.material.color.setHex(f.col);
+                document.getElementById('fishName').innerText = f.name;
+                document.getElementById('fishDesc').innerText = f.desc;
+                openModal('catchBox');
+            }, 1000);
+        }
+
+        function openModal(id) { document.getElementById(id).style.display = (id === 'dialogBox' ? 'flex' : 'flex'); }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        // --- 10. CONTROLS & CAMERA SYSTEM ---
         let isDriving = false;
         let camYaw = 0, camPitch = 0.3;
         let isMouseDown = false;
@@ -289,10 +409,8 @@
         window.addEventListener('mouseup', () => isMouseDown = false);
         window.addEventListener('mousemove', (e) => {
             if (isMouseDown) {
-                const dx = e.clientX - lastMouseX;
-                const dy = e.clientY - lastMouseY;
-                camYaw -= dx * 0.005;
-                camPitch += dy * 0.005;
+                camYaw -= (e.clientX - lastMouseX) * 0.005;
+                camPitch += (e.clientY - lastMouseY) * 0.005;
                 camPitch = Math.max(0.05, Math.min(Math.PI / 2.2, camPitch));
                 lastMouseX = e.clientX; lastMouseY = e.clientY;
             }
@@ -306,62 +424,43 @@
 
         function handleInteraction(code) {
             if (code === 'KeyE') {
-                const distHelm = playerGroup.position.distanceTo(helmStand.position);
-                const distBob = playerGroup.position.distanceTo(bobGroup.position);
-                const distRod = playerGroup.position.distanceTo(rodGroup.position);
+                const distHelm = player.group.position.distanceTo(helmStand.position);
+                const distBob = player.group.position.distanceTo(bob.group.position);
+                const distRod = player.group.position.distanceTo(rodGroup.position);
 
                 if (distHelm < 2) {
                     isDriving = !isDriving;
                     document.getElementById('modeVal').innerText = isDriving ? "MODE: STEERING HELM" : "MODE: DECK WALK";
                 } else if (distBob < 2) {
                     openModal('dialogBox');
+                    drawBobFace(bobDialogues[bobIdx].expr);
                 } else if (distRod < 2) {
                     triggerFishing();
                 }
             }
         }
 
-        const bobLines = [
-            "Notice how the ocean glows when waves break? That's pure energy.",
-            "This white fluid isn't water, you know. It's rich in Kinetically Unified Matter.",
-            "Underneath that purple sky, the red dwarf star radiates steady thermal rays.",
-            "Take the helm up front if you want to sail towards the horizon!"
-        ];
-        let bobIdx = 0;
-        function nextDialogue() {
-            bobIdx = (bobIdx + 1) % bobLines.length;
-            document.getElementById('dialogText').innerText = `"${bobLines[bobIdx]}"`;
-        }
+        // --- 11. METEO & DAY/NIGHT CYCLES ---
+        const meteoList = ["CLEAR", "RAINY", "CLOUDY", "STORMY", "FOGGY"];
+        let meteoIdx = 0;
+        setInterval(() => {
+            meteoIdx = (meteoIdx + 1) % meteoList.length;
+            document.getElementById('weatherVal').innerText = `METEO: ${meteoList[meteoIdx]}`;
+            scene.fog.density = meteoList[meteoIdx] === 'FOGGY' ? 0.015 : 0.005;
+        }, 15000);
 
-        const fishList = [
-            { name: "White-Fluid Skimmer", desc: "A glossy creature adapted to high-density fluid friction." },
-            { name: "Kawm Orbital Eel", desc: "Serpentine entity with glowing bioluminescent purple stripes." },
-            { name: "Ref City Sunray Fish", desc: "Absorbs solar radiation directly from the red dwarf star." }
-        ];
-
-        function triggerFishing() {
-            playSound('splash');
-            const f = fishList[Math.floor(Math.random() * fishList.length)];
-            document.getElementById('fishName').innerText = f.name;
-            document.getElementById('fishDesc').innerText = f.desc;
-            openModal('catchBox');
-        }
-
-        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-
-        // --- 9. ANIMATION & GAME LOOP ---
+        // --- 12. ANIMATION & MAIN LOOP ---
         const clock = new THREE.Clock();
 
         function animate() {
             requestAnimationFrame(animate);
             const t = clock.getElapsedTime();
 
-            // Bob leg swing animation
-            leftLeg.rotation.x = Math.PI / 2 + Math.sin(t * 3) * 0.25;
-            rightLeg.rotation.x = Math.PI / 2 + Math.cos(t * 3) * 0.25;
+            // Bob Foot Tapping Animation
+            bob.lLeg.rotation.x = Math.PI / 2 + Math.sin(t * 4) * 0.08;
+            bob.head.rotation.y = Math.sin(t * 0.8) * 0.2; // Bob looking around slowly
 
-            // Character vs Steering Control
+            // Player Animations & Control Logic
             if (!isDriving) {
                 const moveSpeed = 0.07;
                 let moveX = 0, moveZ = 0;
@@ -370,34 +469,51 @@
                 if (keys['KeyA']) moveX -= moveSpeed;
                 if (keys['KeyD']) moveX += moveSpeed;
 
-                if (moveX !== 0 || moveZ !== 0) {
+                const isMoving = moveX !== 0 || moveZ !== 0;
+                if (isMoving) {
                     playSound('step');
-                    // Move relative to camera yaw angle
                     const moveDir = new THREE.Vector3(moveX, 0, moveZ).applyAxisAngle(new THREE.Vector3(0, 1, 0), camYaw);
-                    playerGroup.position.add(moveDir);
+                    player.group.position.add(moveDir);
+
+                    // Walking Limb Animation
+                    player.lLeg.rotation.x = Math.sin(t * 10) * 0.6;
+                    player.rLeg.rotation.x = -Math.sin(t * 10) * 0.6;
+                    player.lArm.rotation.x = -Math.sin(t * 10) * 0.4;
+                    player.rArm.rotation.x = Math.sin(t * 10) * 0.4;
+                    player.group.rotation.y = Math.atan2(moveDir.x, moveDir.z);
+                } else {
+                    player.lLeg.rotation.x = 0; player.rLeg.rotation.x = 0;
+                    player.lArm.rotation.x = 0; player.rArm.rotation.x = 0;
                 }
 
-                // Strict Deck Bounds Clamping (Cannot fall off boat)
-                playerGroup.position.x = Math.max(-2.5, Math.min(2.5, playerGroup.position.x));
-                playerGroup.position.z = Math.max(-6.2, Math.min(6.2, playerGroup.position.z));
+                // Fishing Rod Cast Pose Animation Override
+                if (isFishingAnim) {
+                    player.rArm.rotation.x = -Math.PI / 1.5;
+                }
+
+                // Strict Deck Bounds Clamping
+                player.group.position.x = Math.max(-2.5, Math.min(2.5, player.group.position.x));
+                player.group.position.z = Math.max(-6.2, Math.min(6.2, player.group.position.z));
             } else {
-                // Driving Control Mode
+                // Driving at Steering Wheel
                 if (keys['KeyA']) boatState.heading += 0.015;
                 if (keys['KeyD']) boatState.heading -= 0.015;
                 if (keys['KeyW']) boatState.speed = Math.min(0.25, boatState.speed + 0.003);
                 if (keys['KeyS']) boatState.speed = Math.max(0, boatState.speed - 0.003);
 
-                playerGroup.position.set(0, 1.1, -4.5); // Hold player at helm
+                player.group.position.set(0, 1.1, -4.5);
+                player.group.rotation.y = Math.PI;
+                player.lArm.rotation.x = -Math.PI / 3; player.rArm.rotation.x = -Math.PI / 3;
                 wheelGroup.rotation.z = -boatState.heading * 5;
             }
 
             // Boat Propulsion & Waves
-            boatState.speed *= 0.98; // Smooth friction decay
+            boatState.speed *= 0.98;
             boatGroup.position.x += Math.sin(boatState.heading) * boatState.speed;
             boatGroup.position.z += Math.cos(boatState.heading) * boatState.speed;
             boatGroup.rotation.y = boatState.heading;
 
-            // Update Ocean Wave Geometry
+            // Wave Vertex Displacement
             for (let i = 0; i < posAttr.count; i++) {
                 const u = baseVerts[i * 3];
                 const v = baseVerts[i * 3 + 2];
@@ -405,30 +521,37 @@
             }
             posAttr.needsUpdate = true;
 
-            // Boat Wave Swaying
+            // Boat Rocking Motion
             const waveY = getWaveHeight(boatGroup.position.x, boatGroup.position.z, t);
             boatGroup.position.y = waveY * 0.4;
             boatGroup.rotation.z = Math.sin(t * 2) * 0.04;
             boatGroup.rotation.x = Math.cos(t * 1.5) * 0.03;
 
-            // Smooth Camera Rig Orbiting Player
-            const camDist = 7;
-            const targetPos = playerGroup.getWorldPosition(new THREE.Vector3());
+            // Flag Waving Motion
+            flag.rotation.y = Math.sin(t * 5) * 0.15;
+
+            // Camera Orbit Rig
+            const camDist = 6.5;
+            const targetPos = player.group.getWorldPosition(new THREE.Vector3());
             camera.position.x = targetPos.x + camDist * Math.sin(camYaw) * Math.cos(camPitch);
             camera.position.y = targetPos.y + camDist * Math.sin(camPitch);
             camera.position.z = targetPos.z + camDist * Math.cos(camYaw) * Math.cos(camPitch);
-            camera.lookAt(targetPos.clone().add(new THREE.Vector3(0, 0.8, 0)));
+            camera.lookAt(targetPos.clone().add(new THREE.Vector3(0, 0.7, 0)));
 
-            // Proximity Prompt Check
+            // Fish 3D Preview Turntable Rotation
+            fishMesh.rotation.y += 0.03;
+            fishRenderer.render(fishScene, fishCam);
+
+            // Proximity Prompt Detection
             const prompt = document.getElementById('prompt');
-            const distHelm = playerGroup.position.distanceTo(helmStand.position);
-            const distBob = playerGroup.position.distanceTo(bobGroup.position);
-            const distRod = playerGroup.position.distanceTo(rodGroup.position);
+            const distHelm = player.group.position.distanceTo(helmStand.position);
+            const distBob = player.group.position.distanceTo(bob.group.position);
+            const distRod = player.group.position.distanceTo(rodGroup.position);
 
             if (distHelm < 2 || distBob < 2 || distRod < 2) prompt.style.display = 'block';
             else prompt.style.display = 'none';
 
-            // HUD Telemetry
+            // HUD Data Updates
             document.getElementById('speedVal').innerText = `${(boatState.speed * 100).toFixed(1)} KTS`;
 
             renderer.render(scene, camera);
