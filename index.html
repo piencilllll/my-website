@@ -32,7 +32,7 @@
             display: block;
         }
 
-        /* Retro CRT Scanline Effect */
+        /* CRT Overlay */
         .crt-overlay {
             position: absolute;
             top: 0;
@@ -46,7 +46,7 @@
             pointer-events: none;
         }
 
-        /* Controls HUD */
+        /* HUD */
         #hud {
             position: absolute;
             top: 20px;
@@ -76,15 +76,28 @@
             font-weight: bold;
             border-radius: 2px;
         }
+
+        #error-msg {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff5555;
+            font-size: 1.2rem;
+            display: none;
+            z-index: 100;
+            text-align: center;
+        }
     </style>
 
-    <!-- Import Three.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Reliable Three.js CDN with fallback -->
+    <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
 </head>
 <body>
 
     <div class="crt-overlay"></div>
     <div id="canvas-container"></div>
+    <div id="error-msg">Failed to load 3D Engine. Check internet connection or ad-blocker.</div>
 
     <div id="hud">
         <div class="hud-title">KAWMLING CONTROLS</div>
@@ -95,387 +108,361 @@
     </div>
 
     <script>
-        // --- 1. SETUP ENGINE & PIXELATED RENDERER ---
-        const container = document.getElementById('canvas-container');
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0a0c14);
-        scene.fog = new THREE.FogExp2(0x0a0c14, 0.015);
-
-        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
-        
-        const renderer = new THREE.WebGLRenderer({ antialias: false }); // False for crisp low-res feel
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        
-        // Pixelated rendering scaling factor (0.5 lowers resolution for pixelated vibe)
-        const PIXEL_SCALE = 0.5;
-        renderer.setPixelRatio(window.devicePixelRatio * PIXEL_SCALE);
-        renderer.domElement.style.width = "100%";
-        renderer.domElement.style.height = "100%";
-        renderer.domElement.style.imageRendering = "pixelated";
-        
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        container.appendChild(renderer.domElement);
-
-        // --- 2. LIGHTING ---
-        const ambientLight = new THREE.AmbientLight(0x333a50, 1.5);
-        scene.add(ambientLight);
-
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-        dirLight.position.set(20, 40, 20);
-        dirLight.castShadow = true;
-        dirLight.shadow.mapSize.width = 512;
-        dirLight.shadow.mapSize.height = 512;
-        dirLight.shadow.camera.near = 0.5;
-        dirLight.shadow.camera.far = 100;
-        const d = 25;
-        dirLight.shadow.camera.left = -d;
-        dirLight.shadow.camera.right = d;
-        dirLight.shadow.camera.top = d;
-        dirLight.shadow.camera.bottom = -d;
-        scene.add(dirLight);
-
-        // Subtle soft glowing light near character
-        const charLight = new THREE.PointLight(0xffffff, 0.8, 12);
-        scene.add(charLight);
-
-        // --- 3. PIXELATED BASEPLATE ---
-        const baseplateSize = 60;
-        const baseplateGeo = new THREE.BoxGeometry(baseplateSize, 2, baseplateSize);
-        
-        // Create procedural checker grid texture
-        const canvas = document.createElement('canvas');
-        canvas.width = 64;
-        canvas.height = 64;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#181c2b';
-        ctx.fillRect(0, 0, 64, 64);
-        ctx.fillStyle = '#111420';
-        ctx.fillRect(0, 0, 32, 32);
-        ctx.fillRect(32, 32, 32, 32);
-        
-        const gridTexture = new THREE.CanvasTexture(canvas);
-        gridTexture.magFilter = THREE.NearestFilter;
-        gridTexture.minFilter = THREE.NearestFilter;
-        gridTexture.wrapS = THREE.RepeatWrapping;
-        gridTexture.wrapT = THREE.RepeatWrapping;
-        gridTexture.repeat.set(15, 15);
-
-        const baseplateMat = new THREE.MeshStandardMaterial({ 
-            map: gridTexture,
-            roughness: 0.8,
-            metalness: 0.1
-        });
-        const baseplate = new THREE.Mesh(baseplateGeo, baseplateMat);
-        baseplate.position.y = -1;
-        baseplate.receiveShadow = true;
-        scene.add(baseplate);
-
-        // Border edge for baseplate
-        const wireframe = new THREE.LineSegments(
-            new THREE.EdgesGeometry(baseplateGeo),
-            new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 })
-        );
-        baseplate.add(wireframe);
-
-        // --- 4. KAWM MATERIAL & CHARACTER RIG BUILD ---
-        // Milky/Watery glowing material for Kawm
-        const kawmMaterial = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            emissive: 0xdddddd,
-            emissiveIntensity: 0.3,
-            roughness: 0.1,
-            metalness: 0.1,
-        });
-
-        // Main Character Parent Object
-        const character = new THREE.Group();
-        scene.add(character);
-
-        // Joint Pivot Hierarchy for Smooth Rigging
-        function createLimb(width, length) {
-            const group = new THREE.Group();
-            const mesh = new THREE.Mesh(new THREE.CapsuleGeometry(width, length, 8, 16), kawmMaterial);
-            mesh.castShadow = true;
-            mesh.position.y = -length / 2;
-            group.add(mesh);
-            return { group, mesh };
+        // Check if Three.js loaded properly
+        if (typeof THREE === 'undefined') {
+            document.getElementById('error-msg').style.display = 'block';
+        } else {
+            initGame();
         }
 
-        // Head (Smooth Sphere)
-        const headGroup = new THREE.Group();
-        const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 16), kawmMaterial);
-        headMesh.position.y = 2.4;
-        headMesh.castShadow = true;
-        headGroup.add(headMesh);
-        character.add(headGroup);
+        function initGame() {
+            // --- 1. SETUP ENGINE & PIXELATED RENDERER ---
+            const container = document.getElementById('canvas-container');
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0c14);
+            scene.fog = new THREE.FogExp2(0x0a0c14, 0.015);
 
-        // Torso (Thicker stickman core)
-        const torsoMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.9, 8, 16), kawmMaterial);
-        torsoMesh.position.y = 1.5;
-        torsoMesh.castShadow = true;
-        character.add(torsoMesh);
-
-        // Left Arm Pivot
-        const armLUpper = createLimb(0.13, 0.55);
-        armLUpper.group.position.set(0.42, 1.85, 0);
-        character.add(armLUpper.group);
-
-        const armLLower = createLimb(0.11, 0.5);
-        armLLower.group.position.set(0, -0.55, 0);
-        armLUpper.group.add(armLLower.group);
-
-        // Right Arm Pivot
-        const armRUpper = createLimb(0.13, 0.55);
-        armRUpper.group.position.set(-0.42, 1.85, 0);
-        character.add(armRUpper.group);
-
-        const armRLower = createLimb(0.11, 0.5);
-        armRLower.group.position.set(0, -0.55, 0);
-        armRUpper.group.add(armRLower.group);
-
-        // Left Leg Pivot
-        const legLUpper = createLimb(0.15, 0.6);
-        legLUpper.group.position.set(0.22, 1.0, 0);
-        character.add(legLUpper.group);
-
-        const legLLower = createLimb(0.13, 0.55);
-        legLLower.group.position.set(0, -0.6, 0);
-        legLUpper.group.add(legLLower.group);
-
-        // Right Leg Pivot
-        const legRUpper = createLimb(0.15, 0.6);
-        legRUpper.group.position.set(-0.22, 1.0, 0);
-        character.add(legRUpper.group);
-
-        const legRLower = createLimb(0.13, 0.55);
-        legRLower.group.position.set(0, -0.6, 0);
-        legRUpper.group.add(legRLower.group);
-
-        // --- 5. CONTROLS & MOVEMENT STATE ---
-        const keys = { w: false, a: false, s: false, d: false, shift: false, space: false };
-
-        window.addEventListener('keydown', (e) => {
-            const k = e.key.toLowerCase();
-            if (k === 'w' || k === 'arrowup') keys.w = true;
-            if (k === 'a' || k === 'arrowleft') keys.a = true;
-            if (k === 's' || k === 'arrowdown') keys.s = true;
-            if (k === 'd' || k === 'arrowright') keys.d = true;
-            if (e.key === 'Shift') keys.shift = true;
-            if (e.key === ' ' || e.code === 'Space') {
-                keys.space = true;
-                jump();
-            }
-        });
-
-        window.addEventListener('keyup', (e) => {
-            const k = e.key.toLowerCase();
-            if (k === 'w' || k === 'arrowup') keys.w = false;
-            if (k === 'a' || k === 'arrowleft') keys.a = false;
-            if (k === 's' || k === 'arrowdown') keys.s = false;
-            if (k === 'd' || k === 'arrowright') keys.d = false;
-            if (e.key === 'Shift') keys.shift = false;
-            if (e.key === ' ' || e.code === 'Space') keys.space = false;
-        });
-
-        // --- ORBIT CAMERA CONTROLS ---
-        let isDragging = false;
-        let previousMousePosition = { x: 0, y: 0 };
-        let cameraAngleX = 0;
-        let cameraAngleY = 0.35;
-        const cameraDistance = 10;
-
-        window.addEventListener('mousedown', (e) => { isDragging = true; });
-        window.addEventListener('mouseup', () => { isDragging = false; });
-        window.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                const deltaX = e.clientX - previousMousePosition.x;
-                const deltaY = e.clientY - previousMousePosition.y;
-
-                cameraAngleX -= deltaX * 0.008;
-                cameraAngleY = Math.max(0.1, Math.min(Math.PI / 2.2, cameraAngleY + deltaY * 0.008));
-            }
-            previousMousePosition = { x: e.clientX, y: e.clientY };
-        });
-
-        // --- 6. PHYSICS & JUMPING LOGIC ---
-        let posY = 0;
-        let velocityY = 0;
-        const gravity = -0.018;
-        let isGrounded = true;
-
-        function jump() {
-            if (isGrounded) {
-                velocityY = 0.38;
-                isGrounded = false;
-            }
-        }
-
-        // Helper for smooth linear interpolation
-        function lerp(start, end, amt) {
-            return (1 - amt) * start + amt * end;
-        }
-
-        // --- 7. PROCEDURAL ANIMATION ENGINE ---
-        let animTime = 0;
-
-        function animateCharacter(delta, moveSpeed, isMoving, isRunning) {
-            animTime += delta * (isRunning ? 16 : (isMoving ? 10 : 3));
-
-            const cycle = Math.sin(animTime);
-            const cosCycle = Math.cos(animTime);
-
-            if (!isGrounded) {
-                // JUMP / AIR ANIMATION
-                torsoMesh.rotation.x = lerp(torsoMesh.rotation.x, 0.2, 0.2);
-                
-                // Arms stretch upward/outward
-                armLUpper.group.rotation.x = lerp(armLUpper.group.rotation.x, -2.5, 0.2);
-                armRUpper.group.rotation.x = lerp(armRUpper.group.rotation.x, -2.5, 0.2);
-                armLUpper.group.rotation.z = lerp(armLUpper.group.rotation.z, 0.4, 0.2);
-                armRUpper.group.rotation.z = lerp(armRUpper.group.rotation.z, -0.4, 0.2);
-
-                // Legs tuck slightly
-                legLUpper.group.rotation.x = lerp(legLUpper.group.rotation.x, 0.6, 0.2);
-                legRUpper.group.rotation.x = lerp(legRUpper.group.rotation.x, -0.4, 0.2);
-                legLLower.group.rotation.x = lerp(legLLower.group.rotation.x, -0.8, 0.2);
-                legRLower.group.rotation.x = lerp(legRLower.group.rotation.x, -0.3, 0.2);
-
-            } else if (isMoving) {
-                // WALK / RUN GAIT
-                const stride = isRunning ? 1.1 : 0.65;
-                const bodyTilt = isRunning ? 0.35 : 0.12;
-
-                // Bounce y-offset
-                torsoMesh.position.y = 1.5 + Math.abs(cosCycle) * (isRunning ? 0.15 : 0.08);
-                torsoMesh.rotation.x = lerp(torsoMesh.rotation.x, bodyTilt, 0.15);
-
-                // Leg Swinging
-                legLUpper.group.rotation.x = cycle * stride;
-                legRUpper.group.rotation.x = -cycle * stride;
-
-                // Knee bending
-                legLLower.group.rotation.x = (cycle > 0 ? -cycle * 0.8 : 0);
-                legRLower.group.rotation.x = (-cycle > 0 ? cycle * 0.8 : 0);
-
-                // Arm Swinging (Opposite to legs)
-                armLUpper.group.rotation.x = -cycle * stride * 0.9;
-                armRUpper.group.rotation.x = cycle * stride * 0.9;
-                armLUpper.group.rotation.z = lerp(armLUpper.group.rotation.z, 0.1, 0.1);
-                armRUpper.group.rotation.z = lerp(armRUpper.group.rotation.z, -0.1, 0.1);
-
-                // Elbow bending
-                armLLower.group.rotation.x = -Math.abs(cycle) * 0.5;
-                armRLower.group.rotation.x = -Math.abs(cycle) * 0.5;
-
-                // Fluid Head Bobbing
-                headGroup.position.y = 2.4 + Math.sin(animTime * 2) * 0.04;
-
-            } else {
-                // IDLE ANIMATION (Watery Liquid Breathing)
-                const breath = Math.sin(animTime) * 0.05;
-
-                torsoMesh.position.y = lerp(torsoMesh.position.y, 1.5 + breath, 0.1);
-                torsoMesh.rotation.x = lerp(torsoMesh.rotation.x, 0, 0.1);
-
-                // Relaxed Arms
-                armLUpper.group.rotation.x = lerp(armLUpper.group.rotation.x, 0, 0.1);
-                armRUpper.group.rotation.x = lerp(armRUpper.group.rotation.x, 0, 0.1);
-                armLUpper.group.rotation.z = lerp(armLUpper.group.rotation.z, 0.18 + breath * 0.5, 0.1);
-                armRUpper.group.rotation.z = lerp(armRUpper.group.rotation.z, -0.18 - breath * 0.5, 0.1);
-
-                armLLower.group.rotation.x = lerp(armLLower.group.rotation.x, -0.1, 0.1);
-                armRLower.group.rotation.x = lerp(armRLower.group.rotation.x, -0.1, 0.1);
-
-                // Default Legs
-                legLUpper.group.rotation.x = lerp(legLUpper.group.rotation.x, 0, 0.1);
-                legRUpper.group.rotation.x = lerp(legRUpper.group.rotation.x, 0, 0.1);
-                legLLower.group.rotation.x = lerp(legLLower.group.rotation.x, 0, 0.1);
-                legRLower.group.rotation.x = lerp(legRLower.group.rotation.x, 0, 0.1);
-
-                headGroup.position.y = 2.4 + breath * 0.6;
-            }
-        }
-
-        // --- 8. MAIN GAME LOOP ---
-        const clock = new THREE.Clock();
-
-        function animate() {
-            requestAnimationFrame(animate);
-
-            const delta = clock.getDelta();
-
-            // Calculate input movement vector
-            let moveX = 0;
-            let moveZ = 0;
-            if (keys.w) moveZ -= 1;
-            if (keys.s) moveZ += 1;
-            if (keys.a) moveX -= 1;
-            if (keys.d) moveX += 1;
-
-            const isMoving = moveX !== 0 || moveZ !== 0;
-            const isRunning = keys.shift && isMoving;
-            const speed = isRunning ? 0.18 : 0.09;
-
-            // Movement relative to camera perspective
-            if (isMoving) {
-                const inputAngle = Math.atan2(moveX, moveZ);
-                const targetRotation = cameraAngleX + inputAngle + Math.PI;
-
-                // Smoothly rotate character toward movement direction
-                let diff = targetRotation - character.rotation.y;
-                while (diff < -Math.PI) diff += Math.PI * 2;
-                while (diff > Math.PI) diff -= Math.PI * 2;
-                character.rotation.y += diff * 0.2;
-
-                // Translate character position
-                const moveAngle = cameraAngleX + inputAngle;
-                character.position.x -= Math.sin(moveAngle) * speed;
-                character.position.z -= Math.cos(moveAngle) * speed;
-
-                // Restrict character within baseplate boundaries
-                const limit = (baseplateSize / 2) - 1;
-                character.position.x = Math.max(-limit, Math.min(limit, character.position.x));
-                character.position.z = Math.max(-limit, Math.min(limit, character.position.z));
-            }
-
-            // Gravity & Vertical Position
-            velocityY += gravity;
-            posY += velocityY;
-
-            if (posY <= 0) {
-                posY = 0;
-                velocityY = 0;
-                isGrounded = true;
-            }
-            character.position.y = posY;
-
-            // Animate Kawmling Rig
-            animateCharacter(delta, speed, isMoving, isRunning);
-
-            // Orbit Camera Positioning
-            camera.position.x = character.position.x + cameraDistance * Math.sin(cameraAngleX) * Math.cos(cameraAngleY);
-            camera.position.y = character.position.y + 1.5 + cameraDistance * Math.sin(cameraAngleY);
-            camera.position.z = character.position.z + cameraDistance * Math.cos(cameraAngleX) * Math.cos(cameraAngleY);
+            const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
             
-            const targetLookAt = character.position.clone().add(new THREE.Vector3(0, 1.5, 0));
-            camera.lookAt(targetLookAt);
-
-            // Position dynamic light at character head
-            charLight.position.copy(character.position).add(new THREE.Vector3(0, 2.5, 0));
-
-            renderer.render(scene, camera);
-        }
-
-        // Handle Window Resizing
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
+            const renderer = new THREE.WebGLRenderer({ antialias: false });
             renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+            
+            // Pixelated scale setting
+            const PIXEL_SCALE = 0.5;
+            renderer.setPixelRatio(window.devicePixelRatio * PIXEL_SCALE);
+            renderer.domElement.style.width = "100%";
+            renderer.domElement.style.height = "100%";
+            renderer.domElement.style.imageRendering = "pixelated";
+            
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
 
-        // Start Loop
-        animate();
+            // --- 2. LIGHTING ---
+            const ambientLight = new THREE.AmbientLight(0x556080, 1.8);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            dirLight.position.set(20, 40, 20);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 512;
+            dirLight.shadow.mapSize.height = 512;
+            dirLight.shadow.camera.near = 0.5;
+            dirLight.shadow.camera.far = 100;
+            const d = 25;
+            dirLight.shadow.camera.left = -d;
+            dirLight.shadow.camera.right = d;
+            dirLight.shadow.camera.top = d;
+            dirLight.shadow.camera.bottom = -d;
+            scene.add(dirLight);
+
+            const charLight = new THREE.PointLight(0xffffff, 1.2, 15);
+            scene.add(charLight);
+
+            // --- 3. PIXELATED BASEPLATE ---
+            const baseplateSize = 60;
+            const baseplateGeo = new THREE.BoxGeometry(baseplateSize, 2, baseplateSize);
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#1c2236';
+            ctx.fillRect(0, 0, 64, 64);
+            ctx.fillStyle = '#121624';
+            ctx.fillRect(0, 0, 32, 32);
+            ctx.fillRect(32, 32, 32, 32);
+            
+            const gridTexture = new THREE.CanvasTexture(canvas);
+            gridTexture.magFilter = THREE.NearestFilter;
+            gridTexture.minFilter = THREE.NearestFilter;
+            gridTexture.wrapS = THREE.RepeatWrapping;
+            gridTexture.wrapT = THREE.RepeatWrapping;
+            gridTexture.repeat.set(15, 15);
+
+            const baseplateMat = new THREE.MeshStandardMaterial({ 
+                map: gridTexture,
+                roughness: 0.7,
+                metalness: 0.1
+            });
+            const baseplate = new THREE.Mesh(baseplateGeo, baseplateMat);
+            baseplate.position.y = -1;
+            baseplate.receiveShadow = true;
+            scene.add(baseplate);
+
+            const wireframe = new THREE.LineSegments(
+                new THREE.EdgesGeometry(baseplateGeo),
+                new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 })
+            );
+            baseplate.add(wireframe);
+
+            // --- 4. KAWM MATERIAL & CHARACTER RIG BUILD ---
+            const kawmMaterial = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                emissive: 0xffffff,
+                emissiveIntensity: 0.4,
+                roughness: 0.1,
+                metalness: 0.1,
+            });
+
+            const character = new THREE.Group();
+            scene.add(character);
+
+            function createLimb(width, length) {
+                const group = new THREE.Group();
+                const mesh = new THREE.Mesh(new THREE.CylinderGeometry(width, width, length, 8), kawmMaterial);
+                mesh.castShadow = true;
+                mesh.position.y = -length / 2;
+                group.add(mesh);
+                return { group, mesh };
+            }
+
+            // Head
+            const headGroup = new THREE.Group();
+            const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 16), kawmMaterial);
+            headMesh.position.y = 2.4;
+            headMesh.castShadow = true;
+            headGroup.add(headMesh);
+            character.add(headGroup);
+
+            // Torso
+            const torsoMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.9, 8), kawmMaterial);
+            torsoMesh.position.y = 1.5;
+            torsoMesh.castShadow = true;
+            character.add(torsoMesh);
+
+            // Arms
+            const armLUpper = createLimb(0.12, 0.55);
+            armLUpper.group.position.set(0.38, 1.85, 0);
+            character.add(armLUpper.group);
+
+            const armLLower = createLimb(0.1, 0.5);
+            armLLower.group.position.set(0, -0.55, 0);
+            armLUpper.group.add(armLLower.group);
+
+            const armRUpper = createLimb(0.12, 0.55);
+            armRUpper.group.position.set(-0.38, 1.85, 0);
+            character.add(armRUpper.group);
+
+            const armRLower = createLimb(0.1, 0.5);
+            armRLower.group.position.set(0, -0.55, 0);
+            armRUpper.group.add(armRLower.group);
+
+            // Legs
+            const legLUpper = createLimb(0.14, 0.6);
+            legLUpper.group.position.set(0.2, 1.0, 0);
+            character.add(legLUpper.group);
+
+            const legLLower = createLimb(0.12, 0.55);
+            legLLower.group.position.set(0, -0.6, 0);
+            legLUpper.group.add(legLLower.group);
+
+            const legRUpper = createLimb(0.14, 0.6);
+            legRUpper.group.position.set(-0.2, 1.0, 0);
+            character.add(legRUpper.group);
+
+            const legRLower = createLimb(0.12, 0.55);
+            legRLower.group.position.set(0, -0.6, 0);
+            legRUpper.group.add(legRLower.group);
+
+            // --- 5. CONTROLS ---
+            const keys = { w: false, a: false, s: false, d: false, shift: false, space: false };
+
+            window.addEventListener('keydown', (e) => {
+                const k = e.key.toLowerCase();
+                if (k === 'w' || k === 'arrowup') keys.w = true;
+                if (k === 'a' || k === 'arrowleft') keys.a = true;
+                if (k === 's' || k === 'arrowdown') keys.s = true;
+                if (k === 'd' || k === 'arrowright') keys.d = true;
+                if (e.key === 'Shift') keys.shift = true;
+                if (e.key === ' ' || e.code === 'Space') {
+                    keys.space = true;
+                    jump();
+                }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                const k = e.key.toLowerCase();
+                if (k === 'w' || k === 'arrowup') keys.w = false;
+                if (k === 'a' || k === 'arrowleft') keys.a = false;
+                if (k === 's' || k === 'arrowdown') keys.s = false;
+                if (k === 'd' || k === 'arrowright') keys.d = false;
+                if (e.key === 'Shift') keys.shift = false;
+                if (e.key === ' ' || e.code === 'Space') keys.space = false;
+            });
+
+            // Orbit Camera Controls
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+            let cameraAngleX = 0;
+            let cameraAngleY = 0.35;
+            const cameraDistance = 10;
+
+            window.addEventListener('mousedown', () => { isDragging = true; });
+            window.addEventListener('mouseup', () => { isDragging = false; });
+            window.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const deltaX = e.clientX - previousMousePosition.x;
+                    const deltaY = e.clientY - previousMousePosition.y;
+
+                    cameraAngleX -= deltaX * 0.008;
+                    cameraAngleY = Math.max(0.1, Math.min(Math.PI / 2.2, cameraAngleY + deltaY * 0.008));
+                }
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            // --- 6. PHYSICS ---
+            let posY = 0;
+            let velocityY = 0;
+            const gravity = -0.018;
+            let isGrounded = true;
+
+            function jump() {
+                if (isGrounded) {
+                    velocityY = 0.38;
+                    isGrounded = false;
+                }
+            }
+
+            function lerp(start, end, amt) {
+                return (1 - amt) * start + amt * end;
+            }
+
+            // --- 7. ANIMATIONS ---
+            let animTime = 0;
+
+            function animateCharacter(delta, moveSpeed, isMoving, isRunning) {
+                animTime += delta * (isRunning ? 16 : (isMoving ? 10 : 3));
+
+                const cycle = Math.sin(animTime);
+                const cosCycle = Math.cos(animTime);
+
+                if (!isGrounded) {
+                    torsoMesh.rotation.x = lerp(torsoMesh.rotation.x, 0.2, 0.2);
+                    armLUpper.group.rotation.x = lerp(armLUpper.group.rotation.x, -2.5, 0.2);
+                    armRUpper.group.rotation.x = lerp(armRUpper.group.rotation.x, -2.5, 0.2);
+                    armLUpper.group.rotation.z = lerp(armLUpper.group.rotation.z, 0.4, 0.2);
+                    armRUpper.group.rotation.z = lerp(armRUpper.group.rotation.z, -0.4, 0.2);
+
+                    legLUpper.group.rotation.x = lerp(legLUpper.group.rotation.x, 0.6, 0.2);
+                    legRUpper.group.rotation.x = lerp(legRUpper.group.rotation.x, -0.4, 0.2);
+                    legLLower.group.rotation.x = lerp(legLLower.group.rotation.x, -0.8, 0.2);
+                    legRLower.group.rotation.x = lerp(legRLower.group.rotation.x, -0.3, 0.2);
+
+                } else if (isMoving) {
+                    const stride = isRunning ? 1.1 : 0.65;
+                    const bodyTilt = isRunning ? 0.35 : 0.12;
+
+                    torsoMesh.position.y = 1.5 + Math.abs(cosCycle) * (isRunning ? 0.15 : 0.08);
+                    torsoMesh.rotation.x = lerp(torsoMesh.rotation.x, bodyTilt, 0.15);
+
+                    legLUpper.group.rotation.x = cycle * stride;
+                    legRUpper.group.rotation.x = -cycle * stride;
+                    legLLower.group.rotation.x = (cycle > 0 ? -cycle * 0.8 : 0);
+                    legRLower.group.rotation.x = (-cycle > 0 ? cycle * 0.8 : 0);
+
+                    armLUpper.group.rotation.x = -cycle * stride * 0.9;
+                    armRUpper.group.rotation.x = cycle * stride * 0.9;
+                    armLUpper.group.rotation.z = lerp(armLUpper.group.rotation.z, 0.1, 0.1);
+                    armRUpper.group.rotation.z = lerp(armRUpper.group.rotation.z, -0.1, 0.1);
+
+                    armLLower.group.rotation.x = -Math.abs(cycle) * 0.5;
+                    armRLower.group.rotation.x = -Math.abs(cycle) * 0.5;
+
+                    headGroup.position.y = 2.4 + Math.sin(animTime * 2) * 0.04;
+
+                } else {
+                    const breath = Math.sin(animTime) * 0.05;
+
+                    torsoMesh.position.y = lerp(torsoMesh.position.y, 1.5 + breath, 0.1);
+                    torsoMesh.rotation.x = lerp(torsoMesh.rotation.x, 0, 0.1);
+
+                    armLUpper.group.rotation.x = lerp(armLUpper.group.rotation.x, 0, 0.1);
+                    armRUpper.group.rotation.x = lerp(armRUpper.group.rotation.x, 0, 0.1);
+                    armLUpper.group.rotation.z = lerp(armLUpper.group.rotation.z, 0.18 + breath * 0.5, 0.1);
+                    armRUpper.group.rotation.z = lerp(armRUpper.group.rotation.z, -0.18 - breath * 0.5, 0.1);
+
+                    armLLower.group.rotation.x = lerp(armLLower.group.rotation.x, -0.1, 0.1);
+                    armRLower.group.rotation.x = lerp(armRLower.group.rotation.x, -0.1, 0.1);
+
+                    legLUpper.group.rotation.x = lerp(legLUpper.group.rotation.x, 0, 0.1);
+                    legRUpper.group.rotation.x = lerp(legRUpper.group.rotation.x, 0, 0.1);
+                    legLLower.group.rotation.x = lerp(legLLower.group.rotation.x, 0, 0.1);
+                    legRLower.group.rotation.x = lerp(legRLower.group.rotation.x, 0, 0.1);
+
+                    headGroup.position.y = 2.4 + breath * 0.6;
+                }
+            }
+
+            // --- 8. GAME LOOP ---
+            const clock = new THREE.Clock();
+
+            function animate() {
+                requestAnimationFrame(animate);
+
+                const delta = clock.getDelta();
+
+                let moveX = 0;
+                let moveZ = 0;
+                if (keys.w) moveZ -= 1;
+                if (keys.s) moveZ += 1;
+                if (keys.a) moveX -= 1;
+                if (keys.d) moveX += 1;
+
+                const isMoving = moveX !== 0 || moveZ !== 0;
+                const isRunning = keys.shift && isMoving;
+                const speed = isRunning ? 0.18 : 0.09;
+
+                if (isMoving) {
+                    const inputAngle = Math.atan2(moveX, moveZ);
+                    const targetRotation = cameraAngleX + inputAngle + Math.PI;
+
+                    let diff = targetRotation - character.rotation.y;
+                    while (diff < -Math.PI) diff += Math.PI * 2;
+                    while (diff > Math.PI) diff -= Math.PI * 2;
+                    character.rotation.y += diff * 0.2;
+
+                    const moveAngle = cameraAngleX + inputAngle;
+                    character.position.x -= Math.sin(moveAngle) * speed;
+                    character.position.z -= Math.cos(moveAngle) * speed;
+
+                    const limit = (baseplateSize / 2) - 1;
+                    character.position.x = Math.max(-limit, Math.min(limit, character.position.x));
+                    character.position.z = Math.max(-limit, Math.min(limit, character.position.z));
+                }
+
+                velocityY += gravity;
+                posY += velocityY;
+
+                if (posY <= 0) {
+                    posY = 0;
+                    velocityY = 0;
+                    isGrounded = true;
+                }
+                character.position.y = posY;
+
+                animateCharacter(delta, speed, isMoving, isRunning);
+
+                camera.position.x = character.position.x + cameraDistance * Math.sin(cameraAngleX) * Math.cos(cameraAngleY);
+                camera.position.y = character.position.y + 1.5 + cameraDistance * Math.sin(cameraAngleY);
+                camera.position.z = character.position.z + cameraDistance * Math.cos(cameraAngleX) * Math.cos(cameraAngleY);
+                
+                const targetLookAt = character.position.clone().add(new THREE.Vector3(0, 1.5, 0));
+                camera.lookAt(targetLookAt);
+
+                charLight.position.copy(character.position).add(new THREE.Vector3(0, 2.5, 0));
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
     </script>
 </body>
 </html>
