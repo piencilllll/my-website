@@ -688,7 +688,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Far From Home - 3D Sequence</title>
+    <title>Far From Home - Full Transition Version</title>
     <style>
         :root {
             --ui-border: #ffffff;
@@ -711,6 +711,23 @@
             overflow: hidden;
         }
 
+        /* --- STAGE CONTAINERS --- */
+        #stage2D {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 30px;
+            background-color: #020305;
+            transition: opacity 1.5s ease;
+        }
+
         #viewport3d {
             position: absolute;
             top: 0;
@@ -718,6 +735,9 @@
             width: 100vw;
             height: 100vh;
             z-index: 1;
+            display: none; /* Hidden until 2D phase completes */
+            opacity: 0;
+            transition: opacity 2s ease;
         }
 
         .crt-overlay {
@@ -733,6 +753,63 @@
             pointer-events: none;
         }
 
+        #fadeOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 20;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1.5s ease;
+        }
+
+        /* --- 2D CANVAS VIEW & BUTTONS --- */
+        .canvas-area {
+            width: 100%;
+            max-width: 950px;
+            height: 55%;
+            border: 4px solid var(--ui-border);
+            border-radius: 6px;
+            position: relative;
+            background: #080a0f;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .inspect-btn-group {
+            position: absolute;
+            bottom: 20px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .inspect-btn {
+            background: #080a0f;
+            color: #fff;
+            border: 2px solid #fff;
+            padding: 10px 16px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: all 0.2s ease;
+        }
+
+        .inspect-btn:hover {
+            background: #fff;
+            color: #000;
+        }
+
+        .inspect-btn.checked {
+            border-color: #555;
+            color: #555;
+            text-decoration: line-through;
+        }
+
+        /* --- DIALOGUE UI --- */
         #uiLayer {
             position: absolute;
             top: 0;
@@ -818,7 +895,7 @@
             padding: 12px 18px;
             border-radius: 4px;
             display: none;
-            z-index: 5;
+            z-index: 15;
             font-size: 0.85rem;
             letter-spacing: 1px;
         }
@@ -826,18 +903,41 @@
         @keyframes blink { 50% { opacity: 0; } }
     </style>
 
-    <!-- Three.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-    <div id="viewport3d"></div>
+    <div id="fadeOverlay"></div>
     <div class="crt-overlay"></div>
+
+    <!-- 2D STAGE -->
+    <div id="stage2D">
+        <div class="canvas-area">
+            <svg viewBox="0 0 400 200" style="width: 80%; height: 80%;">
+                <!-- Minimal 2D Boat Artwork -->
+                <path d="M 50,130 L 350,130 L 310,170 L 90,170 Z" fill="none" stroke="#ffffff" stroke-width="4"/>
+                <rect x="170" y="80" width="60" height="50" fill="none" stroke="#ffffff" stroke-width="3"/>
+                <circle cx="120" cy="115" r="12" fill="none" stroke="#ffffff" stroke-width="3"/>
+                <circle cx="280" cy="115" r="12" fill="none" stroke="#ffffff" stroke-width="3"/>
+                <path d="M 20,175 Q 200,165 380,175" stroke="#ffffff" stroke-width="2" stroke-dasharray="4" fill="none"/>
+            </svg>
+
+            <div class="inspect-btn-group" id="btnGroup">
+                <button class="inspect-btn" onclick="inspectNode('horizon')">SCAN HORIZON</button>
+                <button class="inspect-btn" onclick="inspectNode('engine')">CHECK KAWM CORE</button>
+                <button class="inspect-btn" onclick="inspectNode('hull')">CHECK HULL</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3D STAGE -->
+    <div id="viewport3d"></div>
 
     <div id="controlsHUD">
         [W / UP] ACCELERATE | [A/D / LEFT/RIGHT] STEER KAWM BOAT
     </div>
 
+    <!-- DIALOGUE UI LAYER -->
     <div id="uiLayer">
         <div class="dialogue-box" id="dialogueBox">
             <div class="portrait-frame">
@@ -845,14 +945,14 @@
                 <div id="portraitLabel" class="portrait-label">SYS</div>
             </div>
             <div class="dialogue-content">
-                <div id="dialogueText" class="dialogue-text">Initializing 3D navigation module...</div>
-                <div class="prompt-hint" id="promptHint">[ CLICK / SPACE TO CONTINUE ]</div>
+                <div id="dialogueText" class="dialogue-text">Perform system diagnostics before navigating.</div>
+                <div class="prompt-hint" id="promptHint">[ CLICK TO CONTINUE ]</div>
             </div>
         </div>
     </div>
 
     <script>
-        // --- PORTRAIT DATA ---
+        // --- PORTRAITS ---
         const portraits = {
             MOE: `
                 <circle cx="50" cy="50" r="30" fill="#ffffff" stroke="#000000" stroke-width="3.5"/>
@@ -881,9 +981,7 @@
         // --- AUDIO ENGINE ---
         class AudioEngine {
             constructor() { this.ctx = null; }
-            init() {
-                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-            }
+            init() { if(!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
             playBlip(freq = 350) {
                 if (!this.ctx) return;
                 const osc = this.ctx.createOscillator();
@@ -898,207 +996,15 @@
                 osc.stop(this.ctx.currentTime + 0.05);
             }
         }
-
         const audio = new AudioEngine();
 
-        // --- THREE.JS SCENE SETUP ---
-        const container = document.getElementById('viewport3d');
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x120320); // Dark purple atmosphere
-        scene.fog = new THREE.FogExp2(0x1a062d, 0.018);
-
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        container.appendChild(renderer.domElement);
-
-        // --- LIGHTING ---
-        const ambientLight = new THREE.AmbientLight(0x402060, 1.2);
-        scene.add(ambientLight);
-
-        const purplePointLight = new THREE.PointLight(0x9933ff, 2, 40);
-        purplePointLight.position.set(0, 5, 0);
-        scene.add(purplePointLight);
-
-        // Distant Beacon Light
-        const beaconLight = new THREE.PointLight(0xffffff, 5, 250);
-        beaconLight.position.set(0, 15, -180);
-        scene.add(beaconLight);
-
-        const beaconMesh = new THREE.Mesh(
-            new THREE.SphereGeometry(2, 16, 16),
-            new THREE.MeshBasicMaterial({ color: 0xffffff })
-        );
-        beaconMesh.position.copy(beaconLight.position);
-        scene.add(beaconMesh);
-
-        // --- KAWM OCEAN WATER ---
-        const waterGeo = new THREE.PlaneGeometry(500, 500, 40, 40);
-        const waterMat = new THREE.MeshLambertMaterial({
-            color: 0x080214,
-            wireframe: true,
-            transparent: true,
-            opacity: 0.7
-        });
-        const water = new THREE.Mesh(waterGeo, waterMat);
-        water.rotation.x = -Math.PI / 2;
-        scene.add(water);
-
-        // --- BOAT ASSEMBLY ---
-        const boatGroup = new THREE.Group();
-        scene.add(boatGroup);
-
-        // Hull
-        const hullGeo = new THREE.BoxGeometry(4.5, 1.8, 9);
-        const hullMat = new THREE.MeshLambertMaterial({ color: 0x1a120b });
-        const hull = new THREE.Mesh(hullGeo, hullMat);
-        hull.position.y = 0.5;
-        boatGroup.add(hull);
-
-        // Cabin
-        const cabinGeo = new THREE.BoxGeometry(3.8, 2.2, 4.5);
-        const cabinMat = new THREE.MeshLambertMaterial({ color: 0x0d0d12 });
-        const cabin = new THREE.Mesh(cabinGeo, cabinMat);
-        cabin.position.set(0, 2, -0.5);
-        boatGroup.add(cabin);
-
-        // Wheel (Helm)
-        const wheelGeo = new THREE.TorusGeometry(0.45, 0.05, 8, 16);
-        const wheelMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        const helmWheel = new THREE.Mesh(wheelGeo, wheelMat);
-        helmWheel.position.set(0, 2.3, 0.8);
-        boatGroup.add(helmWheel);
-
-        // SYSTEM (S) Terminal Screen & Panel
-        const terminalGeo = new THREE.BoxGeometry(0.9, 0.7, 0.1);
-        const terminalMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-        const terminal = new THREE.Mesh(terminalGeo, terminalMat);
-        terminal.position.set(1.1, 2.4, 0.85);
-        terminal.rotation.y = -0.25;
-        boatGroup.add(terminal);
-
-        // Glowing Screen Face
-        const screenGeo = new THREE.PlaneGeometry(0.8, 0.6);
-        const screenMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        const screenMesh = new THREE.Mesh(screenGeo, screenMat);
-        screenMesh.position.set(1.1, 2.4, 0.91);
-        screenMesh.rotation.y = -0.25;
-        boatGroup.add(screenMesh);
-
-        // Interactive Buttons beside wheel
-        for(let i = 0; i < 3; i++) {
-            const btn = new THREE.Mesh(
-                new THREE.BoxGeometry(0.12, 0.12, 0.12),
-                new THREE.MeshBasicMaterial({ color: i === 0 ? 0xff3333 : 0xffffff })
-            );
-            btn.position.set(-0.8 + (i * 0.25), 2.1, 0.85);
-            boatGroup.add(btn);
-        }
-
-        // Chair for McCrack
-        const chairGeo = new THREE.BoxGeometry(1, 0.1, 1);
-        const chairMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
-        const chair = new THREE.Mesh(chairGeo, chairMat);
-        chair.position.set(-1.1, 1.8, -1.2);
-        boatGroup.add(chair);
-
-        // --- CHARACTERS (Stylized 3D Kawmlings) ---
-        function createKawmling(isMoe) {
-            const charGroup = new THREE.Group();
-            
-            // Sphere body/head
-            const bodyGeo = new THREE.SphereGeometry(0.55, 16, 16);
-            const bodyMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-            const body = new THREE.Mesh(bodyGeo, bodyMat);
-            body.position.y = 0.55;
-            charGroup.add(body);
-
-            if (isMoe) {
-                // Black Durag cap + tail
-                const duragGeo = new THREE.SphereGeometry(0.58, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.55);
-                const duragMat = new THREE.MeshBasicMaterial({ color: 0x050508 });
-                const durag = new THREE.Mesh(duragGeo, duragMat);
-                durag.position.y = 0.56;
-                charGroup.add(durag);
-
-                const tailGeo = new THREE.BoxGeometry(0.2, 0.5, 0.05);
-                const tail = new THREE.Mesh(tailGeo, duragMat);
-                tail.position.set(0, 0.5, -0.55);
-                tail.rotation.x = 0.3;
-                charGroup.add(tail);
-            } else {
-                // McCrack Roof Top Hat Accent
-                const hatGeo = new THREE.ConeGeometry(0.4, 0.5, 4);
-                const hatMat = new THREE.MeshBasicMaterial({ color: 0x050508 });
-                const hat = new THREE.Mesh(hatGeo, hatMat);
-                hat.position.y = 1.1;
-                charGroup.add(hat);
-            }
-
-            return charGroup;
-        }
-
-        const moe3D = createKawmling(true);
-        moe3D.position.set(0, 1.4, 0.3); // At the wheel
-        boatGroup.add(moe3D);
-
-        const mcCrack3D = createKawmling(false);
-        mcCrack3D.position.set(-1.1, 1.8, -1.2); // On chair
-        boatGroup.add(mcCrack3D);
-
-        // --- RAIN PARTICLE SYSTEM ---
-        const rainCount = 1200;
-        const rainGeo = new THREE.BufferGeometry();
-        const rainPos = new Float32Array(rainCount * 3);
-
-        for(let i = 0; i < rainCount * 3; i += 3) {
-            rainPos[i] = (Math.random() - 0.5) * 80;
-            rainPos[i+1] = Math.random() * 40;
-            rainPos[i+2] = (Math.random() - 0.5) * 80;
-        }
-
-        rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
-        const rainMat = new THREE.PointsMaterial({
-            color: 0xccccff,
-            size: 0.15,
-            transparent: true,
-            opacity: 0.6
-        });
-        const rainParticles = new THREE.Points(rainGeo, rainMat);
-        scene.add(rainParticles);
-
-        // --- CINEMATIC SEQUENCE & DIALOGUE DATA ---
-        const cinematicDialogue = [
-            { speaker: "SYS", text: "[ EVALUATING KAWM ENVIRONMENT... RAIN DENSITY: HIGH. VISIBILITY: LOW. ]" },
-            { speaker: "MCCRACK", text: "Moe... the sky turned complete purple. Look over there, past the terminal!" },
-            { speaker: "MOE", text: "I see it. That bright white light floating in the distance..." },
-            { speaker: "MCCRACK", text: "Should we head straight for it? Is SYSTEM done checking the boat?" },
-            { speaker: "SYS", text: "[ EVALUATION COMPLETE. HULL STABLE. DIRECT CONTROL GRANTED TO MOE. ]" },
-            { speaker: "MOE", text: "Hold on tight, McCrack. Taking the wheel now!" }
-        ];
-
-        let dialogueIdx = 0;
+        // --- TYPEWRITER SYSTEM ---
         let isTyping = false;
-        let isCinematic = true;
-
-        // Camera Cut Sequences (Relative to boat)
-        const cameraAngles = [
-            { pos: new THREE.Vector3(0, 6, -8), lookAt: new THREE.Vector3(0, 2, 0) },   // Front Wide Cinematic
-            { pos: new THREE.Vector3(-2.5, 3.2, -2), lookAt: new THREE.Vector3(-1.1, 2.2, -1.2) }, // McCrack
-            { pos: new THREE.Vector3(2.2, 3.2, 1.2), lookAt: new THREE.Vector3(0, 2.2, 0.3) },  // Moe & Wheel
-            { pos: new THREE.Vector3(-2.5, 3.2, -2), lookAt: new THREE.Vector3(-1.1, 2.2, -1.2) }, // McCrack
-            { pos: new THREE.Vector3(1.8, 3.0, 1.5), lookAt: new THREE.Vector3(1.1, 2.4, 0.85) }, // SYSTEM Screen
-            { pos: new THREE.Vector3(0, 3.2, 1.8), lookAt: new THREE.Vector3(0, 2.2, -10) }    // Driving View
-        ];
-
-        function updatePortrait(speaker) {
+        function typeDialogue(speaker, text, callback) {
+            isTyping = true;
             document.getElementById('portraitSVG').innerHTML = portraits[speaker] || portraits.SYS;
             document.getElementById('portraitLabel').innerText = speaker;
-        }
-
-        function typeDialogue(text) {
-            isTyping = true;
+            
             const el = document.getElementById('dialogueText');
             el.innerText = "";
             let i = 0;
@@ -1110,83 +1016,255 @@
                 } else {
                     clearInterval(timer);
                     isTyping = false;
+                    if (callback) callback();
                 }
-            }, 25);
+            }, 20);
         }
 
-        function advanceCinematic() {
+        // --- PHASE 1: 2D SYSTEM CHECK LOGIC ---
+        const checkedNodes = new Set();
+
+        function inspectNode(node) {
+            audio.init();
             if (isTyping) return;
 
-            if (dialogueIdx < cinematicDialogue.length) {
-                const line = cinematicDialogue[dialogueIdx];
-                updatePortrait(line.speaker);
-                typeDialogue(line.text);
+            const btn = event.target;
+            btn.classList.add('checked');
+            checkedNodes.add(node);
 
-                // Update Camera Angle smoothly
-                const camData = cameraAngles[dialogueIdx];
+            if (node === 'horizon') {
+                typeDialogue("SYS", "[ HORIZON SCAN: DENSE FOG DETECTED. HIGH INTENSITY LIGHT SIGNAL DISTANT SOUTH-WEST. ]");
+            } else if (node === 'engine') {
+                typeDialogue("SYS", "[ KAWM CORE CHECK: KINETIC FLUID PRESSURE NOMINAL. IGNITION READY. ]");
+            } else if (node === 'hull') {
+                typeDialogue("SYS", "[ HULL INTEGRITY: 94%. MINIMAL WEAR ON LOWER CANVAS SEAMS. ]");
+            }
+
+            if (checkedNodes.size === 3) {
+                document.getElementById('btnGroup').style.display = 'none';
+                setTimeout(() => {
+                    typeDialogue("SYS", "[ SYSTEM CHECK COMPLETE. INITIALIZING 3D ENVIRONMENT RENDER... ]", () => {
+                        setTimeout(transitionTo3D, 1200);
+                    });
+                }, 1500);
+            }
+        }
+
+        // --- TRANSITION TO 3D ---
+        function transitionTo3D() {
+            const curtain = document.getElementById('fadeOverlay');
+            curtain.style.opacity = '1';
+
+            setTimeout(() => {
+                // Hide 2D Stage entirely
+                document.getElementById('stage2D').style.display = 'none';
+                
+                // Show 3D Viewport
+                const vp3d = document.getElementById('viewport3d');
+                vp3d.style.display = 'block';
+                
+                init3DScene(); // Spin up Three.js
+                
+                setTimeout(() => {
+                    vp3d.style.opacity = '1';
+                    curtain.style.opacity = '0';
+                    advance3DCinematic(); // Start 3D Dialogue
+                }, 300);
+            }, 1500);
+        }
+
+        // --- PHASE 2: THREE.JS 3D SCENE & ENGINE ---
+        let scene, camera, renderer, boatGroup, helmWheel, beaconLight, waterGeo, rainGeo, rainCount = 1200;
+        let is3DInitialized = false;
+
+        function init3DScene() {
+            if (is3DInitialized) return;
+            is3DInitialized = true;
+
+            const container = document.getElementById('viewport3d');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x120320);
+            scene.fog = new THREE.FogExp2(0x1a062d, 0.018);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            // Lights
+            scene.add(new THREE.AmbientLight(0x402060, 1.2));
+            const pointLight = new THREE.PointLight(0x9933ff, 2, 40);
+            pointLight.position.set(0, 5, 0);
+            scene.add(pointLight);
+
+            beaconLight = new THREE.PointLight(0xffffff, 5, 250);
+            beaconLight.position.set(0, 15, -180);
+            scene.add(beaconLight);
+
+            const beaconMesh = new THREE.Mesh(new THREE.SphereGeometry(2, 16, 16), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+            beaconMesh.position.copy(beaconLight.position);
+            scene.add(beaconMesh);
+
+            // Ocean Water
+            waterGeo = new THREE.PlaneGeometry(500, 500, 40, 40);
+            const waterMat = new THREE.MeshLambertMaterial({ color: 0x080214, wireframe: true, transparent: true, opacity: 0.7 });
+            const water = new THREE.Mesh(waterGeo, waterMat);
+            water.rotation.x = -Math.PI / 2;
+            scene.add(water);
+
+            // Boat
+            boatGroup = new THREE.Group();
+            scene.add(boatGroup);
+
+            const hull = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.8, 9), new THREE.MeshLambertMaterial({ color: 0x1a120b }));
+            hull.position.y = 0.5;
+            boatGroup.add(hull);
+
+            const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.8, 2.2, 4.5), new THREE.MeshLambertMaterial({ color: 0x0d0d12 }));
+            cabin.position.set(0, 2, -0.5);
+            boatGroup.add(cabin);
+
+            helmWheel = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.05, 8, 16), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+            helmWheel.position.set(0, 2.3, 0.8);
+            boatGroup.add(helmWheel);
+
+            // System Terminal Console
+            const terminal = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.7, 0.1), new THREE.MeshBasicMaterial({ color: 0x000000 }));
+            terminal.position.set(1.1, 2.4, 0.85);
+            terminal.rotation.y = -0.25;
+            boatGroup.add(terminal);
+
+            const screenMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.6), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+            screenMesh.position.set(1.1, 2.4, 0.91);
+            screenMesh.rotation.y = -0.25;
+            boatGroup.add(screenMesh);
+
+            // Characters
+            const moe3D = createKawmling3D(true);
+            moe3D.position.set(0, 1.4, 0.3);
+            boatGroup.add(moe3D);
+
+            const mcCrack3D = createKawmling3D(false);
+            mcCrack3D.position.set(-1.1, 1.8, -1.2);
+            boatGroup.add(mcCrack3D);
+
+            // Rain Particles
+            rainGeo = new THREE.BufferGeometry();
+            const rainPos = new Float32Array(rainCount * 3);
+            for(let i = 0; i < rainCount * 3; i += 3) {
+                rainPos[i] = (Math.random() - 0.5) * 80;
+                rainPos[i+1] = Math.random() * 40;
+                rainPos[i+2] = (Math.random() - 0.5) * 80;
+            }
+            rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
+            scene.add(new THREE.Points(rainGeo, new THREE.PointsMaterial({ color: 0xccccff, size: 0.15, transparent: true, opacity: 0.6 })));
+
+            animate3D();
+        }
+
+        function createKawmling3D(isMoe) {
+            const charGroup = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 16), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+            body.position.y = 0.55;
+            charGroup.add(body);
+
+            if (isMoe) {
+                const durag = new THREE.Mesh(new THREE.SphereGeometry(0.58, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.55), new THREE.MeshBasicMaterial({ color: 0x050508 }));
+                durag.position.y = 0.56;
+                charGroup.add(durag);
+            } else {
+                const hat = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.5, 4), new THREE.MeshBasicMaterial({ color: 0x050508 }));
+                hat.position.y = 1.1;
+                charGroup.add(hat);
+            }
+            return charGroup;
+        }
+
+        // --- 3D CINEMATIC DIALOGUE DATA ---
+        const cinematicDialogue = [
+            { speaker: "SYS", text: "[ EVALUATING KAWM ENVIRONMENT... RAIN DENSITY: HIGH. VISIBILITY: LOW. ]" },
+            { speaker: "MCCRACK", text: "Moe... the sky turned complete purple. Look over there, past the terminal!" },
+            { speaker: "MOE", text: "I see it. That bright white light floating in the distance..." },
+            { speaker: "MCCRACK", text: "Should we head straight for it? Is SYSTEM done checking the boat?" },
+            { speaker: "SYS", text: "[ EVALUATION COMPLETE. HULL STABLE. DIRECT CONTROL GRANTED TO MOE. ]" },
+            { speaker: "MOE", text: "Hold on tight, McCrack. Taking the wheel now!" }
+        ];
+
+        let cinematicIdx = 0;
+        let isCinematicActive = true;
+
+        const cameraAngles = [
+            { pos: new THREE.Vector3(0, 6, -8), lookAt: new THREE.Vector3(0, 2, 0) },
+            { pos: new THREE.Vector3(-2.5, 3.2, -2), lookAt: new THREE.Vector3(-1.1, 2.2, -1.2) },
+            { pos: new THREE.Vector3(2.2, 3.2, 1.2), lookAt: new THREE.Vector3(0, 2.2, 0.3) },
+            { pos: new THREE.Vector3(-2.5, 3.2, -2), lookAt: new THREE.Vector3(-1.1, 2.2, -1.2) },
+            { pos: new THREE.Vector3(1.8, 3.0, 1.5), lookAt: new THREE.Vector3(1.1, 2.4, 0.85) },
+            { pos: new THREE.Vector3(0, 3.2, 1.8), lookAt: new THREE.Vector3(0, 2.2, -10) }
+        ];
+
+        const targetCamPos = new THREE.Vector3();
+        const targetCamLookAt = new THREE.Vector3();
+        const currentCamLookAt = new THREE.Vector3();
+
+        function advance3DCinematic() {
+            if (isTyping) return;
+
+            if (cinematicIdx < cinematicDialogue.length) {
+                const line = cinematicDialogue[cinematicIdx];
+                typeDialogue(line.speaker, line.text);
+
+                const camData = cameraAngles[cinematicIdx];
                 targetCamPos.copy(camData.pos);
                 targetCamLookAt.copy(camData.lookAt);
 
-                dialogueIdx++;
+                cinematicIdx++;
             } else {
-                // Transition to Driving Gameplay Mode
-                isCinematic = false;
+                // Gameplay start
+                isCinematicActive = false;
                 document.getElementById('dialogueBox').style.display = 'none';
                 document.getElementById('controlsHUD').style.display = 'block';
             }
         }
 
-        // Camera Animation Targets
-        const targetCamPos = cameraAngles[0].pos.clone();
-        const targetCamLookAt = cameraAngles[0].lookAt.clone();
-        const currentCamLookAt = targetCamLookAt.clone();
-
-        // --- BOAT DRIVING CONTROLS ---
-        let boatSpeed = 0;
-        let boatRotation = 0;
-        const keys = { w: false, a: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowRight: false };
+        // --- CONTROLS & ANIMATION LOOP ---
+        let boatSpeed = 0, boatRotation = 0;
+        const keys = {};
 
         window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
-                if (isCinematic) advanceCinematic();
+            if (e.code === 'Space' && is3DInitialized && isCinematicActive) {
+                advance3DCinematic();
             }
-            if (keys.hasOwnProperty(e.key) || keys.hasOwnProperty(e.code)) {
-                keys[e.key] = true;
-                keys[e.code] = true;
-            }
+            keys[e.key] = true;
+            keys[e.code] = true;
         });
 
         window.addEventListener('keyup', (e) => {
-            if (keys.hasOwnProperty(e.key) || keys.hasOwnProperty(e.code)) {
-                keys[e.key] = false;
-                keys[e.code] = false;
-            }
+            keys[e.key] = false;
+            keys[e.code] = false;
         });
 
         document.getElementById('uiLayer').addEventListener('click', () => {
             audio.init();
-            if (isCinematic) advanceCinematic();
+            if (is3DInitialized && isCinematicActive) advance3DCinematic();
         });
 
-        // --- MAIN ANIMATION LOOP ---
-        let clock = new THREE.Clock();
-
-        function animate() {
-            requestAnimationFrame(animate);
+        const clock = new THREE.Clock();
+        function animate3D() {
+            requestAnimationFrame(animate3D);
             const time = clock.getElapsedTime();
 
-            // Water Waving Effect
+            // Water Waving
             const posAttr = waterGeo.attributes.position;
             for (let i = 0; i < posAttr.count; i++) {
                 const u = posAttr.getX(i);
                 const v = posAttr.getY(i);
-                const z = Math.sin(time * 2 + u * 0.1) * 0.4 + Math.cos(time * 1.5 + v * 0.1) * 0.4;
-                posAttr.setZ(i, z);
+                posAttr.setZ(i, Math.sin(time * 2 + u * 0.1) * 0.4 + Math.cos(time * 1.5 + v * 0.1) * 0.4);
             }
             waterGeo.computeVertexNormals();
             posAttr.needsUpdate = true;
 
-            // Rain Particle Fall
+            // Rain Fall
             const rPositions = rainGeo.attributes.position.array;
             for (let i = 1; i < rainCount * 3; i += 3) {
                 rPositions[i] -= 0.8;
@@ -1194,20 +1272,18 @@
             }
             rainGeo.attributes.position.needsUpdate = true;
 
-            // Boat Bobbing Motion
             const bobY = Math.sin(time * 2) * 0.15;
             const rollZ = Math.cos(time * 1.5) * 0.04;
 
-            if (isCinematic) {
+            if (isCinematicActive) {
                 boatGroup.position.y = bobY;
                 boatGroup.rotation.z = rollZ;
 
-                // Interpolate Camera towards cut target
                 camera.position.lerp(boatGroup.position.clone().add(targetCamPos), 0.05);
                 currentCamLookAt.lerp(boatGroup.position.clone().add(targetCamLookAt), 0.05);
                 camera.lookAt(currentCamLookAt);
             } else {
-                // Driving Controls
+                // Steering
                 if (keys.w || keys.ArrowUp) boatSpeed = THREE.MathUtils.lerp(boatSpeed, 0.25, 0.03);
                 else boatSpeed = THREE.MathUtils.lerp(boatSpeed, 0, 0.02);
 
@@ -1216,33 +1292,28 @@
 
                 boatGroup.rotation.y = boatRotation;
                 helmWheel.rotation.z = -boatRotation * 4;
-
                 boatGroup.translateZ(-boatSpeed);
                 boatGroup.position.y = bobY;
                 boatGroup.rotation.z = rollZ;
 
-                // Follow Camera behind boat
                 const followCamPos = new THREE.Vector3(0, 3.5, 7.5).applyAxisAngle(new THREE.Vector3(0, 1, 0), boatRotation).add(boatGroup.position);
                 camera.position.lerp(followCamPos, 0.08);
                 camera.lookAt(boatGroup.position.clone().add(new THREE.Vector3(0, 2, -5).applyAxisAngle(new THREE.Vector3(0, 1, 0), boatRotation)));
             }
 
-            // Beacon Glow Pulse
             beaconLight.intensity = 4 + Math.sin(time * 4) * 1.5;
-
             renderer.render(scene, camera);
         }
 
-        // Window Resize
         window.addEventListener('resize', () => {
+            if (!is3DInitialized) return;
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // Initialize First Frame
-        advanceCinematic();
-        animate();
+        // Initialize dialogue default text
+        document.getElementById('portraitSVG').innerHTML = portraits.SYS;
     </script>
 </body>
 </html>
