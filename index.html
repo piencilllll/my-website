@@ -56,7 +56,6 @@
 
         canvas#fxCanvas { z-index: 3; }
         
-        /* Boat Canvas Hidden by default, smooth opacity transitions */
         canvas#boatCanvas { 
             z-index: 1; 
             opacity: 0;
@@ -130,9 +129,13 @@
             opacity: 0;
             z-index: 2;
             transition: opacity 1.5s ease;
+            pointer-events: none;
         }
 
-        .boat-scene.active { opacity: 1; }
+        .boat-scene.active { 
+            opacity: 1; 
+            pointer-events: auto;
+        }
 
         .ocean-view {
             width: 92%;
@@ -296,8 +299,8 @@
         <div id="boatScene" class="boat-scene">
             <div class="ocean-view">
                 <div id="nodeContainer" class="node-container">
-                    <div class="dash-node" onclick="inspectNode('Ocean Waters', 'The Kawm Ocean stretches endlessly into the pitch dark. Glowing waves rock the hull softly.')">CHECK WATERS</div>
-                    <div class="dash-node" onclick="inspectNode('Wooden Boat', 'A weathered wooden vessel. It brought you safely away, but water slowly seeps through the joints.')">INSPECT BOAT</div>
+                    <div class="dash-node" onclick="inspectNode('Kawm Waters', 'The dark surface stretches endlessly. Glowing waves rock the hull softly.')">CHECK KAWM</div>
+                    <div class="dash-node" onclick="inspectNode('Wooden Boat', 'A weathered wooden vessel. It brought you safely away, but liquid slowly seeps through the joints.')">INSPECT BOAT</div>
                     <div class="dash-node" onclick="inspectNode('Distant Horizon', 'Faint flickering lights loom in the distance... Could it be shelter?')">SCAN HORIZON</div>
                 </div>
             </div>
@@ -544,11 +547,12 @@
         let particles, boatAnim;
         let currentStep = 0;
         let isTyping = false;
+        let isIntroActive = true;
 
         const introSequences = [
             "Our home village fell in a single night...",
             "Smoke covered the sky as we reached the shore.",
-            "Two Kawmlings, one small wooden boat, and the endless Kawm Ocean ahead.",
+            "Two Kawmlings, one small wooden boat, and the endless Kawm ahead.",
             "We drifted into the dark, searching for shelter... or anything left standing."
         ];
 
@@ -556,7 +560,7 @@
             { speaker: "MCCRACK", style: "MCCRACK_WORRIED", text: "Moe... do you think anyone else made it out of the village?" },
             { speaker: "MOE", style: "MOE_SERIOUS", text: "I don't know, McCrack. But as long as this boat floats, we keep moving." },
             { speaker: "MCCRACK", style: "MCCRACK_HOPEFUL", text: "Look at the horizon. There's a faint light out there... maybe it's a safe shelter." },
-            { speaker: "MOE", style: "MOE_DETERMINED", text: "Keep your guard up. Check the waters and horizon before we pull closer." }
+            { speaker: "MOE", style: "MOE_DETERMINED", text: "Keep your guard up. Check the Kawm and horizon before we pull closer." }
         ];
 
         let dialogueIndex = 0;
@@ -604,6 +608,9 @@
                 const boatScene = document.getElementById('boatScene');
                 boatScene.classList.add('active');
                 
+                // Allow interactions now that intro is complete
+                isIntroActive = false;
+                
                 // Fade boat animation in ONLY when dialogue starts
                 document.getElementById('boatCanvas').classList.add('visible');
                 
@@ -637,7 +644,7 @@
         }
 
         function advanceDialogue() {
-            if (isTyping) return;
+            if (isIntroActive || isTyping) return;
 
             if (dialogueIndex < boatDialogue.length) {
                 const line = boatDialogue[dialogueIndex];
@@ -654,7 +661,7 @@
         }
 
         function inspectNode(title, detailText) {
-            if (isTyping) return;
+            if (isIntroActive || isTyping) return;
             audio.playThud();
             triggerShake();
             updatePortrait('SYS', 'SYS');
@@ -662,13 +669,13 @@
         }
 
         window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && document.getElementById('boatScene').classList.contains('active')) {
+            if (e.code === 'Space' && !isIntroActive && document.getElementById('boatScene').classList.contains('active')) {
                 advanceDialogue();
             }
         });
 
         document.getElementById('boatScene').addEventListener('click', (e) => {
-            if (!e.target.classList.contains('dash-node')) {
+            if (!isIntroActive && !e.target.classList.contains('dash-node')) {
                 advanceDialogue();
             }
         });
