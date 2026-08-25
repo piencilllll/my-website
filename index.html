@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arcade Prototype</title>
+    <title>Arcade Prototype - Pointer Lock</title>
     <style>
         :root {
             --bg-color: #05070a;
@@ -39,6 +39,7 @@
             border: 2px solid #1a2233;
             border-radius: 6px;
             overflow: hidden;
+            cursor: crosshair;
         }
 
         canvas {
@@ -193,6 +194,7 @@
     <script>
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
+        const container = document.getElementById('game-container');
 
         // UI elements
         const scoreVal = document.getElementById('score-val');
@@ -254,9 +256,41 @@
         let isRunning = false;
         let score = 0;
         let wave = 1;
-        let mouseX = canvas.width / 2;
-        let mouseY = canvas.height / 2;
+        let aimX = canvas.width / 2;
+        let aimY = canvas.height / 2;
         let keys = {};
+        let isMouseDown = false;
+
+        // Pointer Lock Mechanics
+        function requestLock() {
+            canvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock;
+            canvas.requestPointerLock();
+        }
+
+        canvas.addEventListener('click', () => {
+            if (isRunning && document.pointerLockElement !== canvas) {
+                requestLock();
+            }
+        });
+
+        document.addEventListener('mousemove', e => {
+            if (!isRunning) return;
+
+            if (document.pointerLockElement === canvas) {
+                // Virtual Reticle tracking via relative motion delta
+                aimX += e.movementX;
+                aimY += e.movementY;
+            } else {
+                // Fallback direct coordinates
+                const rect = canvas.getBoundingClientRect();
+                aimX = e.clientX - rect.left;
+                aimY = e.clientY - rect.top;
+            }
+
+            // Clamp reticle inside screen bounds
+            aimX = Math.max(0, Math.min(canvas.width, aimX));
+            aimY = Math.max(0, Math.min(canvas.height, aimY));
+        });
 
         // Collections
         let player;
@@ -272,17 +306,21 @@
                 player.dash();
             }
         });
-        window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
-        
-        canvas.addEventListener('mousemove', e => {
-            const rect = canvas.getBoundingClientRect();
-            mouseX = e.clientX - rect.left;
-            mouseY = e.clientY - rect.top;
+
+        window.addEventListener('keyup', e => {
+            keys[e.key.toLowerCase()] = false;
         });
 
-        canvas.addEventListener('mousedown', e => {
+        window.addEventListener('mousedown', e => {
             if (e.button === 0 && isRunning) {
+                isMouseDown = true;
                 player.shoot();
+            }
+        });
+
+        window.addEventListener('mouseup', e => {
+            if (e.button === 0) {
+                isMouseDown = false;
             }
         });
 
@@ -347,8 +385,8 @@
 
                 if (this.dashCooldown > 0) this.dashCooldown--;
 
-                // Rotate towards mouse pointer
-                this.angle = Math.atan2(mouseY - this.y, mouseX - this.x);
+                // Rotate towards locked aim pointer
+                this.angle = Math.atan2(aimY - this.y, aimX - this.x);
             }
 
             dash() {
@@ -574,6 +612,27 @@
             }
         }
 
+        function drawReticle() {
+            ctx.save();
+            ctx.strokeStyle = '#00f0ff';
+            ctx.lineWidth = 1.5;
+            ctx.shadowColor = '#00f0ff';
+            ctx.shadowBlur = 6;
+
+            ctx.beginPath();
+            ctx.arc(aimX, aimY, 8, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(aimX - 12, aimY); ctx.lineTo(aimX - 4, aimY);
+            ctx.moveTo(aimX + 4, aimY); ctx.lineTo(aimX + 12, aimY);
+            ctx.moveTo(aimX, aimY - 12); ctx.lineTo(aimX, aimY - 4);
+            ctx.moveTo(aimX, aimY + 4); ctx.lineTo(aimX, aimY + 12);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
         function spawnWave() {
             const enemyCount = 6 + wave * 4;
             for (let i = 0; i < enemyCount; i++) {
@@ -599,6 +658,8 @@
             enemies = [];
             particles = [];
             floatingTexts = [];
+            aimX = canvas.width / 2;
+            aimY = canvas.height / 2;
             
             player = new Player();
             
@@ -608,6 +669,8 @@
 
             overlay.classList.add('hidden');
             isRunning = true;
+
+            requestLock();
             spawnWave();
             requestAnimationFrame(gameLoop);
         }
@@ -615,6 +678,9 @@
         function gameOver() {
             isRunning = false;
             playSound('kill');
+            if (document.exitPointerLock) {
+                document.exitPointerLock();
+            }
             screenTitle.textContent = "SIGNAL LOST";
             screenSub.textContent = `FINAL SCORE: ${score} | SURVIVED WAVES: ${wave}`;
             startBtn.textContent = "RETRY";
@@ -634,7 +700,7 @@
             player.draw();
 
             // Automatic attack on mouse hold
-            if (keys['mousedown']) {
+            if (isMouseDown) {
                 player.shoot();
             }
 
@@ -727,6 +793,9 @@
                 ft.draw();
                 if (ft.life <= 0) floatingTexts.splice(i, 1);
             }
+
+            // 6. Custom Reticle
+            drawReticle();
 
             requestAnimationFrame(gameLoop);
         }
