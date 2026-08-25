@@ -3,629 +3,362 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>THE CUTTING ROOM FLOOR</title>
+    <title>CLASSIFIED PROTOCOL :: TERMINAL 07</title>
     <style>
         :root {
-            --bg: #000000;
-            --cyan: #00f3ff;
-            --amber: #ffaa00;
-            --purple: #bc13fe;
-            --text-color: #ffffff;
-            --font: 'Courier New', Courier, monospace;
+            --bg-color: #05070a;
+            --panel-bg: rgba(10, 15, 24, 0.85);
+            --border-color: #1e293b;
+            --accent-cyan: #00f3ff;
+            --accent-amber: #ffaa00;
+            --accent-purple: #bc13fe;
+            --text-main: #cbd5e1;
+            --font-mono: 'Courier New', Courier, monospace;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
 
-        html, body {
+        body, html {
             width: 100vw; height: 100vh; overflow: hidden;
-            background-color: var(--bg); color: var(--text-color);
-            font-family: var(--font);
+            background-color: var(--bg-color); color: var(--text-main);
+            font-family: var(--font-mono);
             display: flex; justify-content: center; align-items: center;
-            cursor: none; /* Custom pixel cursor handles rendering */
+            cursor: none;
+        }
+
+        /* CRT Filter Overlay */
+        .scanlines {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 3px, 6px 100%;
+            pointer-events: none; z-index: 50;
         }
 
         .viewport {
-            width: 100vw; height: 100vh; max-width: 1000px; max-height: 650px;
-            position: relative;
-            background: #000;
-            border: 2px solid #1e293b;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 1);
-            display: flex; flex-direction: column; overflow: hidden;
+            width: 95vw; height: 90vh; max-width: 1100px; max-height: 700px;
+            background: var(--panel-bg);
+            border: 2px solid #334155;
+            box-shadow: 0 0 40px rgba(0, 243, 255, 0.08);
+            display: flex; flex-direction: column;
+            position: relative; overflow: hidden;
+            border-radius: 6px;
         }
 
-        canvas#mainCanvas { width: 100%; height: 100%; display: block; }
+        /* Top Status Bar */
+        .status-bar {
+            height: 36px; background: #090d14; border-bottom: 2px solid #1e293b;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 16px; font-size: 0.75rem; letter-spacing: 2px;
+        }
+        .status-node { color: var(--accent-cyan); display: flex; align-items: center; gap: 8px; }
+        .node-pulse { width: 8px; height: 8px; background: var(--accent-cyan); border-radius: 50%; box-shadow: 0 0 8px var(--accent-cyan); animation: blink 1s infinite alternate; }
 
-        /* UI MENU OVERLAY */
-        .ui-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            z-index: 10;
+        /* Workspace Grid */
+        .workspace {
+            display: flex; flex: 1; height: calc(100% - 36px);
         }
 
-        .menu-container {
-            display: flex; flex-direction: column; gap: 18px; width: 260px;
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 280px; background: rgba(5, 8, 14, 0.6);
+            border-right: 2px solid #1e293b; padding: 16px;
+            display: flex; flex-direction: column; gap: 12px;
         }
 
-        .menu-title {
-            font-size: 1.2rem; font-weight: bold; color: #fff;
-            letter-spacing: 4px; margin-bottom: 25px; text-align: center;
-            text-shadow: 0 0 8px rgba(255,255,255,0.3);
+        .section-header {
+            font-size: 0.7rem; color: #64748b; letter-spacing: 2px;
+            margin-bottom: 4px; text-transform: uppercase;
         }
 
-        .menu-btn {
-            background: rgba(10, 10, 15, 0.85);
-            border: 1px solid #334155;
-            color: var(--text-color);
-            padding: 12px 20px;
-            font-family: var(--font); font-size: 0.9rem; font-weight: bold;
-            letter-spacing: 2px; text-transform: uppercase;
-            cursor: none; border-radius: 4px;
-            transition: all 0.2s ease;
+        .nav-btn {
+            background: rgba(15, 23, 42, 0.8); border: 1px solid #1e293b;
+            color: #94a3b8; padding: 12px 14px; text-align: left;
+            font-family: var(--font-mono); font-size: 0.8rem;
+            cursor: none; border-radius: 4px; transition: all 0.2s;
             display: flex; justify-content: space-between; align-items: center;
         }
 
-        .menu-btn:hover {
-            border-color: var(--cyan);
-            color: var(--cyan);
-            box-shadow: 0 0 12px rgba(0, 243, 255, 0.2);
-            transform: translateX(4px);
+        .nav-btn:hover, .nav-btn.active {
+            border-color: var(--accent-cyan); color: #fff;
+            background: rgba(0, 243, 255, 0.05);
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.15);
         }
 
-        /* UNDERTALE DIALOGUE BOX */
-        .dialogue-box {
-            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-            width: 90%; height: 135px;
-            background: rgba(0, 0, 0, 0.95);
-            border: 3px solid #fff;
-            border-radius: 6px;
-            padding: 12px 16px;
-            display: none; gap: 16px; align-items: center;
-            z-index: 20;
+        .nav-btn.active { border-left: 4px solid var(--accent-cyan); }
+
+        /* Main Display Panel */
+        .main-panel {
+            flex: 1; padding: 24px; display: flex; flex-direction: column;
+            gap: 20px; position: relative; overflow-y: auto;
         }
 
-        .portrait-box {
-            width: 85px; height: 85px;
-            border: 2px solid #fff;
-            background: #000; flex-shrink: 0;
-            display: flex; align-items: center; justify-content: center;
+        /* Display Cards & Canvas Viewers */
+        .canvas-card {
+            background: rgba(2, 6, 23, 0.7); border: 1px solid #1e293b;
+            border-radius: 4px; padding: 16px; position: relative;
+            display: flex; flex-direction: column; gap: 12px;
         }
 
-        canvas#portraitCanvas { width: 80px; height: 80px; }
+        .card-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #1e293b; padding-bottom: 8px;
+        }
+        .card-title { font-size: 0.85rem; font-weight: bold; color: var(--accent-amber); letter-spacing: 1px; }
 
-        .dialogue-content {
-            display: flex; flex-direction: column; justify-content: space-between;
-            height: 100%; flex: 1;
+        canvas#visualizerCanvas {
+            width: 100%; height: 200px; background: #000;
+            border: 1px solid #0f172a; border-radius: 4px;
         }
 
-        .speaker-name {
-            font-size: 0.85rem; font-weight: bold; letter-spacing: 2px;
-            text-transform: uppercase;
+        /* Interactivity Controls */
+        .control-row {
+            display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
         }
 
-        .dialogue-text {
-            font-size: 1rem; line-height: 1.4; color: #fff; height: 50px;
+        .action-btn {
+            background: rgba(30, 41, 59, 0.6); border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan); padding: 8px 16px; font-family: var(--font-mono);
+            font-size: 0.75rem; letter-spacing: 1px; cursor: none;
+            border-radius: 3px; transition: all 0.2s;
+        }
+        .action-btn:hover {
+            background: var(--accent-cyan); color: #000;
+            box-shadow: 0 0 12px rgba(0, 243, 255, 0.4);
         }
 
-        .prompt-next {
-            font-size: 0.7rem; color: var(--amber); align-self: flex-end;
-            animation: blink 0.8s infinite alternate;
+        /* Dynamic Logs Log */
+        .console-output {
+            background: #000; border: 1px solid #1e293b;
+            height: 140px; border-radius: 4px; padding: 12px;
+            font-size: 0.75rem; color: #4ade80; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 4px;
         }
+
+        .redacted {
+            background: #334155; color: #334155; cursor: none; transition: all 0.3s;
+            padding: 0 4px; border-radius: 2px;
+        }
+        .redacted:hover { background: transparent; color: var(--accent-amber); }
 
         @keyframes blink { from { opacity: 0.2; } to { opacity: 1; } }
-
-        /* HUD */
-        .game-hud {
-            position: absolute; top: 15px; left: 20px;
-            display: none; flex-direction: column; gap: 4px; z-index: 10;
-            pointer-events: none;
-        }
-
-        .hud-title { font-size: 0.75rem; color: #fff; font-weight: bold; letter-spacing: 1px; }
-        .hud-sub { font-size: 0.65rem; color: #94a3b8; }
     </style>
 </head>
 <body>
 
+    <div class="scanlines"></div>
+
     <div class="viewport">
-        <canvas id="mainCanvas"></canvas>
-
-        <!-- MENU -->
-        <div class="ui-layer" id="menuLayer">
-            <div class="menu-title">CHAPTER 0</div>
-            <div class="menu-container">
-                <button class="menu-btn" id="btnPlay"><span>[PLAY]</span><span style="color:var(--cyan);">></span></button>
-                <button class="menu-btn" id="btnSettings"><span>[CONFIG]</span><span style="color:var(--amber);">></span></button>
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="status-node">
+                <div class="node-pulse"></div>
+                <span>DATABASE :: STANZAS // ARCHIVE 09</span>
             </div>
+            <div style="color: #64748b;" id="clockDisplay">00:00:00</div>
         </div>
 
-        <!-- DIALOGUE UI -->
-        <div class="dialogue-box" id="dialogueBox">
-            <div class="portrait-box">
-                <canvas id="portraitCanvas" width="80" height="80"></canvas>
+        <div class="workspace">
+            <!-- Sidebar Navigation -->
+            <div class="sidebar">
+                <div class="section-header">ARCHIVE FILES</div>
+                <button class="nav-btn active" data-target="entity">
+                    <span>> ENTITY_68.LOG</span><span style="color:var(--accent-cyan);">[SRC]</span>
+                </button>
+                <button class="nav-btn" data-target="synth">
+                    <span>> AUDIO_MONITOR.WAV</span><span style="color:var(--accent-amber);">[AUX]</span>
+                </button>
+                <button class="nav-btn" data-target="stanza">
+                    <span>> STANZA_MAP.SYS</span><span style="color:var(--accent-purple);">[MAP]</span>
+                </button>
             </div>
-            <div class="dialogue-content">
-                <div class="speaker-name" id="speakerName">...</div>
-                <div class="dialogue-text" id="dialogueText">...</div>
-                <div class="prompt-next">[PRESS ENTER / SPACE]</div>
-            </div>
-        </div>
 
-        <!-- HUD -->
-        <div class="game-hud" id="gameHud">
-            <div class="hud-title">CHAPTER 0: THE CUTTING ROOM FLOOR</div>
-            <div class="hud-sub">WASD / ARROWS TO MOVE | SPACE TO INTERACT</div>
+            <!-- Main Interactive Content Panel -->
+            <div class="main-panel">
+                
+                <!-- VISUALIZER CARD -->
+                <div class="canvas-card">
+                    <div class="card-header">
+                        <span class="card-title" id="panelTitle">ENTITY ANATOMICAL WAVEFORM</span>
+                        <span style="font-size: 0.7rem; color: #64748b;">LIVE FEED</span>
+                    </div>
+                    <canvas id="visualizerCanvas"></canvas>
+                    <div class="control-row">
+                        <button class="action-btn" id="btnPulse">EMIT PULSE</button>
+                        <button class="action-btn" id="btnFrequency" style="border-color:var(--accent-amber); color:var(--accent-amber);">MODULATE</button>
+                    </div>
+                </div>
+
+                <!-- TEXT & LOG CARD -->
+                <div class="canvas-card">
+                    <div class="card-header">
+                        <span class="card-title" style="color: var(--accent-cyan);">DECRYPTED LOG DATA</span>
+                        <span style="font-size: 0.7rem; color: #64748b;">HOVER REDACTED TO DECRYPT</span>
+                    </div>
+                    <p style="font-size: 0.8rem; line-height: 1.5; color: #94a3b8;">
+                        Subject <span class="redacted">ORB-68</span> detected inside dark transition zone. Energy emissions align with <span class="redacted">KINETICALLY UNIFIED MATTER</span>. Threat level remains stable unless exposed to severe structural shifts.
+                    </p>
+                    <div class="console-output" id="consoleLogs">
+                        <div>[SYSTEM]: Terminal link established.</div>
+                        <div>[SYSTEM]: Listening on synthetic audio channels...</div>
+                    </div>
+                </div>
+
+            </div>
         </div>
     </div>
 
     <script>
-        const canvas = document.getElementById('mainCanvas');
+        // Custom Pixel Cursor
+        const cursor = document.createElement('div');
+        cursor.style.position = 'fixed';
+        cursor.style.width = '8px';
+        cursor.style.height = '8px';
+        cursor.style.background = '#00f3ff';
+        cursor.style.pointerEvents = 'none';
+        cursor.style.zIndex = '9999';
+        cursor.style.boxShadow = '0 0 8px #00f3ff';
+        document.body.appendChild(cursor);
+
+        window.addEventListener('mousemove', e => {
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+        });
+
+        // Real-Time Clock
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clockDisplay').innerText = now.toTimeString().split(' ')[0];
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Canvas Engine & Audio Visualizer
+        const canvas = document.getElementById('visualizerCanvas');
         const ctx = canvas.getContext('2d');
-        const pCanvas = document.getElementById('portraitCanvas');
-        const pCtx = pCanvas.getContext('2d');
-
-        const menuLayer = document.getElementById('menuLayer');
-        const dialogueBox = document.getElementById('dialogueBox');
-        const speakerName = document.getElementById('speakerName');
-        const dialogueText = document.getElementById('dialogueText');
-        const gameHud = document.getElementById('gameHud');
-
-        function resize() {
+        
+        function resizeCanvas() {
             canvas.width = canvas.offsetWidth;
             canvas.height = canvas.offsetHeight;
         }
-        window.addEventListener('resize', resize);
-        resize();
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
 
-        // --- WEB AUDIO SOUND SYNTHESIZER ---
+        let activeMode = 'entity';
+        let animTimer = 0;
+        let frequencyMod = 1;
+
+        // Audio Synth Context
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx = null;
 
-        function initAudio() {
+        function triggerSound(freq, type = 'sine') {
             if (!audioCtx) audioCtx = new AudioContext();
-        }
-
-        function playSound(type) {
-            if (!audioCtx) return;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
-
-            const now = audioCtx.currentTime;
-
-            if (type === 'blip_orb') {
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(400, now);
-                osc.frequency.exponentialRampToValueAtTime(800, now + 0.04);
-                gain.gain.setValueAtTime(0.08, now);
-                gain.gain.linearRampToValueAtTime(0, now + 0.04);
-                osc.start(now); osc.stop(now + 0.04);
-            } else if (type === 'blip_vektor') {
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(140, now);
-                gain.gain.setValueAtTime(0.12, now);
-                gain.gain.linearRampToValueAtTime(0, now + 0.05);
-                osc.start(now); osc.stop(now + 0.05);
-            } else if (type === 'click') {
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(300, now);
-                gain.gain.setValueAtTime(0.05, now);
-                gain.gain.linearRampToValueAtTime(0, now + 0.02);
-                osc.start(now); osc.stop(now + 0.02);
-            } else if (type === 'interact') {
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(520, now);
-                osc.frequency.exponentialRampToValueAtTime(1040, now + 0.12);
-                gain.gain.setValueAtTime(0.1, now);
-                gain.gain.linearRampToValueAtTime(0, now + 0.12);
-                osc.start(now); osc.stop(now + 0.12);
-            }
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.3);
         }
 
-        // --- GAME STATES ---
-        // 'MENU', 'INTRO_CINEMATIC', 'CAR_CINEMATIC', 'PLAYING_RPG'
-        let gameState = 'MENU';
-
-        const mouse = { x: canvas.width/2, y: canvas.height/2 };
-        window.addEventListener('mousemove', e => {
-            const rect = canvas.getBoundingClientRect();
-            mouse.x = e.clientX - rect.left;
-            mouse.y = e.clientY - rect.top;
-        });
-
-        // Button Click Handlers
-        document.getElementById('btnPlay').onclick = () => {
-            initAudio();
-            playSound('click');
-            startIntroSequence();
-        };
-
-        document.getElementById('btnSettings').onclick = () => {
-            initAudio();
-            playSound('click');
-        };
-
-        // --- INTRO CINEMATIC DATA ---
-        const introSlides = [
-            { text: "IN THE UNFINISHED DRAFTS...", visual: "PAGE" },
-            { text: "AN ERASED STORY REFUSES TO DIE.", visual: "STRIKE" },
-            { text: "ORB-68 AWAKES IN THE CUTTING ROOM FLOOR.", visual: "BLOT" }
-        ];
-        let introIdx = 0;
-        let introTimer = 0;
-
-        function startIntroSequence() {
-            gameState = 'INTRO_CINEMATIC';
-            menuLayer.style.display = 'none';
-            introIdx = 0;
-            introTimer = 0;
-        }
-
-        // --- CAR CINEMATIC DIALOGUE DATA ---
-        const carDialogue = [
-            { speaker: "Orb-68", color: "#00f3ff", sound: "blip_orb", mood: "orb_neutral", text: "* (Where are we going, Vektor?)" },
-            { speaker: "Vektor", color: "#ffaa00", sound: "blip_vektor", mood: "vektor_normal", text: "Through Sector Zero. We're heading deeper into the draft before the author purges it." },
-            { speaker: "Orb-68", color: "#00f3ff", sound: "blip_orb", mood: "orb_surprised", text: "* (Sector Zero? The city lights look so bright out there...)" },
-            { speaker: "Vektor", color: "#ffaa00", sound: "blip_vektor", mood: "vektor_annoyed", text: "Don't fall for the neon haze, kid. It's unrendered memory. It dissolves if you touch it." },
-            { speaker: "Orb-68", color: "#00f3ff", sound: "blip_orb", mood: "orb_determined", text: "* (I won't let us get erased. What do we do first?)" },
-            { speaker: "Vektor", color: "#ffaa00", sound: "blip_vektor", mood: "vektor_normal", text: "Step out when we park. Find the Inkwell Core on the floor and stabilize it." }
-        ];
-
-        let dialogueIdx = 0;
-        let typewriterText = "";
-        let typewriterTarget = "";
-        let typewriterCharIdx = 0;
-
-        function startCarCinematic() {
-            gameState = 'CAR_CINEMATIC';
-            dialogueBox.style.display = 'flex';
-            dialogueIdx = 0;
-            loadDialogueStep();
-        }
-
-        function loadDialogueStep() {
-            const current = (gameState === 'CAR_CINEMATIC') ? carDialogue[dialogueIdx] : activeNpcDialogue[dialogueIdx];
-            speakerName.innerText = current.speaker.toUpperCase();
-            speakerName.style.color = current.color;
-
-            typewriterTarget = current.text;
-            typewriterText = "";
-            typewriterCharIdx = 0;
-
-            drawPortrait(current.mood);
-        }
-
-        function advanceDialogue() {
-            const sequence = (gameState === 'CAR_CINEMATIC') ? carDialogue : activeNpcDialogue;
-
-            if (typewriterText.length < typewriterTarget.length) {
-                typewriterText = typewriterTarget;
-                dialogueText.innerText = typewriterText;
-                return;
-            }
-
-            dialogueIdx++;
-            if (dialogueIdx < sequence.length) {
-                loadDialogueStep();
-            } else {
-                if (gameState === 'CAR_CINEMATIC') {
-                    startRpgGameplay();
-                } else {
-                    dialogueBox.style.display = 'none';
-                    gameHud.style.display = 'flex';
-                    gameState = 'PLAYING_RPG';
-                }
-            }
-        }
-
-        // --- PLAYABLE RPG DATA ---
-        const player = { x: 500, y: 380, speed: 3.2, frame: 0 };
-        const keys = {};
-
-        const interactables = [
-            { x: 320, y: 260, type: 'inkwell', label: 'INKWELL CORE', text: [
-                { speaker: "Orb-68", color: "#00f3ff", sound: "blip_orb", mood: "orb_happy", text: "* (The Inkwell Core is pulsating with unstable white liquid.)" },
-                { speaker: "System", color: "#bc13fe", sound: "click", mood: "system", text: "* CORE STABILIZED. THE SECTOR IS SAFE FOR NOW." }
-            ]},
-            { x: 680, y: 280, type: 'vektor_npc', label: 'VEKTOR', text: [
-                { speaker: "Vektor", color: "#ffaa00", sound: "blip_vektor", mood: "vektor_normal", text: "Good job on the core, blot. Keep moving before the grammar anomalies show up." }
-            ]}
-        ];
-
-        let activeNpcDialogue = null;
-        let nearbyObject = null;
-
-        function startRpgGameplay() {
-            gameState = 'PLAYING_RPG';
-            dialogueBox.style.display = 'none';
-            gameHud.style.display = 'flex';
-        }
-
-        window.addEventListener('keydown', e => {
-            keys[e.code] = true;
-
-            if (e.code === 'Space' || e.code === 'Enter') {
-                if (gameState === 'INTRO_CINEMATIC') {
-                    introIdx++;
-                    introTimer = 0;
-                    playSound('click');
-                    if (introIdx >= introSlides.length) startCarCinematic();
-                } else if (gameState === 'CAR_CINEMATIC' || (gameState === 'DIALOGUE_ACTIVE')) {
-                    playSound('click');
-                    advanceDialogue();
-                } else if (gameState === 'PLAYING_RPG' && nearbyObject) {
-                    playSound('interact');
-                    gameState = 'DIALOGUE_ACTIVE';
-                    gameHud.style.display = 'none';
-                    dialogueBox.style.display = 'flex';
-                    activeNpcDialogue = nearbyObject.text;
-                    dialogueIdx = 0;
-                    loadDialogueStep();
-                }
-            }
-        });
-
-        window.addEventListener('keyup', e => keys[e.code] = false);
-
-        // --- MAIN ANIMATION LOOP ---
-        let time = 0;
-        function loop() {
-            time += 0.03;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            if (gameState === 'MENU') {
-                renderMenu();
-            } else if (gameState === 'INTRO_CINEMATIC') {
-                renderIntro();
-            } else if (gameState === 'CAR_CINEMATIC') {
-                renderCarScene();
-                updateTypewriter();
-            } else if (gameState === 'PLAYING_RPG' || gameState === 'DIALOGUE_ACTIVE') {
-                renderRPG();
-                if (gameState === 'PLAYING_RPG') updatePlayerPhysics();
-                if (gameState === 'DIALOGUE_ACTIVE') updateTypewriter();
-            }
-
-            drawPixelCursor();
-            requestAnimationFrame(loop);
-        }
-
-        function updateTypewriter() {
-            const sequence = (gameState === 'CAR_CINEMATIC') ? carDialogue : activeNpcDialogue;
-            if (!sequence) return;
-            const current = sequence[dialogueIdx];
-
-            if (typewriterText.length < typewriterTarget.length) {
-                typewriterCharIdx += 0.6;
-                const nextLength = Math.floor(typewriterCharIdx);
-                if (nextLength > typewriterText.length && nextLength <= typewriterTarget.length) {
-                    if (typewriterTarget[nextLength - 1] !== ' ') {
-                        playSound(current.sound);
-                    }
-                }
-                typewriterText = typewriterTarget.substring(0, nextLength);
-                dialogueText.innerText = typewriterText;
-            }
-        }
-
-        // --- RENDERERS ---
-
-        // 1. MAIN MENU: Black screen, spotlight, pen background
-        function renderMenu() {
-            ctx.fillStyle = '#000';
+        // Render Modes
+        function render() {
+            animTimer += 0.04;
+            ctx.fillStyle = '#020617';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Subtle background spotlight
-            const grad = ctx.createRadialGradient(canvas.width/2, canvas.height/2 - 40, 10, canvas.width/2, canvas.height/2 - 40, 280);
-            grad.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
-            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
 
-            // Pen silhouette leaning in background spotlight
-            ctx.save();
-            ctx.translate(canvas.width/2 + 140, canvas.height/2 - 20);
-            ctx.rotate(-0.4);
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
-            ctx.fillRect(-6, -120, 12, 220); // Nib
-            ctx.beginPath();
-            ctx.moveTo(-6, -120); ctx.lineTo(0, -150); ctx.lineTo(6, -120); ctx.fill();
-            ctx.restore();
-        }
-
-        // 2. INTRO: Animated Vector graphics explaining text
-        function renderIntro() {
-            introTimer += 0.03;
-            ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            const slide = introSlides[introIdx];
-
-            ctx.save();
-            ctx.translate(canvas.width/2, canvas.height/2 - 30);
-            ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
-
-            if (slide.visual === 'PAGE') {
-                ctx.strokeRect(-50, -70, 100, 140);
-                for(let i=-40; i<=30; i+=15) {
-                    ctx.beginPath(); ctx.moveTo(-35, i); ctx.lineTo(15 + Math.sin(introTimer*2 + i)*10, i); ctx.stroke();
-                }
-            } else if (slide.visual === 'STRIKE') {
-                ctx.strokeRect(-50, -70, 100, 140);
-                ctx.strokeStyle = '#ff0055'; ctx.lineWidth = 3;
-                ctx.beginPath(); ctx.moveTo(-60, -80); ctx.lineTo(60, 80); ctx.stroke();
-            } else if (slide.visual === 'BLOT') {
-                ctx.fillStyle = '#00f3ff';
-                const pulse = Math.sin(introTimer * 4) * 4;
-                ctx.beginPath();
-                ctx.arc(0, 0, 28 + pulse, 0, Math.PI*2); ctx.fill();
-            }
-            ctx.restore();
-
-            ctx.textAlign = 'center';
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 1.1rem "Courier New"';
-            ctx.fillText(slide.text, canvas.width/2, canvas.height - 130);
-
-            ctx.fillStyle = 'var(--amber)';
-            ctx.font = '0.75rem "Courier New"';
-            ctx.fillText('[PRESS SPACE OR ENTER TO CONTINUE]', canvas.width/2, canvas.height - 60);
-        }
-
-        // 3. CAR SCENE: Driving through NEON CITY with silhouettes
-        function renderCarScene() {
-            ctx.fillStyle = '#020208';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Neon City Line outside window
-            for(let i=0; i<12; i++) {
-                const x = ((i * 110) - (time * 180) % 110) - 50;
-                const h = 120 + Math.sin(i * 99) * 60;
-                ctx.strokeStyle = (i % 2 === 0) ? '#00f3ff' : '#bc13fe';
+            if (activeMode === 'entity') {
+                // Orbital Entity Silhouette
+                ctx.strokeStyle = '#00f3ff';
                 ctx.lineWidth = 2;
-                ctx.strokeRect(x, canvas.height - 180 - h, 80, h);
+                ctx.beginPath();
+                for (let i = 0; i <= Math.PI * 2; i += 0.05) {
+                    const r = 50 + Math.sin(i * 8 + animTimer * 2) * (6 * frequencyMod);
+                    const x = cx + Math.cos(i) * r;
+                    const y = cy + Math.sin(i) * r;
+                    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.stroke();
+
+                // Core Eye
+                ctx.fillStyle = '#ffaa00';
+                ctx.beginPath();
+                ctx.arc(cx, cy, 8 + Math.sin(animTimer * 4) * 2, 0, Math.PI * 2);
+                ctx.fill();
+
+            } else if (activeMode === 'synth') {
+                // Audio Waveform Spectrum
+                ctx.strokeStyle = '#ffaa00';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                for (let x = 0; x < canvas.width; x += 10) {
+                    const y = cy + Math.sin(x * 0.03 * frequencyMod + animTimer * 3) * 40;
+                    if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+
+            } else if (activeMode === 'stanza') {
+                // Grid Anomaly Radar Map
+                ctx.strokeStyle = 'rgba(188, 19, 254, 0.4)';
+                ctx.lineWidth = 1;
+                for (let g = -canvas.width; g < canvas.width; g += 30) {
+                    ctx.beginPath(); ctx.moveTo(g + (animTimer * 20) % 30, 0); ctx.lineTo(g + (animTimer * 20) % 30, canvas.height); ctx.stroke();
+                }
+                ctx.strokeStyle = '#bc13fe';
+                ctx.beginPath();
+                ctx.arc(cx, cy, (animTimer * 30) % (canvas.height / 2), 0, Math.PI * 2);
+                ctx.stroke();
             }
 
-            // Windshield Frame & Car Interior
-            ctx.fillStyle = '#05070a';
-            ctx.fillRect(0, 0, canvas.width, 50); // Ceiling
-            ctx.fillRect(0, canvas.height - 180, canvas.width, 180); // Dashboard Base
-            ctx.fillRect(0, 0, 60, canvas.height); // Pillars
-            ctx.fillRect(canvas.width - 60, 0, 60, canvas.height);
+            requestAnimationFrame(render);
+        }
+        render();
 
-            // Dashboard Line
-            ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.moveTo(0, canvas.height - 180); ctx.lineTo(canvas.width, canvas.height - 180); ctx.stroke();
-
-            // Animated Rain Drops
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)'; ctx.lineWidth = 1;
-            for(let r=0; r<30; r++) {
-                const rx = (r * 37 + time * 200) % canvas.width;
-                const ry = (r * 53 + time * 400) % (canvas.height - 180);
-                ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 4, ry + 12); ctx.stroke();
-            }
-
-            // Silhouettes inside car
-            // Orb-68 (Passenger side)
-            const bounce = Math.sin(time * 6) * 2;
-            ctx.fillStyle = '#00f3ff';
-            ctx.beginPath(); ctx.arc(180, canvas.height - 140 + bounce, 22, 0, Math.PI*2); ctx.fill();
-
-            // Vektor (Driver side with hat)
-            ctx.fillStyle = '#ffaa00';
-            ctx.fillRect(canvas.width - 220, canvas.height - 160 + bounce, 30, 30);
-            ctx.fillStyle = '#0f172a'; // Hat
-            ctx.fillRect(canvas.width - 235, canvas.height - 165 + bounce, 60, 6);
-            ctx.fillRect(canvas.width - 225, canvas.height - 180 + bounce, 40, 16);
+        // UI Interactions
+        const consoleLogs = document.getElementById('consoleLogs');
+        function logMessage(text) {
+            const entry = document.createElement('div');
+            entry.innerText = `[${new Date().toLocaleTimeString()}]: ${text}`;
+            consoleLogs.appendChild(entry);
+            consoleLogs.scrollTop = consoleLogs.scrollHeight;
         }
 
-        // 4. RPG GAMEPLAY
-        function renderRPG() {
-            // Isometric sketch grid
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)'; ctx.lineWidth = 1;
-            for(let x=0; x<canvas.width; x+=40) {
-                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-            }
-            for(let y=0; y<canvas.height; y+=30) {
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-            }
-
-            // Objects
-            nearbyObject = null;
-            interactables.forEach(obj => {
-                ctx.fillStyle = (obj.type === 'inkwell') ? '#bc13fe' : '#ffaa00';
-                ctx.fillRect(obj.x - 12, obj.y - 12, 24, 24);
-
-                const dist = Math.hypot(player.x - obj.x, player.y - obj.y);
-                if (dist < 40) {
-                    nearbyObject = obj;
-                    ctx.fillStyle = '#fff';
-                    ctx.font = 'bold 0.75rem "Courier New"';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('[SPACE] INTERACT', obj.x, obj.y - 24);
-                }
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', e => {
+                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                const targetBtn = e.currentTarget;
+                targetBtn.classList.add('active');
+                
+                activeMode = targetBtn.getAttribute('data-target');
+                document.getElementById('panelTitle').innerText = 
+                    activeMode === 'entity' ? 'ENTITY ANATOMICAL WAVEFORM' :
+                    activeMode === 'synth' ? 'SYNTHETIC SPECTRUM MONITOR' : 'STANZA METRIC GRID';
+                
+                triggerSound(440, 'triangle');
+                logMessage(`Switched telemetry panel to ${activeMode.toUpperCase()}`);
             });
+        });
 
-            // Player (Orb-68) Animation
-            player.frame += 0.08;
-            const pBounce = Math.sin(player.frame) * 3;
+        document.getElementById('btnPulse').onclick = () => {
+            frequencyMod = 2.5;
+            triggerSound(600, 'sine');
+            logMessage('Energy pulse emitted through local sector.');
+            setTimeout(() => frequencyMod = 1, 800);
+        };
 
-            ctx.fillStyle = 'rgba(0,0,0,0.4)';
-            ctx.beginPath(); ctx.ellipse(player.x, player.y + 12, 14, 6, 0, 0, Math.PI*2); ctx.fill();
-
-            ctx.fillStyle = '#00f3ff';
-            ctx.beginPath();
-            ctx.arc(player.x, player.y + pBounce, 16, 0, Math.PI*2);
-            ctx.fill();
-
-            // Animated Eyes
-            ctx.fillStyle = '#000';
-            ctx.fillRect(player.x - 5, player.y - 2 + pBounce, 3, 5);
-            ctx.fillRect(player.x + 2, player.y - 2 + pBounce, 3, 5);
-        }
-
-        function updatePlayerPhysics() {
-            if (keys['KeyA'] || keys['ArrowLeft']) player.x -= player.speed;
-            if (keys['KeyD'] || keys['ArrowRight']) player.x += player.speed;
-            if (keys['KeyW'] || keys['ArrowUp']) player.y -= player.speed * 0.75;
-            if (keys['KeyS'] || keys['ArrowDown']) player.y += player.speed * 0.75;
-
-            // Boundaries
-            player.x = Math.max(30, Math.min(canvas.width - 30, player.x));
-            player.y = Math.max(100, Math.min(canvas.height - 30, player.y));
-        }
-
-        // --- UNDERTALE PORTRAIT ANIMATION SYSTEM ---
-        function drawPortrait(mood) {
-            pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
-            pCtx.fillStyle = '#000'; pCtx.fillRect(0, 0, pCanvas.width, pCanvas.height);
-
-            pCtx.save();
-            pCtx.translate(40, 40);
-
-            if (mood.startsWith('orb')) {
-                pCtx.fillStyle = '#00f3ff';
-                pCtx.beginPath(); pCtx.arc(0, 0, 24, 0, Math.PI*2); pCtx.fill();
-
-                pCtx.fillStyle = '#000';
-                if (mood === 'orb_surprised') {
-                    pCtx.arc(-7, -2, 4, 0, Math.PI*2); pCtx.arc(7, -2, 4, 0, Math.PI*2); pCtx.fill();
-                    pCtx.beginPath(); pCtx.arc(0, 10, 5, 0, Math.PI*2); pCtx.stroke();
-                } else if (mood === 'orb_determined') {
-                    pCtx.fillRect(-10, -4, 7, 3); pCtx.fillRect(3, -4, 7, 3);
-                    pCtx.fillRect(-6, 8, 12, 2);
-                } else {
-                    pCtx.arc(-6, -1, 3, 0, Math.PI*2); pCtx.arc(6, -1, 3, 0, Math.PI*2); pCtx.fill();
-                    pCtx.beginPath(); pCtx.arc(0, 6, 6, 0, Math.PI); pCtx.stroke();
-                }
-            } else if (mood.startsWith('vektor')) {
-                pCtx.fillStyle = '#ffaa00';
-                pCtx.fillRect(-14, -10, 28, 28);
-                pCtx.fillStyle = '#000';
-                pCtx.fillRect(-8, -2, 5, 5); pCtx.fillRect(3, -2, 5, 5);
-                pCtx.fillRect(-6, 10, 12, 2);
-
-                // Hat
-                pCtx.fillStyle = '#1e293b';
-                pCtx.fillRect(-22, -14, 44, 5);
-                pCtx.fillRect(-14, -28, 28, 14);
-            } else {
-                pCtx.fillStyle = '#bc13fe';
-                pCtx.fillRect(-16, -16, 32, 32);
-            }
-
-            pCtx.restore();
-        }
-
-        function drawPixelCursor() {
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(mouse.x, mouse.y, 12, 3);
-            ctx.fillRect(mouse.x, mouse.y, 3, 12);
-            ctx.fillRect(mouse.x + 3, mouse.y + 3, 3, 3);
-            ctx.fillRect(mouse.x + 6, mouse.y + 6, 3, 3);
-        }
-
-        loop();
+        document.getElementById('btnFrequency').onclick = () => {
+            frequencyMod = frequencyMod === 1 ? 1.8 : 1;
+            triggerSound(220, 'sawtooth');
+            logMessage(`Frequency modulation set to ${frequencyMod}x`);
+        };
     </script>
 </body>
 </html>
