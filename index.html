@@ -3,473 +3,410 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Late Night Rain | A Quiet Story</title>
+    <title>Exoplanet Generator & Exploration Hub</title>
     <style>
         :root {
-            --bg-color: #0d1117;
-            --card-bg: #161b22;
-            --accent-glow: #e3b341;
-            --accent-cyan: #58a6ff;
-            --text-main: #c9d1d9;
+            --bg-dark: #05070a;
+            --panel-bg: rgba(13, 17, 23, 0.85);
+            --accent-blue: #00f3ff;
+            --accent-glow: rgba(0, 243, 255, 0.25);
+            --border-color: #21262d;
             --text-bright: #f0f6fc;
-            --border-color: #30363d;
+            --text-dim: #8b949e;
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            cursor: none;
         }
 
         body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
+            background-color: var(--bg-dark);
+            color: var(--text-bright);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow-x: hidden;
-            position: relative;
-        }
-
-        /* Custom Soft Glowing Cursor */
-        #custom-cursor {
-            width: 14px;
-            height: 14px;
-            background: var(--accent-glow);
-            border-radius: 50%;
-            position: fixed;
-            pointer-events: none;
-            z-index: 9999;
-            transform: translate(-50%, -50%);
-            box-shadow: 0 0 12px var(--accent-glow), 0 0 24px var(--accent-glow);
-            transition: transform 0.08s ease-out;
-        }
-
-        /* Ambient Rain Overlay */
-        .ambient-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background: radial-gradient(circle at 50% 30%, rgba(88, 166, 255, 0.05), transparent 70%);
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        /* Main Container */
-        .game-container {
-            width: 92%;
-            max-width: 680px;
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 28px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.6), 0 0 20px rgba(227, 179, 65, 0.05);
-            position: relative;
-            z-index: 2;
-            animation: fadeIn 0.8s ease-in-out;
-        }
-
-        /* Canvas Stage */
-        .canvas-frame {
-            width: 100%;
-            height: 220px;
-            background: #090d12;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            margin-bottom: 22px;
             overflow: hidden;
             position: relative;
         }
 
-        canvas {
-            width: 100%;
-            height: 100%;
+        /* 3D Canvas */
+        #planetCanvas {
+            width: 100vw;
+            height: 100vh;
             display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
         }
 
-        /* Story Text Area */
-        .story-box {
-            min-height: 110px;
-            margin-bottom: 24px;
-            font-size: 1.05rem;
-            line-height: 1.75;
-            color: var(--text-bright);
+        /* UI Overlay */
+        .ui-layer {
             position: relative;
+            z-index: 10;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            display: grid;
+            grid-template-columns: 320px 1fr 340px;
+            grid-template-rows: 60px 1fr 140px;
+            padding: 20px;
+            gap: 20px;
         }
 
-        /* Options Grid */
-        .choices-grid {
+        .interactive {
+            pointer-events: auto;
+        }
+
+        /* Top Bar */
+        header {
+            grid-column: 1 / -1;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+
+        h1 {
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--accent-blue);
+        }
+
+        /* Control Panel Left */
+        .panel-left {
+            grid-column: 1;
+            grid-row: 2;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            backdrop-filter: blur(8px);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* Surface Telemetry Right */
+        .panel-right {
+            grid-column: 3;
+            grid-row: 2;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            backdrop-filter: blur(8px);
+            padding: 20px;
             display: flex;
             flex-direction: column;
             gap: 12px;
         }
 
-        .choice-btn {
-            background: #21262d;
+        /* Bottom Controls */
+        .panel-bottom {
+            grid-column: 1 / -1;
+            grid-row: 3;
+            background: var(--panel-bg);
             border: 1px solid var(--border-color);
-            color: var(--text-bright);
-            padding: 14px 20px;
             border-radius: 8px;
-            font-size: 0.95rem;
-            font-weight: 500;
-            text-align: left;
-            transition: all 0.25s ease;
-            position: relative;
-        }
-
-        .choice-btn:hover {
-            border-color: var(--accent-glow);
-            background: #282e38;
-            box-shadow: 0 0 12px rgba(227, 179, 65, 0.2);
-            transform: translateX(4px);
-            color: var(--accent-glow);
-        }
-
-        .choice-btn:active {
-            transform: scale(0.98);
-        }
-
-        /* Header Info Bar */
-        .status-bar {
+            backdrop-filter: blur(8px);
+            padding: 15px 20px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 18px;
-            font-size: 0.82rem;
-            text-transform: uppercase;
-            letter-spacing: 1.2px;
-            color: var(--accent-glow);
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 10px;
+            justify-content: space-between;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
+        .stat-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-bright);
+        }
+
+        /* Buttons */
+        .btn {
+            background: #161b22;
+            border: 1px solid var(--border-color);
+            color: var(--accent-blue);
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            background: #21262d;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 12px var(--accent-glow);
+        }
+
+        .btn-primary {
+            background: var(--accent-blue);
+            color: #000;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background: #33f5ff;
+            box-shadow: 0 0 15px var(--accent-blue);
+        }
+
+        /* Transition Overlay for Atmosphere Descent */
+        #descentOverlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            pointer-events: none;
+            z-index: 5;
+            opacity: 0;
+            transition: opacity 1.5s ease-in-out;
         }
     </style>
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
 
-    <div id="custom-cursor"></div>
-    <div class="ambient-overlay"></div>
+    <div id="descentOverlay"></div>
+    <canvas id="planetCanvas"></canvas>
 
-    <div class="game-container">
-        <div class="status-bar">
-            <span id="zone-tag">11:42 PM - DOWNTOWN</span>
-            <span id="status-tag">RAIN: HEAVY</span>
+    <div class="ui-layer">
+        <header class="interactive">
+            <h1>EXOPLANET // ARCHIVE</h1>
+            <span id="planet-name-hdr" style="font-weight: bold; color: #fff;">ASTERA-9</span>
+        </header>
+
+        <div class="panel-left interactive">
+            <h3 style="color: var(--accent-blue); font-size: 0.9rem; text-transform: uppercase;">Orbital Telemetry</h3>
+            <hr style="border-color: var(--border-color);">
+            
+            <div class="stat-group">
+                <span class="stat-label">Classification</span>
+                <span class="stat-value" id="val-type">Terrestrial Ocean</span>
+            </div>
+            <div class="stat-group">
+                <span class="stat-label">Radius / Mass</span>
+                <span class="stat-value" id="val-radius">1.24 R⊕ / 2.1 M⊕</span>
+            </div>
+            <div class="stat-group">
+                <span class="stat-label">Atmosphere Mix</span>
+                <span class="stat-value" id="val-atmo">N2, O2, Ar (1.4 atm)</span>
+            </div>
+            <div class="stat-group">
+                <span class="stat-label">Avg Temperature</span>
+                <span class="stat-value" id="val-temp">14°C</span>
+            </div>
+            <div class="stat-group">
+                <span class="stat-label">Satellites</span>
+                <span class="stat-value" id="val-moons">2 Moons</span>
+            </div>
         </div>
 
-        <div class="canvas-frame">
-            <canvas id="sceneCanvas"></canvas>
+        <div class="panel-right interactive">
+            <h3 style="color: var(--accent-blue); font-size: 0.9rem; text-transform: uppercase;">Sector Lore & Biosphere</h3>
+            <hr style="border-color: var(--border-color);">
+            <p id="val-lore" style="font-size: 0.85rem; line-height: 1.5; color: var(--text-dim);">
+                Procedural data generating...
+            </p>
         </div>
 
-        <div class="story-box" id="story-text">Loading narrative...</div>
-
-        <div class="choices-grid" id="choices-container"></div>
+        <div class="panel-bottom interactive">
+            <button class="btn" id="genBtn">Generate New World</button>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn" id="orbitViewBtn">Orbit View</button>
+                <button class="btn btn-primary" id="descentBtn">Descend to Surface</button>
+            </div>
+        </div>
     </div>
 
     <script>
-        // Smooth Custom Cursor
-        const cursor = document.getElementById('custom-cursor');
-        document.addEventListener('mousemove', (e) => {
-            cursor.style.left = e.clientX + 'px';
-            cursor.style.top = e.clientY + 'px';
-        });
+        // Setup Three.js Scene
+        const canvas = document.getElementById('planetCanvas');
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
 
-        document.addEventListener('mousedown', () => {
-            cursor.style.transform = 'translate(-50%, -50%) scale(0.7)';
-        });
-        document.addEventListener('mouseup', () => {
-            cursor.style.transform = 'translate(-50%, -50%) scale(1)';
-        });
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 0, 4.5);
 
-        // Ambient Canvas Engine
-        const canvas = document.getElementById('sceneCanvas');
-        const ctx = canvas.getContext('2d');
-        let sceneType = 'rain';
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxDistance = 8;
+        controls.minDistance = 1.3;
 
-        function resizeCanvas() {
-            canvas.width = canvas.offsetWidth;
-            canvas.height = canvas.offsetHeight;
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x333333);
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        sunLight.position.set(5, 3, 5);
+        scene.add(sunLight);
+
+        // Stars Background
+        const starsGeo = new THREE.BufferGeometry();
+        const starsCount = 2000;
+        const starPos = new Float32Array(starsCount * 3);
+        for(let i = 0; i < starsCount * 3; i++) {
+            starPos[i] = (Math.random() - 0.5) * 200;
         }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
+        starsGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        const starsMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.5 });
+        const starField = new THREE.Points(starsGeo, starsMat);
+        scene.add(starField);
 
-        // Canvas Particles Setup
-        let drops = [];
-        for (let i = 0; i < 60; i++) {
-            drops.push({
-                x: Math.random() * 700,
-                y: Math.random() * 300,
-                length: Math.random() * 15 + 10,
-                speed: Math.random() * 7 + 4
-            });
-        }
+        // Procedural Planet Mesh Setup
+        const planetGeo = new THREE.SphereGeometry(1, 64, 64);
+        let planetMat = new THREE.MeshStandardMaterial({ roughness: 0.8, metalness: 0.1 });
+        const planet = new THREE.Mesh(planetGeo, planetMat);
+        scene.add(planet);
 
-        let steam = [];
-        for (let i = 0; i < 20; i++) {
-            steam.push({
-                x: Math.random() * 700,
-                y: Math.random() * 200 + 50,
-                r: Math.random() * 20 + 10,
-                alpha: Math.random() * 0.3
-            });
-        }
+        // Atmosphere Shell
+        const atmoGeo = new THREE.SphereGeometry(1.03, 64, 64);
+        const atmoMat = new THREE.MeshBasicMaterial({
+            color: 0x00f3ff,
+            transparent: true,
+            opacity: 0.25,
+            side: THREE.BackSide
+        });
+        const atmosphere = new THREE.Mesh(atmoGeo, atmoMat);
+        scene.add(atmosphere);
 
-        let t = 0;
-        function renderScene() {
-            t += 0.02;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Procedural Texture Generator
+        function generatePlanetTexture(primaryColorHex, secondaryColorHex, oceanColorHex) {
+            const canvasTex = document.createElement('canvas');
+            canvasTex.width = 1024;
+            canvasTex.height = 512;
+            const ctx = canvasTex.getContext('2d');
 
-            if (sceneType === 'diner') {
-                // Cozy Diner Warm Lights & Steam
-                ctx.fillStyle = '#120f0a';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = oceanColorHex;
+            ctx.fillRect(0, 0, canvasTex.width, canvasTex.height);
 
-                // Warm ambient lamp glow
-                let gradient = ctx.createRadialGradient(canvas.width/2, 60, 10, canvas.width/2, 60, 140);
-                gradient.addColorStop(0, 'rgba(227, 179, 65, 0.4)');
-                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-                ctx.fillStyle = gradient;
+            // Generate Landmass Blobs
+            for (let i = 0; i < 40; i++) {
+                const x = Math.random() * canvasTex.width;
+                const y = Math.random() * canvasTex.height;
+                const r = Math.random() * 120 + 30;
+
+                let grad = ctx.createRadialGradient(x, y, 5, x, y, r);
+                grad.addColorStop(0, primaryColorHex);
+                grad.addColorStop(0.7, secondaryColorHex);
+                grad.addColorStop(1, 'transparent');
+
+                ctx.fillStyle = grad;
                 ctx.beginPath();
-                ctx.arc(canvas.width/2, 60, 140, 0, Math.PI * 2);
+                ctx.arc(x, y, r, 0, Math.PI * 2);
                 ctx.fill();
-
-                // Coffee Steam rising
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-                steam.forEach(s => {
-                    s.y -= 0.4;
-                    if (s.y < 20) s.y = canvas.height - 20;
-                    ctx.beginPath();
-                    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-
-            } else if (sceneType === 'park') {
-                // Park at night with soft lampposts
-                ctx.fillStyle = '#080d12';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                // Lamppost
-                const lx = canvas.width * 0.7;
-                ctx.strokeStyle = '#30363d';
-                ctx.lineWidth = 4;
-                ctx.beginPath();
-                ctx.moveTo(lx, canvas.height);
-                ctx.lineTo(lx, 50);
-                ctx.stroke();
-
-                let lampGlow = ctx.createRadialGradient(lx, 50, 5, lx, 50, 90);
-                lampGlow.addColorStop(0, 'rgba(255, 235, 170, 0.5)');
-                lampGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
-                ctx.fillStyle = lampGlow;
-                ctx.beginPath();
-                ctx.arc(lx, 50, 90, 0, Math.PI * 2);
-                ctx.fill();
-
-            } else {
-                // Rain Streets
-                ctx.fillStyle = '#090d12';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                // Rain streaks
-                ctx.strokeStyle = 'rgba(88, 166, 255, 0.25)';
-                ctx.lineWidth = 1.2;
-                drops.forEach(d => {
-                    d.y += d.speed;
-                    if (d.y > canvas.height) {
-                        d.y = -20;
-                        d.x = Math.random() * canvas.width;
-                    }
-                    ctx.beginPath();
-                    ctx.moveTo(d.x, d.y);
-                    ctx.lineTo(d.x - 2, d.y + d.length);
-                    ctx.stroke();
-                });
             }
 
-            requestAnimationFrame(renderScene);
+            return new THREE.CanvasTexture(canvasTex);
         }
-        renderScene();
 
-        // Branching Narrative Data
-        const storyData = {
-            start: {
-                text: "The storm caught you off guard three blocks from your apartment. You're standing under the dripping awning of a 24-hour convenience store, holding a damp paper bag with late-night snacks.",
-                scene: "rain",
-                zone: "11:42 PM - 4TH AVENUE",
-                status: "RAIN: HEAVY",
-                choices: [
-                    { text: "Dodge the puddles and push through the downpour to get home", next: "home_path" },
-                    { text: "Duck into the brightly lit diner across the street to wait it out", next: "diner_entry" },
-                    { text: "Take the quiet shortcut through the neighborhood park", next: "park_path" }
-                ]
-            },
-            diner_entry: {
-                text: "A bell jingles overhead as you push through the door. The air inside smells of fresh espresso and toasted sourdough. Only a couple of people are inside—an older cook cleaning the counter and someone sitting in a corner booth sketching in a worn notebook.",
-                scene: "diner",
-                zone: "11:47 PM - THE CORNER DINER",
-                status: "ATMOSPHERE: WARM",
-                choices: [
-                    { text: "Order a warm hot chocolate at the counter", next: "diner_counter" },
-                    { text: "Take a window seat and watch the rain against the glass", next: "diner_window" }
-                ]
-            },
-            diner_counter: {
-                text: "The cook slides a hot mug over to you with a friendly nod. 'Crazy weather tonight,' he says, wiping down the stainless steel. 'You caught the last brew.' You hold the warm mug in both hands as the chill leaves your fingers.",
-                scene: "diner",
-                zone: "11:52 PM - THE COUNTER",
-                status: "ATMOSPHERE: COZY",
-                choices: [
-                    { text: "Strike up a conversation with the cook about the neighborhood", next: "cook_chat" },
-                    { text: "Quietly sip your drink and pull out your phone to listen to music", next: "quiet_music" }
-                ]
-            },
-            diner_window: {
-                text: "You slide into the leather booth. Outside, the streetlights reflect red and yellow across the wet asphalt. The artist in the corner booth glances up, smiles briefly, and goes back to drawing.",
-                scene: "diner",
-                zone: "11:55 PM - WINDOW BOOTH",
-                status: "ATMOSPHERE: PEACEFUL",
-                choices: [
-                    { text: "Compliment their sketch on your way to grab a napkin", next: "artist_chat" },
-                    { text: "Enjoy the peaceful solitude and relax against the booth", next: "quiet_music" }
-                ]
-            },
-            cook_chat: {
-                text: "He tells you about how this diner has been open since 1994, through winter storms and hot summers. He gives you a warm blueberry muffin on the house just as the rain outside begins to soften into a light drizzle.",
-                scene: "diner",
-                zone: "12:10 AM - THE COUNTER",
-                status: "RAIN: EASING",
-                choices: [
-                    { text: "Thank him, pay, and take a pleasant night walk home", next: "ending_warm" }
-                ]
-            },
-            artist_chat: {
-                text: "They show you their sketchbook—it's filled with detailed ink drawings of city buildings and late-night street scenes. You realize they were actually sketching the raindrops on your exact window. You exchange local game recommendations before parting ways.",
-                scene: "diner",
-                zone: "12:15 AM - THE CORNER DINER",
-                status: "RAIN: STOPPED",
-                choices: [
-                    { text: "Head outside into the fresh midnight air", next: "ending_inspired" }
-                ]
-            },
-            quiet_music: {
-                text: "You put in your headphones. The lo-fi synth music blends perfectly with the steady rhythm of rain outside. For thirty uninterrupted minutes, the world feels completely still and calm.",
-                scene: "diner",
-                zone: "12:20 AM - WINDOW BOOTH",
-                status: "STATE: SERENE",
-                choices: [
-                    { text: "Pack up and head home feeling refreshed", next: "ending_warm" }
-                ]
-            },
-            park_path: {
-                text: "The rain sounds soothing as it drops through the canopy of leaves overhead. Streetlights cast long golden beams across the wet stone paths. Halfway down the trail, you notice a stray cat staying dry under a wooden park bench.",
-                scene: "park",
-                zone: "11:50 PM - MAPLE PARK",
-                status: "ATMOSPHERE: QUIET",
-                choices: [
-                    { text: "Offer a small piece of food from your bag", next: "cat_friend" },
-                    { text: "Keep walking so you don't startle it", next: "park_walk" }
-                ]
-            },
-            cat_friend: {
-                text: "The cat creeps out cautiously, sniffs the food, and purrs softly against your shoe. It walks alongside you all the way to the park exit before heading toward its shelter under a porch.",
-                scene: "park",
-                zone: "12:05 AM - PARK EXIT",
-                status: "MOOD: WHOLESOME",
-                choices: [
-                    { text: "Wave goodbye and stroll the last block home", next: "ending_warm" }
-                ]
-            },
-            park_walk: {
-                text: "You walk quietly through the mist. The smell of wet earth and crisp night air fills the park. It's one of those rare late-night strolls where you have the entire world to yourself.",
-                scene: "park",
-                zone: "12:00 AM - OAK PATH",
-                status: "MOOD: REFLECTIVE",
-                choices: [
-                    { text: "Finish your walk and return home", next: "ending_warm" }
-                ]
-            },
-            home_path: {
-                text: "You run straight through the rain, shoes splashing through puddle reflections! You sprint up your apartment stairs, turn the key in the door, and step inside completely out of breath.",
-                scene: "rain",
-                zone: "11:46 PM - APARTMENT HALLWAY",
-                status: "STATE: DRENCHED",
-                choices: [
-                    { text: "Change into dry clothes and make a hot tea", next: "ending_cozy_home" }
-                ]
-            },
-            ending_warm: {
-                text: "You unlock your front door. Outside, the storm has passed, leaving behind clear skies and damp streets. You set your stuff down, feeling comfortable, relaxed, and glad you took your time tonight.",
-                scene: "diner",
-                zone: "12:30 AM - HOME",
-                status: "NIGHT COMPLETE",
-                choices: [
-                    { text: "Play again from the start", next: "start" }
-                ]
-            },
-            ending_inspired: {
-                text: "You walk home with a light step. The midnight city feels full of creative energy. You jot down a few ideas in your phone before turning off the lights for a good night's sleep.",
-                scene: "park",
-                zone: "12:35 AM - HOME",
-                status: "NIGHT COMPLETE",
-                choices: [
-                    { text: "Play again from the start", next: "start" }
-                ]
-            },
-            ending_cozy_home: {
-                text: "Wrapped in a dry hoodie with a warm drink in hand, you sit near your window listening to the distant storm fade away. A perfect end to a long day.",
-                scene: "diner",
-                zone: "12:00 AM - HOME",
-                status: "NIGHT COMPLETE",
-                choices: [
-                    { text: "Play again from the start", next: "start" }
-                ]
-            }
-        };
+        // Random Generator Engine
+        const prefixes = ["Aethel", "Kepler", "Gliese", "Astra", "Chronos", "Vesper", "Zephyr"];
+        const suffixes = ["Prime", "9", "b", "VI", "Major", "X", "Reach"];
+        const types = [
+            { name: "Oceanic World", land: "#1b4332", land2: "#2d6a4f", water: "#0077b6", atmo: 0x00f3ff },
+            { name: "Arid Desert", land: "#e76f51", land2: "#f4a261", water: "#2a9d8f", atmo: 0xffaa44 },
+            { name: "Ice Giant / Tundra", land: "#a8ded0", land2: "#f1faee", water: "#1d3557", atmo: 0xaaffff },
+            { name: "Volcanic Crag", land: "#370617", land2: "#6a040f", water: "#d00000", atmo: 0xff3300 }
+        ];
 
-        // Render Story Step
-        function loadNode(nodeKey) {
-            const node = storyData[nodeKey];
+        function buildNewWorld() {
+            const name = prefixes[Math.floor(Math.random() * prefixes.length)] + "-" + suffixes[Math.floor(Math.random() * suffixes.length)];
+            const pType = types[Math.floor(Math.random() * types.length)];
+
+            // Build Canvas Texture
+            const texture = generatePlanetTexture(pType.land, pType.land2, pType.water);
+            planetMat.map = texture;
+            planetMat.needsUpdate = true;
+
+            atmosphere.material.color.setHex(pType.atmo);
+
+            // Update UI Data
+            document.getElementById('planet-name-hdr').innerText = name;
+            document.getElementById('val-type').innerText = pType.name;
+            document.getElementById('val-radius').innerText = (Math.random() * 1.5 + 0.5).toFixed(2) + " R⊕";
+            document.getElementById('val-temp').innerText = Math.floor(Math.random() * 80 - 20) + "°C";
+            document.getElementById('val-moons').innerText = Math.floor(Math.random() * 5) + " Detected";
+            document.getElementById('val-lore').innerText = `Sensors indicate unique terrain patterns across ${name}. Atmospheric entry profiles confirm active surface weather systems.`;
+
+            // Reset Overlay
+            document.getElementById('descentOverlay').style.background = `radial-gradient(circle, ${pType.land2} 0%, #000 100%)`;
+        }
+
+        // Animation / Zoom System
+        let isZooming = false;
+
+        document.getElementById('descentBtn').addEventListener('click', () => {
+            if(isZooming) return;
+            isZooming = true;
             
-            document.getElementById('zone-tag').innerText = node.zone;
-            document.getElementById('status-tag').innerText = node.status;
-            
-            sceneType = node.scene;
+            const overlay = document.getElementById('descentOverlay');
+            overlay.style.opacity = '0.8';
 
-            // Typewriter Effect
-            const storyBox = document.getElementById('story-text');
-            storyBox.innerHTML = '';
-            let charIndex = 0;
-            const fullText = node.text;
-
-            function typeWriter() {
-                if (charIndex < fullText.length) {
-                    storyBox.innerHTML += fullText.charAt(charIndex);
-                    charIndex++;
-                    setTimeout(typeWriter, 16);
+            let startTime = performance.now();
+            function animateZoom(time) {
+                let elapsed = (time - startTime) / 1000;
+                if(elapsed < 2) {
+                    camera.position.z = THREE.MathUtils.lerp(camera.position.z, 1.15, 0.03);
+                    requestAnimationFrame(animateZoom);
+                } else {
+                    overlay.style.opacity = '0';
+                    isZooming = false;
                 }
             }
-            typeWriter();
+            requestAnimationFrame(animateZoom);
+        });
 
-            // Populate Buttons
-            const choicesContainer = document.getElementById('choices-container');
-            choicesContainer.innerHTML = '';
+        document.getElementById('orbitViewBtn').addEventListener('click', () => {
+            camera.position.set(0, 0, 4.5);
+        });
 
-            node.choices.forEach(choice => {
-                const btn = document.createElement('button');
-                btn.className = 'choice-btn';
-                btn.innerText = `> ${choice.text}`;
-                btn.onclick = () => loadNode(choice.next);
-                choicesContainer.appendChild(btn);
-            });
+        document.getElementById('genBtn').addEventListener('click', () => {
+            camera.position.set(0, 0, 4.5);
+            buildNewWorld();
+        });
+
+        // Window Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Main Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            planet.rotation.y += 0.002;
+            atmosphere.rotation.y += 0.0025;
+            controls.update();
+            renderer.render(scene, camera);
         }
 
-        // Initialize First Scene
-        loadNode('start');
+        buildNewWorld();
+        animate();
     </script>
 </body>
 </html>
