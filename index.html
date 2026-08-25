@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drift Beyond the Horizon - Chapter 0</title>
+    <title>Far From Home</title>
     <style>
         :root {
             --bg-dark: #05070a;
@@ -20,7 +20,7 @@
             font-family: 'Courier New', Courier, monospace;
         }
 
-        /* Custom White Kawmling Hand Cursor */
+        /* Upgraded Custom White Kawmling Hand Cursor */
         body, html {
             width: 100%;
             height: 100%;
@@ -30,11 +30,11 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><path d='M8,12 L8,22 C8,25 10,27 13,27 L18,27 C22,27 24,24 24,20 L24,14 C24,12.5 22.5,11.5 21,12.5 C20.5,11 19,10 17.5,11 C16.5,10 15,10.5 14.5,11.5 L14.5,6 C14.5,4.5 12.5,4.5 12.5,6 L12.5,14 L11,12.5 C9.5,11 8,11 8,12 Z' fill='%23ffffff' stroke='%23000000' stroke-width='2'/></svg>"), auto;
+            cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><path d='M6,10 L6,22 C6,26 9,28 13,28 L18,28 C23,28 25,25 25,20 L25,13 C25,11 23,10 21,11 C20.5,9.5 18.5,9 17,10 C16,8.5 14,8.5 13,9.5 L13,5 C13,3 10.5,3 10.5,5 L10.5,13 L9,11 C7.5,9.5 6,9.5 6,10 Z' fill='%23ffffff' stroke='%23000000' stroke-width='2.5' stroke-linejoin='round'/></svg>"), auto;
         }
 
         button, .dash-node, #startOverlay {
-            cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><path d='M8,12 L8,22 C8,25 10,27 13,27 L18,27 C22,27 24,24 24,20 L24,14 C24,12.5 22.5,11.5 21,12.5 C20.5,11 19,10 17.5,11 C16.5,10 15,10.5 14.5,11.5 L14.5,6 C14.5,4.5 12.5,4.5 12.5,6 L12.5,14 L11,12.5 C9.5,11 8,11 8,12 Z' fill='%23ffffff' stroke='%23000000' stroke-width='2'/></svg>"), pointer !important;
+            cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><path d='M6,10 L6,22 C6,26 9,28 13,28 L18,28 C23,28 25,25 25,20 L25,13 C25,11 23,10 21,11 C20.5,9.5 18.5,9 17,10 C16,8.5 14,8.5 13,9.5 L13,5 C13,3 10.5,3 10.5,5 L10.5,13 L9,11 C7.5,9.5 6,9.5 6,10 Z' fill='%23ffffff' stroke='%23000000' stroke-width='2.5' stroke-linejoin='round'/></svg>"), pointer !important;
         }
 
         #viewport {
@@ -45,15 +45,17 @@
             overflow: hidden;
         }
 
-        canvas#fxCanvas {
+        canvas#fxCanvas, canvas#boatCanvas {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 2;
             pointer-events: none;
         }
+
+        canvas#fxCanvas { z-index: 3; }
+        canvas#boatCanvas { z-index: 1; }
 
         .crt-overlay {
             position: absolute;
@@ -84,7 +86,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 1;
+            z-index: 2;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -93,20 +95,20 @@
 
         .cinematic-text {
             font-size: 1.5rem;
-            line-height: 2.2rem;
+            line-height: 2.3rem;
             max-width: 850px;
             text-align: center;
             color: #fff;
             text-shadow: 0 0 10px rgba(255,255,255,0.7);
             opacity: 0;
             transition: opacity 1.2s ease;
+            white-space: normal;
+            word-wrap: break-word;
         }
 
-        .cinematic-text.visible {
-            opacity: 1;
-        }
+        .cinematic-text.visible { opacity: 1; }
 
-        /* Boat Scene Setup */
+        /* Boat Scene Layout */
         .boat-scene {
             position: absolute;
             width: 100%;
@@ -117,54 +119,66 @@
             align-items: center;
             padding: 30px;
             opacity: 0;
+            z-index: 2;
             transition: opacity 1.5s ease;
         }
 
-        .boat-scene.active {
-            opacity: 1;
-        }
+        .boat-scene.active { opacity: 1; }
 
         .ocean-view {
             width: 92%;
-            height: 58%;
-            border: 2px solid #2a3545;
-            background: radial-gradient(circle at 50% 100%, #0c1829 0%, #020509 90%);
-            border-radius: 8px;
+            height: 55%;
             position: relative;
-            box-shadow: inset 0 0 60px #000;
             display: flex;
             justify-content: space-around;
             align-items: center;
         }
 
+        /* Inspection Nodes Container */
+        .node-container {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1s ease;
+        }
+
+        .node-container.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
         .dash-node {
-            width: 130px;
-            height: 130px;
-            border: 2px dashed #4a5a70;
+            width: 140px;
+            height: 140px;
+            border: 2px dashed #ffffff;
             border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
-            color: #8a9ab0;
+            color: #ffffff;
             font-size: 0.85rem;
             font-weight: bold;
             transition: 0.3s;
             text-align: center;
             padding: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
         }
 
         .dash-node:hover {
-            border-color: #fff;
-            color: #fff;
-            box-shadow: 0 0 20px rgba(255,255,255,0.4);
-            background: rgba(255,255,255,0.05);
+            border-style: solid;
+            box-shadow: 0 0 20px rgba(255,255,255,0.8);
+            background: rgba(255,255,255,0.15);
+            transform: scale(1.05);
         }
 
-        /* Dialogue Box & Kawmling Portraits */
+        /* Dialogue Box & Bigger Kawmling Portraits */
         .dialogue-box {
             width: 92%;
             max-width: 950px;
-            height: 200px;
+            height: 220px;
             background: var(--ink-black);
             border: 4px solid var(--ui-border);
             border-radius: 6px;
@@ -176,8 +190,8 @@
         }
 
         .portrait-frame {
-            width: 150px;
-            height: 150px;
+            width: 170px;
+            height: 170px;
             border: 2px solid #fff;
             background: #020305;
             display: flex;
@@ -189,13 +203,13 @@
         }
 
         .portrait-svg {
-            width: 100px;
-            height: 100px;
+            width: 130px;
+            height: 130px;
         }
 
         .portrait-label {
-            margin-top: 4px;
-            font-size: 0.8rem;
+            margin-top: 2px;
+            font-size: 0.85rem;
             font-weight: bold;
             letter-spacing: 1px;
         }
@@ -205,12 +219,18 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            overflow: hidden;
         }
 
+        /* Fixed Word Flow & Wrap Bug */
         .dialogue-text {
-            font-size: 1.25rem;
-            line-height: 1.7rem;
+            font-size: 1.2rem;
+            line-height: 1.8rem;
             color: #fff;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-y: auto;
+            max-height: 130px;
         }
 
         .prompt-hint {
@@ -220,11 +240,9 @@
             animation: blink 1s infinite;
         }
 
-        @keyframes blink {
-            50% { opacity: 0; }
-        }
+        @keyframes blink { 50% { opacity: 0; } }
 
-        /* Main Menu Overlay */
+        /* Title Screen Overlay */
         #startOverlay {
             position: absolute;
             top: 0;
@@ -240,15 +258,15 @@
         }
 
         #startOverlay h1 {
-            font-size: 2.8rem;
-            letter-spacing: 6px;
+            font-size: 3.2rem;
+            letter-spacing: 8px;
             margin-bottom: 15px;
             text-transform: uppercase;
-            text-shadow: 0 0 15px rgba(255,255,255,0.5);
+            text-shadow: 0 0 15px rgba(255,255,255,0.6);
         }
 
         #startOverlay p {
-            color: #778899;
+            color: #8899a6;
             font-size: 1.1rem;
             letter-spacing: 2px;
         }
@@ -257,12 +275,13 @@
 <body>
 
     <div id="viewport">
+        <canvas id="boatCanvas"></canvas>
         <canvas id="fxCanvas"></canvas>
         <div class="crt-overlay"></div>
 
         <div id="startOverlay" onclick="initializeEngine()">
-            <h1>DRIFT BEYOND THE HORIZON</h1>
-            <p>[ CLICK ANYWHERE TO BEGIN JOURNEY ]</p>
+            <h1>FAR FROM HOME</h1>
+            <p>[ CLICK ANYWHERE TO START ]</p>
         </div>
 
         <div id="stage">
@@ -271,16 +290,16 @@
 
         <div id="boatScene" class="boat-scene">
             <div class="ocean-view">
-                <div class="dash-node" onclick="inspectNode('Ocean Waters', 'The Kawm Ocean stretches infinitely into the dark. Glowing waves pulse softly below.')">CHECK WATERS</div>
-                <div class="dash-node" onclick="inspectNode('Wooden Boat', 'A weathered wooden vessel. It survived the escape, but the timber is soaked.')">INSPECT BOAT</div>
-                <div class="dash-node" onclick="inspectNode('Distant Horizon', 'Faint lights flicker far away... Is it a safe shelter, or another anomaly?')">SCAN HORIZON</div>
+                <div id="nodeContainer" class="node-container">
+                    <div class="dash-node" onclick="inspectNode('Ocean Waters', 'The Kawm Ocean stretches endlessly into the pitch dark. Glowing waves rock the hull softly.')">CHECK WATERS</div>
+                    <div class="dash-node" onclick="inspectNode('Wooden Boat', 'A weathered wooden vessel. It brought you safely away, but water slowly seeps through the joints.')">INSPECT BOAT</div>
+                    <div class="dash-node" onclick="inspectNode('Distant Horizon', 'Faint flickering lights loom in the distance... Could it be shelter?')">SCAN HORIZON</div>
+                </div>
             </div>
 
             <div class="dialogue-box">
                 <div class="portrait-frame">
-                    <svg id="portraitSVG" class="portrait-svg" viewBox="0 0 100 100">
-                        <!-- Dynamic SVG rendered via JS -->
-                    </svg>
+                    <svg id="portraitSVG" class="portrait-svg" viewBox="0 0 100 100"></svg>
                     <div id="portraitLabel" class="portrait-label">MOE</div>
                 </div>
                 <div class="dialogue-content">
@@ -294,9 +313,7 @@
     <script>
         /* Audio Engine */
         class AudioEngine {
-            constructor() {
-                this.ctx = null;
-            }
+            constructor() { this.ctx = null; }
 
             init() {
                 this.ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -337,9 +354,7 @@
                 const bufferSize = this.ctx.sampleRate * 2;
                 const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
                 const output = noiseBuffer.getChannelData(0);
-                for (let i = 0; i < bufferSize; i++) {
-                    output[i] = Math.random() * 2 - 1;
-                }
+                for (let i = 0; i < bufferSize; i++) { output[i] = Math.random() * 2 - 1; }
 
                 const whiteNoise = this.ctx.createBufferSource();
                 whiteNoise.buffer = noiseBuffer;
@@ -347,7 +362,7 @@
 
                 const filter = this.ctx.createBiquadFilter();
                 filter.type = 'lowpass';
-                filter.frequency.setValueAtTime(450, this.ctx.currentTime);
+                filter.frequency.setValueAtTime(400, this.ctx.currentTime);
 
                 const gain = this.ctx.createGain();
                 gain.gain.setValueAtTime(0.02, this.ctx.currentTime);
@@ -359,7 +374,7 @@
             }
         }
 
-        /* Particle System - Sea Mist & Rain */
+        /* Particle System - Rain & Mist */
         class ParticleSystem {
             constructor(canvas) {
                 this.canvas = canvas;
@@ -382,15 +397,14 @@
                         x: Math.random() * this.canvas.width,
                         y: Math.random() * this.canvas.height,
                         length: Math.random() * 15 + 8,
-                        speed: Math.random() * 8 + 4,
-                        opacity: Math.random() * 0.5 + 0.2
+                        speed: Math.random() * 8 + 4
                     });
                 }
             }
 
             render() {
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-                this.ctx.strokeStyle = 'rgba(180, 210, 245, 0.3)';
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
                 this.ctx.lineWidth = 1.2;
 
                 this.particles.forEach(p => {
@@ -412,42 +426,132 @@
             }
         }
 
-        /* Kawmling Vector SVG Portraits */
+        /* Animated Boat Canvas */
+        class BoatAnimator {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.time = 0;
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+            }
+
+            resize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+
+            render() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.time += 0.03;
+
+                const centerY = this.canvas.height * 0.45;
+                const waveY = Math.sin(this.time) * 12;
+                const pitch = Math.cos(this.time * 0.8) * 0.08;
+
+                // Waves Back
+                this.drawWaves(centerY + 15, 0.02, 10, '#222222');
+
+                // Animated Boat
+                this.ctx.save();
+                this.ctx.translate(this.canvas.width / 2, centerY + waveY);
+                this.ctx.rotate(pitch);
+
+                // Boat Hull
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.strokeStyle = '#000000';
+                this.ctx.lineWidth = 3;
+                this.ctx.beginPath();
+                this.ctx.moveTo(-90, -10);
+                this.ctx.quadraticCurveTo(0, 45, 100, -10);
+                this.ctx.lineTo(75, -25);
+                this.ctx.lineTo(-75, -25);
+                this.ctx.closePath();
+                this.ctx.fill();
+                this.ctx.stroke();
+
+                // Small Mast
+                this.ctx.beginPath();
+                this.ctx.moveTo(-10, -25);
+                this.ctx.lineTo(-10, -85);
+                this.ctx.stroke();
+
+                this.ctx.restore();
+
+                // Waves Front
+                this.drawWaves(centerY + 25, 0.03, 15, '#ffffff');
+
+                requestAnimationFrame(() => this.render());
+            }
+
+            drawWaves(baseY, freq, amp, color) {
+                this.ctx.fillStyle = color;
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, this.canvas.height);
+                for (let x = 0; x <= this.canvas.width; x += 10) {
+                    const y = baseY + Math.sin(x * freq + this.time) * amp;
+                    this.ctx.lineTo(x, y);
+                }
+                this.ctx.lineTo(this.canvas.width, this.canvas.height);
+                this.ctx.closePath();
+                this.ctx.fill();
+            }
+        }
+
+        /* Expressive Kawmling SVG Portraits */
         const portraits = {
-            MOE: `
-                <!-- Head -->
-                <circle cx="50" cy="50" r="28" fill="#ffffff" stroke="#000000" stroke-width="3"/>
-                <!-- Durag -->
-                <path d="M 22,48 Q 50,18 78,48 Q 50,38 22,48 Z" fill="#111116"/>
-                <path d="M 75,45 Q 88,52 85,68" stroke="#111116" stroke-width="4" fill="none"/>
-                <!-- Big Bold Eyebrows -->
-                <path d="M 30,48 L 44,53" stroke="#000000" stroke-width="6" stroke-linecap="round"/>
-                <path d="M 56,53 L 70,48" stroke="#000000" stroke-width="6" stroke-linecap="round"/>
-                <!-- Eyes -->
-                <circle cx="37" cy="59" r="3" fill="#000000"/>
-                <circle cx="63" cy="59" r="3" fill="#000000"/>
+            MOE_DETERMINED: `
+                <circle cx="50" cy="50" r="30" fill="#ffffff" stroke="#000000" stroke-width="3.5"/>
+                <path d="M 18,48 Q 50,14 82,48 Q 50,35 18,48 Z" fill="#111116"/>
+                <path d="M 78,45 Q 92,52 88,70" stroke="#111116" stroke-width="5" fill="none"/>
+                <!-- Angled Eyebrows -->
+                <path d="M 26,45 L 45,53" stroke="#000000" stroke-width="7" stroke-linecap="round"/>
+                <path d="M 55,53 L 74,45" stroke="#000000" stroke-width="7" stroke-linecap="round"/>
+                <circle cx="37" cy="62" r="3.5" fill="#000000"/>
+                <circle cx="63" cy="62" r="3.5" fill="#000000"/>
             `,
-            MCCRACK: `
-                <!-- Head -->
-                <circle cx="50" cy="52" r="28" fill="#ffffff" stroke="#000000" stroke-width="3"/>
-                <!-- Paper Boat Hat -->
-                <polygon points="15,42 50,12 85,42 68,42 50,28 32,42" fill="#ffffff" stroke="#000000" stroke-width="3"/>
-                <line x1="50" y1="12" x2="50" y2="42" stroke="#000000" stroke-width="2"/>
-                <!-- Expressive Eyebrows -->
-                <path d="M 28,48 Q 36,42 44,50" stroke="#000000" stroke-width="5" fill="none" stroke-linecap="round"/>
-                <path d="M 56,50 Q 64,42 72,48" stroke="#000000" stroke-width="5" fill="none" stroke-linecap="round"/>
-                <!-- Eyes -->
-                <circle cx="36" cy="58" r="3" fill="#000000"/>
-                <circle cx="64" cy="58" r="3" fill="#000000"/>
+            MOE_SERIOUS: `
+                <circle cx="50" cy="50" r="30" fill="#ffffff" stroke="#000000" stroke-width="3.5"/>
+                <path d="M 18,48 Q 50,14 82,48 Q 50,35 18,48 Z" fill="#111116"/>
+                <path d="M 78,45 Q 92,52 88,70" stroke="#111116" stroke-width="5" fill="none"/>
+                <!-- Heavy Flat Eyebrows -->
+                <path d="M 25,48 L 45,48" stroke="#000000" stroke-width="7" stroke-linecap="round"/>
+                <path d="M 55,48 L 75,48" stroke="#000000" stroke-width="7" stroke-linecap="round"/>
+                <circle cx="37" cy="60" r="3.5" fill="#000000"/>
+                <circle cx="63" cy="60" r="3.5" fill="#000000"/>
+            `,
+            MCCRACK_WORRIED: `
+                <circle cx="50" cy="52" r="30" fill="#ffffff" stroke="#000000" stroke-width="3.5"/>
+                <polygon points="12,42 50,8 88,42 70,42 50,26 30,42" fill="#ffffff" stroke="#000000" stroke-width="3.5"/>
+                <line x1="50" y1="8" x2="50" y2="42" stroke="#000000" stroke-width="2.5"/>
+                <!-- Worried Curved Eyebrows -->
+                <path d="M 25,50 Q 36,40 45,46" stroke="#000000" stroke-width="6" fill="none" stroke-linecap="round"/>
+                <path d="M 55,46 Q 64,40 75,50" stroke="#000000" stroke-width="6" fill="none" stroke-linecap="round"/>
+                <circle cx="35" cy="60" r="3.5" fill="#000000"/>
+                <circle cx="65" cy="60" r="3.5" fill="#000000"/>
+                <!-- Floating Confusion Marker -->
+                <text x="82" y="32" font-size="22" font-weight="bold" fill="#ffffff">?</text>
+            `,
+            MCCRACK_HOPEFUL: `
+                <circle cx="50" cy="52" r="30" fill="#ffffff" stroke="#000000" stroke-width="3.5"/>
+                <polygon points="12,42 50,8 88,42 70,42 50,26 30,42" fill="#ffffff" stroke="#000000" stroke-width="3.5"/>
+                <line x1="50" y1="8" x2="50" y2="42" stroke="#000000" stroke-width="2.5"/>
+                <!-- High Raised Eyebrows -->
+                <path d="M 25,40 Q 35,34 45,40" stroke="#000000" stroke-width="6" fill="none" stroke-linecap="round"/>
+                <path d="M 55,40 Q 65,34 75,40" stroke="#000000" stroke-width="6" fill="none" stroke-linecap="round"/>
+                <circle cx="35" cy="58" r="3.5" fill="#000000"/>
+                <circle cx="65" cy="58" r="3.5" fill="#000000"/>
+                <!-- Floating Exclamation Marker -->
+                <text x="82" y="32" font-size="22" font-weight="bold" fill="#ffffff">!</text>
             `,
             SYS: `
                 <rect x="20" y="20" width="60" height="60" fill="none" stroke="#ffffff" stroke-width="3" stroke-dasharray="4"/>
-                <text x="50" y="58" font-size="22" fill="#ffffff" text-anchor="middle" font-weight="bold">?</text>
+                <text x="50" y="58" font-size="24" fill="#ffffff" text-anchor="middle" font-weight="bold">?</text>
             `
         };
 
         const audio = new AudioEngine();
-        let particles;
+        let particles, boatAnim;
         let currentStep = 0;
         let isTyping = false;
 
@@ -459,10 +563,10 @@
         ];
 
         const boatDialogue = [
-            { speaker: "MCCRACK", text: "Moe... do you think anyone else made it out of the village?" },
-            { speaker: "MOE", text: "I don't know, McCrack. But as long as this boat floats, we keep moving." },
-            { speaker: "MCCRACK", text: "Look at the horizon. There's a faint light out there... maybe it's a safe shelter." },
-            { speaker: "MOE", text: "Keep your guard up. Check the waters and horizon before we pull closer." }
+            { speaker: "MCCRACK", style: "MCCRACK_WORRIED", text: "Moe... do you think anyone else made it out of the village?" },
+            { speaker: "MOE", style: "MOE_SERIOUS", text: "I don't know, McCrack. But as long as this boat floats, we keep moving." },
+            { speaker: "MCCRACK", style: "MCCRACK_HOPEFUL", text: "Look at the horizon. There's a faint light out there... maybe it's a safe shelter." },
+            { speaker: "MOE", style: "MOE_DETERMINED", text: "Keep your guard up. Check the waters and horizon before we pull closer." }
         ];
 
         let dialogueIndex = 0;
@@ -472,6 +576,8 @@
             audio.init();
             particles = new ParticleSystem(document.getElementById('fxCanvas'));
             particles.render();
+            boatAnim = new BoatAnimator(document.getElementById('boatCanvas'));
+            boatAnim.render();
             playIntroSequence();
         }
 
@@ -511,7 +617,7 @@
             }, 1500);
         }
 
-        function typeText(targetEl, text, speed = 30, callback) {
+        function typeText(targetEl, text, speed = 25, callback) {
             isTyping = true;
             targetEl.innerText = "";
             let i = 0;
@@ -529,10 +635,10 @@
             }, speed);
         }
 
-        function updatePortrait(speakerKey) {
+        function updatePortrait(speakerKey, styleKey) {
             const svgEl = document.getElementById('portraitSVG');
             const labelEl = document.getElementById('portraitLabel');
-            svgEl.innerHTML = portraits[speakerKey] || portraits.SYS;
+            svgEl.innerHTML = portraits[styleKey] || portraits.SYS;
             labelEl.innerText = speakerKey;
         }
 
@@ -541,12 +647,13 @@
 
             if (dialogueIndex < boatDialogue.length) {
                 const line = boatDialogue[dialogueIndex];
-                updatePortrait(line.speaker);
+                updatePortrait(line.speaker, line.style);
                 typeText(document.getElementById('dialogueText'), line.text);
                 dialogueIndex++;
             } else {
-                updatePortrait('SYS');
-                document.getElementById('dialogueText').innerText = "[ Interactive Mode Active. Inspect points around the boat. ]";
+                updatePortrait('SYS', 'SYS');
+                typeText(document.getElementById('dialogueText'), "[ Interactive Mode Active. Inspect points around the boat. ]");
+                document.getElementById('nodeContainer').classList.add('visible');
             }
         }
 
@@ -554,7 +661,7 @@
             if (isTyping) return;
             audio.playThud();
             triggerShake();
-            updatePortrait('SYS');
+            updatePortrait('SYS', 'SYS');
             typeText(document.getElementById('dialogueText'), `[${title}]: ${detailText}`);
         }
 
