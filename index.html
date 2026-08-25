@@ -20,7 +20,7 @@
             font-family: 'Courier New', Courier, monospace;
         }
 
-        /* Upgraded Custom White Kawmling Hand Cursor */
+        /* Custom White Kawmling Hand Cursor */
         body, html {
             width: 100%;
             height: 100%;
@@ -55,7 +55,17 @@
         }
 
         canvas#fxCanvas { z-index: 3; }
-        canvas#boatCanvas { z-index: 1; }
+        
+        /* Boat Canvas Hidden by default, smooth opacity transitions */
+        canvas#boatCanvas { 
+            z-index: 1; 
+            opacity: 0;
+            transition: opacity 1.2s ease;
+        }
+
+        canvas#boatCanvas.visible {
+            opacity: 1;
+        }
 
         .crt-overlay {
             position: absolute;
@@ -108,7 +118,6 @@
 
         .cinematic-text.visible { opacity: 1; }
 
-        /* Boat Scene Layout */
         .boat-scene {
             position: absolute;
             width: 100%;
@@ -134,7 +143,6 @@
             align-items: center;
         }
 
-        /* Inspection Nodes Container */
         .node-container {
             display: flex;
             justify-content: space-around;
@@ -174,7 +182,6 @@
             transform: scale(1.05);
         }
 
-        /* Dialogue Box & Bigger Kawmling Portraits */
         .dialogue-box {
             width: 92%;
             max-width: 950px;
@@ -222,7 +229,6 @@
             overflow: hidden;
         }
 
-        /* Fixed Word Flow & Wrap Bug */
         .dialogue-text {
             font-size: 1.2rem;
             line-height: 1.8rem;
@@ -242,7 +248,6 @@
 
         @keyframes blink { 50% { opacity: 0; } }
 
-        /* Title Screen Overlay */
         #startOverlay {
             position: absolute;
             top: 0;
@@ -311,7 +316,6 @@
     </div>
 
     <script>
-        /* Audio Engine */
         class AudioEngine {
             constructor() { this.ctx = null; }
 
@@ -374,7 +378,6 @@
             }
         }
 
-        /* Particle System - Rain & Mist */
         class ParticleSystem {
             constructor(canvas) {
                 this.canvas = canvas;
@@ -426,7 +429,6 @@
             }
         }
 
-        /* Animated Boat Canvas */
         class BoatAnimator {
             constructor(canvas) {
                 this.canvas = canvas;
@@ -449,15 +451,12 @@
                 const waveY = Math.sin(this.time) * 12;
                 const pitch = Math.cos(this.time * 0.8) * 0.08;
 
-                // Waves Back
                 this.drawWaves(centerY + 15, 0.02, 10, '#222222');
 
-                // Animated Boat
                 this.ctx.save();
                 this.ctx.translate(this.canvas.width / 2, centerY + waveY);
                 this.ctx.rotate(pitch);
 
-                // Boat Hull
                 this.ctx.fillStyle = '#ffffff';
                 this.ctx.strokeStyle = '#000000';
                 this.ctx.lineWidth = 3;
@@ -470,7 +469,6 @@
                 this.ctx.fill();
                 this.ctx.stroke();
 
-                // Small Mast
                 this.ctx.beginPath();
                 this.ctx.moveTo(-10, -25);
                 this.ctx.lineTo(-10, -85);
@@ -478,7 +476,6 @@
 
                 this.ctx.restore();
 
-                // Waves Front
                 this.drawWaves(centerY + 25, 0.03, 15, '#ffffff');
 
                 requestAnimationFrame(() => this.render());
@@ -498,13 +495,11 @@
             }
         }
 
-        /* Expressive Kawmling SVG Portraits */
         const portraits = {
             MOE_DETERMINED: `
                 <circle cx="50" cy="50" r="30" fill="#ffffff" stroke="#000000" stroke-width="3.5"/>
                 <path d="M 18,48 Q 50,14 82,48 Q 50,35 18,48 Z" fill="#111116"/>
                 <path d="M 78,45 Q 92,52 88,70" stroke="#111116" stroke-width="5" fill="none"/>
-                <!-- Angled Eyebrows -->
                 <path d="M 26,45 L 45,53" stroke="#000000" stroke-width="7" stroke-linecap="round"/>
                 <path d="M 55,53 L 74,45" stroke="#000000" stroke-width="7" stroke-linecap="round"/>
                 <circle cx="37" cy="62" r="3.5" fill="#000000"/>
@@ -514,7 +509,6 @@
                 <circle cx="50" cy="50" r="30" fill="#ffffff" stroke="#000000" stroke-width="3.5"/>
                 <path d="M 18,48 Q 50,14 82,48 Q 50,35 18,48 Z" fill="#111116"/>
                 <path d="M 78,45 Q 92,52 88,70" stroke="#111116" stroke-width="5" fill="none"/>
-                <!-- Heavy Flat Eyebrows -->
                 <path d="M 25,48 L 45,48" stroke="#000000" stroke-width="7" stroke-linecap="round"/>
                 <path d="M 55,48 L 75,48" stroke="#000000" stroke-width="7" stroke-linecap="round"/>
                 <circle cx="37" cy="60" r="3.5" fill="#000000"/>
@@ -524,24 +518,20 @@
                 <circle cx="50" cy="52" r="30" fill="#ffffff" stroke="#000000" stroke-width="3.5"/>
                 <polygon points="12,42 50,8 88,42 70,42 50,26 30,42" fill="#ffffff" stroke="#000000" stroke-width="3.5"/>
                 <line x1="50" y1="8" x2="50" y2="42" stroke="#000000" stroke-width="2.5"/>
-                <!-- Worried Curved Eyebrows -->
                 <path d="M 25,50 Q 36,40 45,46" stroke="#000000" stroke-width="6" fill="none" stroke-linecap="round"/>
                 <path d="M 55,46 Q 64,40 75,50" stroke="#000000" stroke-width="6" fill="none" stroke-linecap="round"/>
                 <circle cx="35" cy="60" r="3.5" fill="#000000"/>
                 <circle cx="65" cy="60" r="3.5" fill="#000000"/>
-                <!-- Floating Confusion Marker -->
                 <text x="82" y="32" font-size="22" font-weight="bold" fill="#ffffff">?</text>
             `,
             MCCRACK_HOPEFUL: `
                 <circle cx="50" cy="52" r="30" fill="#ffffff" stroke="#000000" stroke-width="3.5"/>
                 <polygon points="12,42 50,8 88,42 70,42 50,26 30,42" fill="#ffffff" stroke="#000000" stroke-width="3.5"/>
                 <line x1="50" y1="8" x2="50" y2="42" stroke="#000000" stroke-width="2.5"/>
-                <!-- High Raised Eyebrows -->
                 <path d="M 25,40 Q 35,34 45,40" stroke="#000000" stroke-width="6" fill="none" stroke-linecap="round"/>
                 <path d="M 55,40 Q 65,34 75,40" stroke="#000000" stroke-width="6" fill="none" stroke-linecap="round"/>
                 <circle cx="35" cy="58" r="3.5" fill="#000000"/>
                 <circle cx="65" cy="58" r="3.5" fill="#000000"/>
-                <!-- Floating Exclamation Marker -->
                 <text x="82" y="32" font-size="22" font-weight="bold" fill="#ffffff">!</text>
             `,
             SYS: `
@@ -613,6 +603,10 @@
                 document.getElementById('stage').style.display = 'none';
                 const boatScene = document.getElementById('boatScene');
                 boatScene.classList.add('active');
+                
+                // Fade boat animation in ONLY when dialogue starts
+                document.getElementById('boatCanvas').classList.add('visible');
+                
                 advanceDialogue();
             }, 1500);
         }
@@ -651,6 +645,8 @@
                 typeText(document.getElementById('dialogueText'), line.text);
                 dialogueIndex++;
             } else {
+                // Dialogue finished -> Fade boat animation out, show System nodes
+                document.getElementById('boatCanvas').classList.remove('visible');
                 updatePortrait('SYS', 'SYS');
                 typeText(document.getElementById('dialogueText'), "[ Interactive Mode Active. Inspect points around the boat. ]");
                 document.getElementById('nodeContainer').classList.add('visible');
