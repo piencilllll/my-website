@@ -7,7 +7,7 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background: #000;
+      background: #020204;
       color: #fff;
       font-family: 'Courier New', Courier, monospace;
       display: flex;
@@ -23,16 +23,28 @@
       width: 800px;
       height: 600px;
       background: #000;
-      border: 4px solid #fff;
-      box-shadow: 0 0 30px rgba(255, 255, 255, 0.15);
+      border: 4px solid #333;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.9);
       cursor: pointer;
     }
     canvas {
       display: block;
       width: 100%;
       height: 100%;
-      image-rendering: pixelated; /* PS1 / Retro Pixel Crispness */
+      image-rendering: pixelated;
       image-rendering: crisp-edges;
+    }
+    /* PS1 CRT Scanline Overlay */
+    #scanlines {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: linear-gradient(
+        rgba(18, 16, 16, 0) 50%, 
+        rgba(0, 0, 0, 0.35) 50%
+      );
+      background-size: 100% 4px;
+      pointer-events: none;
+      z-index: 20;
     }
   </style>
 </head>
@@ -40,16 +52,15 @@
 
 <div id="game-container">
   <canvas id="gameCanvas" width="800" height="600"></canvas>
+  <div id="scanlines"></div>
 </div>
 
 <script>
-// --- AUDIO SYNTHESIZER (Square Wave Beeps & SFX) ---
+// --- AUDIO SYNTHESIZER ---
 const AudioEngine = {
   ctx: null,
   init() {
-    if (!this.ctx) {
-      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-    }
+    if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
   },
   playBeep(pitch = 220) {
     if (!this.ctx) return;
@@ -58,12 +69,12 @@ const AudioEngine = {
       const gain = this.ctx.createGain();
       osc.type = 'square';
       osc.frequency.setValueAtTime(pitch, this.ctx.currentTime);
-      gain.gain.setValueAtTime(0.04, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.06);
+      gain.gain.setValueAtTime(0.03, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.05);
       osc.connect(gain);
       gain.connect(this.ctx.destination);
       osc.start();
-      osc.stop(this.ctx.currentTime + 0.06);
+      osc.stop(this.ctx.currentTime + 0.05);
     } catch(e) {}
   }
 };
@@ -72,63 +83,49 @@ const AudioEngine = {
 const STATE = {
   mode: 'MENU', // MENU, VILLAGE_FIRE, FOREST_RUN, BOAT_JUMP, OCEAN_DRIFT
   fadeAlpha: 0,
-  fadeDirection: 0, // 1: fading to black, -1: fading in, 0: none
+  fadeDirection: 0,
   nextMode: null,
   dialogueIndex: 0,
   textCharIndex: 0,
   textTimer: 0,
-  menuTime: 0
+  globalTime: 0,
+  lightningFlash: 0
 };
 
 // --- SCRIPT DATA ---
 const SCRIPT = [
-  // Village Fire
-  { mode: 'VILLAGE_FIRE', speaker: 'Moe', expression: 'worried', text: "The village is under attack! Look at the fires... everything is burning!" },
-  { mode: 'VILLAGE_FIRE', speaker: 'McCrack', expression: 'determined', text: "We have to run into the forest now! The docks are on the other side!" },
-  
-  // Forest Run & Boat Jump are action cutscenes driven by animations
-  
-  // Ocean Drift Dialogue
-  { mode: 'OCEAN_DRIFT', speaker: 'Moe', expression: 'worried', text: "We made it out... but the village... everyone is gone, McCrack." },
-  { mode: 'OCEAN_DRIFT', speaker: 'McCrack', expression: 'squint', text: "Keep your head up, Moe. The storm is heavy, but we paddle forward." },
-  { mode: 'OCEAN_DRIFT', speaker: 'Moe', expression: 'determined', text: "Wait... look through the heavy rain! There's a faint yellow light far across the ocean!" }
+  { mode: 'VILLAGE_FIRE', speaker: 'Moe', expression: 'worried', text: "The village is completely overrun! The fires are reaching the timber roofs!" },
+  { mode: 'VILLAGE_FIRE', speaker: 'McCrack', expression: 'determined', text: "We can't stay here! Break through the forest edge toward the escape docks!" },
+  { mode: 'OCEAN_DRIFT', speaker: 'Moe', expression: 'worried', text: "We made it off shore... but everything we knew is ash now." },
+  { mode: 'OCEAN_DRIFT', speaker: 'McCrack', expression: 'squint', text: "Focus ahead, Moe. The storm is rough, but we have to keep rowing." },
+  { mode: 'OCEAN_DRIFT', speaker: 'Moe', expression: 'determined', text: "Wait... look past the breaking waves! That yellow beacon in the distance!" }
 ];
 
-// --- CANVAS SETUP ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
-// Dynamic Animations Setup
-const drips = Array.from({ length: 25 }, () => ({
-  x: Math.random() * 800,
-  y: Math.random() * -200,
-  speed: Math.random() * 2 + 1.5,
-  len: Math.random() * 15 + 8,
-  width: Math.random() * 3 + 2
+// Dynamic Particles & Physics Setup
+const drips = Array.from({ length: 40 }, () => ({
+  x: Math.random() * 800, y: Math.random() * -300,
+  speed: Math.random() * 3 + 2, len: Math.random() * 20 + 10, width: Math.random() * 3 + 2
 }));
 
-const smokeParticles = Array.from({ length: 35 }, () => ({
-  x: Math.random() * 800,
-  y: Math.random() * 300 + 200,
-  size: Math.random() * 40 + 20,
-  speedY: Math.random() * 1.5 + 0.5,
-  alpha: Math.random() * 0.6 + 0.2
+const embers = Array.from({ length: 60 }, () => ({
+  x: Math.random() * 800, y: Math.random() * 600,
+  size: Math.random() * 3 + 1, speedY: Math.random() * 2 + 1, speedX: (Math.random() - 0.5) * 2,
+  alpha: Math.random()
 }));
 
-const rain = Array.from({ length: 120 }, () => ({
-  x: Math.random() * 800,
-  y: Math.random() * 600,
-  speed: Math.random() * 12 + 10,
-  len: Math.random() * 20 + 10
+const rain = Array.from({ length: 180 }, () => ({
+  x: Math.random() * 900, y: Math.random() * 600,
+  speed: Math.random() * 14 + 12, len: Math.random() * 25 + 12
 }));
 
-// Animated Entity Positions
-let runX = -50;
+let runX = -80;
 let jumpProgress = 0;
-let waveOffset = 0;
 
-// --- HELPER: TEXT WRAPPING & SPACING ---
+// --- ADVANCED TEXT RENDERER ---
 function drawSpacedText(text, x, y, spacing = 2) {
   let currentX = x;
   for (let i = 0; i < text.length; i++) {
@@ -145,11 +142,8 @@ function drawWrappedText(text, x, y, maxWidth, lineHeight, spacing = 2) {
 
   for (let i = 0; i < words.length; i++) {
     const testLine = line + words[i] + ' ';
-    // Calculate total width including custom spacing
     let testWidth = 0;
-    for (let j = 0; j < testLine.length; j++) {
-      testWidth += ctx.measureText(testLine[j]).width + spacing;
-    }
+    for (let j = 0; j < testLine.length; j++) testWidth += ctx.measureText(testLine[j]).width + spacing;
 
     if (testWidth > maxWidth && i > 0) {
       drawSpacedText(line.trim(), x, currentY, spacing);
@@ -162,135 +156,97 @@ function drawWrappedText(text, x, y, maxWidth, lineHeight, spacing = 2) {
   drawSpacedText(line.trim(), x, currentY, spacing);
 }
 
-// --- EXPRESSIVE KAWM-LING PIXEL PORTRAITS ---
+// --- PIXEL PORTRAIT ENGINE ---
 function drawKawmlingPortrait(x, y, speaker, expression) {
-  // Portrait Box Base
-  ctx.fillStyle = '#050508';
+  ctx.fillStyle = '#06060c';
   ctx.fillRect(x, y, 105, 105);
   ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 3;
   ctx.strokeRect(x, y, 105, 105);
 
-  const cx = x + 52.5;
-  const cy = y + 55;
+  const cx = x + 52.5, cy = y + 55;
 
-  // Thick Stickman Head
+  // Thick Head Contour
   ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 5;
+  ctx.lineWidth = 6;
   ctx.beginPath();
-  ctx.arc(cx, cy - 5, 26, 0, Math.PI * 2);
+  ctx.arc(cx, cy - 4, 25, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Expressive Eyes & Brows
+  // Face Features
   ctx.fillStyle = '#ffffff';
   ctx.lineWidth = 3;
 
   if (expression === 'worried') {
-    // Slanted worried brows
     ctx.beginPath();
-    ctx.moveTo(cx - 16, cy - 20); ctx.lineTo(cx - 4, cy - 14);
-    ctx.moveTo(cx + 16, cy - 20); ctx.lineTo(cx + 4, cy - 14);
+    ctx.moveTo(cx - 15, cy - 18); ctx.lineTo(cx - 4, cy - 12);
+    ctx.moveTo(cx + 15, cy - 18); ctx.lineTo(cx + 4, cy - 12);
     ctx.stroke();
-
-    // Large wide eyes
     ctx.beginPath();
-    ctx.arc(cx - 10, cy - 8, 4, 0, Math.PI * 2);
-    ctx.arc(cx + 10, cy - 8, 4, 0, Math.PI * 2);
+    ctx.arc(cx - 9, cy - 6, 4, 0, Math.PI * 2);
+    ctx.arc(cx + 9, cy - 6, 4, 0, Math.PI * 2);
     ctx.fill();
-
-    // Wavy mouth
     ctx.beginPath();
-    ctx.moveTo(cx - 12, cy + 12);
-    ctx.quadraticCurveTo(cx, cy + 6, cx + 12, cy + 14);
+    ctx.moveTo(cx - 12, cy + 12); ctx.quadraticCurveTo(cx, cy + 5, cx + 12, cy + 12);
     ctx.stroke();
   } else if (expression === 'determined') {
-    // Sharp stern brows
     ctx.beginPath();
-    ctx.moveTo(cx - 16, cy - 12); ctx.lineTo(cx - 4, cy - 18);
-    ctx.moveTo(cx + 16, cy - 12); ctx.lineTo(cx + 4, cy - 18);
+    ctx.moveTo(cx - 16, cy - 10); ctx.lineTo(cx - 4, cy - 17);
+    ctx.moveTo(cx + 16, cy - 10); ctx.lineTo(cx + 4, cy - 17);
     ctx.stroke();
-
-    // Focused eyes
     ctx.beginPath();
-    ctx.arc(cx - 10, cy - 6, 3, 0, Math.PI * 2);
-    ctx.arc(cx + 10, cy - 6, 3, 0, Math.PI * 2);
+    ctx.arc(cx - 9, cy - 4, 3, 0, Math.PI * 2);
+    ctx.arc(cx + 9, cy - 4, 3, 0, Math.PI * 2);
     ctx.fill();
-
-    // Firm straight mouth
     ctx.beginPath();
-    ctx.moveTo(cx - 12, cy + 10);
-    ctx.lineTo(cx + 12, cy + 10);
+    ctx.moveTo(cx - 12, cy + 10); ctx.lineTo(cx + 12, cy + 10);
     ctx.stroke();
   } else if (expression === 'squint') {
-    // Squinting eyes
     ctx.beginPath();
-    ctx.moveTo(cx - 16, cy - 6); ctx.lineTo(cx - 4, cy - 6);
-    ctx.moveTo(cx + 4, cy - 6); ctx.lineTo(cx + 16, cy - 6);
+    ctx.moveTo(cx - 15, cy - 5); ctx.lineTo(cx - 3, cy - 5);
+    ctx.moveTo(cx + 3, cy - 5); ctx.lineTo(cx + 15, cy - 5);
     ctx.stroke();
-
-    // Open mouth talking
     ctx.beginPath();
-    ctx.arc(cx, cy + 10, 6, 0, Math.PI);
+    ctx.arc(cx, cy + 9, 5, 0, Math.PI);
     ctx.stroke();
   }
 
   // Accessories
   if (speaker === 'Moe') {
-    // Blue Durag
     ctx.fillStyle = '#0055ff';
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(cx, cy - 5, 27, Math.PI * 0.85, Math.PI * 2.15);
+    ctx.arc(cx, cy - 4, 27, Math.PI * 0.82, Math.PI * 2.18);
     ctx.fill();
-    ctx.stroke();
-
-    // Durag tie tail
-    ctx.fillStyle = '#0033cc';
-    ctx.fillRect(cx + 22, cy - 5, 14, 25);
-    ctx.strokeRect(cx + 22, cy - 5, 14, 25);
+    ctx.fillRect(cx + 20, cy - 4, 14, 24);
   } else if (speaker === 'McCrack') {
-    // White Paper Boat Hat
     ctx.fillStyle = '#ffffff';
-    ctx.strokeStyle = '#ffffff';
     ctx.beginPath();
-    ctx.moveTo(cx - 32, cy - 25);
-    ctx.lineTo(cx + 32, cy - 25);
-    ctx.lineTo(cx + 20, cy - 48);
-    ctx.lineTo(cx, cy - 36);
-    ctx.lineTo(cx - 20, cy - 48);
+    ctx.moveTo(cx - 30, cy - 24); ctx.lineTo(cx + 30, cy - 24);
+    ctx.lineTo(cx + 18, cy - 46); ctx.lineTo(cx, cy - 34); ctx.lineTo(cx - 18, cy - 46);
     ctx.closePath();
     ctx.fill();
-    ctx.stroke();
   }
 }
 
-// --- DIALOGUE TEXTBOX RENDERING ---
+// --- DIALOGUE HUD ---
 function drawDialogueBox() {
   const current = SCRIPT[STATE.dialogueIndex];
   if (!current || current.mode !== STATE.mode) return;
 
-  // Outer Fixed Container (720x155px at bottom)
-  const boxX = 40;
-  const boxY = 425;
-  const boxW = 720;
-  const boxH = 155;
+  const boxX = 40, boxY = 425, boxW = 720, boxH = 155;
 
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.92)';
+  ctx.fillStyle = 'rgba(4, 4, 8, 0.94)';
   ctx.fillRect(boxX, boxY, boxW, boxH);
   ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 4;
   ctx.strokeRect(boxX, boxY, boxW, boxH);
 
-  // Render Portrait
   drawKawmlingPortrait(boxX + 15, boxY + 25, current.speaker, current.expression);
 
-  // Render Speaker Title
-  ctx.fillStyle = current.speaker === 'Moe' ? '#00bfff' : '#ffffff';
+  ctx.fillStyle = current.speaker === 'Moe' ? '#00c3ff' : '#ffffff';
   ctx.font = 'bold 16px "Courier New", monospace';
   drawSpacedText(current.speaker.toUpperCase(), boxX + 135, boxY + 35, 3);
 
-  // Typewriter Text Logic
   const fullText = current.text;
   if (STATE.textCharIndex < fullText.length) {
     STATE.textTimer++;
@@ -302,20 +258,17 @@ function drawDialogueBox() {
 
   const visibleText = fullText.substring(0, STATE.textCharIndex);
 
-  // Render Dialogue Body Text with Custom Spacing & Wrapping
   ctx.fillStyle = '#eeeeee';
   ctx.font = '14px "Courier New", monospace';
   drawWrappedText(visibleText, boxX + 135, boxY + 65, 550, 22, 2);
 
-  // Prompt
   if (STATE.textCharIndex >= fullText.length) {
     ctx.fillStyle = '#888888';
     ctx.font = '11px "Courier New", monospace';
-    drawSpacedText('[CLICK / SPACE TO CONTINUE]', boxX + 480, boxY + 140, 1);
+    drawSpacedText('[PRESS SPACE / CLICK TO CONTINUE]', boxX + 460, boxY + 140, 1);
   }
 }
 
-// --- STAGE FADE TRANSITION CONTROLLER ---
 function triggerFadeTo(nextMode) {
   STATE.fadeDirection = 1;
   STATE.nextMode = nextMode;
@@ -323,17 +276,16 @@ function triggerFadeTo(nextMode) {
 
 function updateFade() {
   if (STATE.fadeDirection === 1) {
-    STATE.fadeAlpha += 0.04;
+    STATE.fadeAlpha += 0.05;
     if (STATE.fadeAlpha >= 1) {
       STATE.fadeAlpha = 1;
       STATE.mode = STATE.nextMode;
       STATE.fadeDirection = -1;
-      // Reset scene variables on state switch
-      if (STATE.mode === 'FOREST_RUN') runX = -60;
+      if (STATE.mode === 'FOREST_RUN') runX = -80;
       if (STATE.mode === 'BOAT_JUMP') jumpProgress = 0;
     }
   } else if (STATE.fadeDirection === -1) {
-    STATE.fadeAlpha -= 0.04;
+    STATE.fadeAlpha -= 0.05;
     if (STATE.fadeAlpha <= 0) {
       STATE.fadeAlpha = 0;
       STATE.fadeDirection = 0;
@@ -346,231 +298,209 @@ function updateFade() {
   }
 }
 
-// --- SCENE 1: START MENU (Dripping Liquid Animation) ---
+// --- RENDER SCENES ---
+
+// 1. MENU
 function renderMenu() {
-  STATE.menuTime += 0.05;
   ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, 800, 600);
 
-  // Dripping White Droplets Animation
+  // Dripping Liquid
   ctx.fillStyle = '#ffffff';
   drips.forEach(d => {
     d.y += d.speed;
-    if (d.y > 600) {
-      d.y = Math.random() * -100;
-      d.x = Math.random() * 800;
-    }
-    // Drip head and tail
+    if (d.y > 600) { d.y = Math.random() * -100; d.x = Math.random() * 800; }
     ctx.fillRect(d.x, d.y, d.width, d.len);
     ctx.beginPath();
     ctx.arc(d.x + d.width / 2, d.y + d.len, d.width, 0, Math.PI * 2);
     ctx.fill();
   });
 
-  // Title Text
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 36px "Courier New", monospace';
   drawSpacedText('KAWM: FAR FROM HOME', 140, 260, 4);
 
-  // Pulsing "Tap Anywhere to Start"
-  const alpha = (Math.sin(STATE.menuTime * 2) + 1) / 2;
+  const alpha = (Math.sin(STATE.globalTime * 3) + 1) / 2;
   ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
   ctx.font = '16px "Courier New", monospace';
-  drawSpacedText('[ PRESS SPACE OR CLICK TO START ]', 200, 360, 2);
+  drawSpacedText('[ TAP ANYWHERE TO START ]', 240, 360, 2);
 }
 
-// --- SCENE 2: VILLAGE ON FIRE ---
+// 2. VILLAGE FIRE
 function renderVillageFire() {
-  // Burning Red/Orange Sky Horizon
+  // Fire Gradient Sky
   let bgGrad = ctx.createLinearGradient(0, 0, 0, 600);
-  bgGrad.addColorStop(0, '#060202');
-  bgGrad.addColorStop(0.5, '#440f00');
-  bgGrad.addColorStop(1, '#ff2200');
+  bgGrad.addColorStop(0, '#0a0202');
+  bgGrad.addColorStop(0.4, '#551100');
+  bgGrad.addColorStop(1, '#ff3300');
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, 800, 600);
 
-  // Silhouetted Destroyed Village Buildings
-  ctx.fillStyle = '#080404';
-  ctx.fillRect(30, 280, 140, 320);
-  ctx.fillRect(210, 220, 180, 380);
-  ctx.fillRect(430, 260, 150, 340);
-  ctx.fillRect(620, 310, 150, 290);
+  // Parallax Silhouettes
+  ctx.fillStyle = '#140505';
+  ctx.fillRect(20, 260, 160, 340);
+  ctx.fillRect(220, 200, 200, 400);
+  ctx.fillRect(460, 240, 140, 360);
+  ctx.fillRect(630, 290, 150, 310);
 
-  // Ascending Thick Smoke Particles
-  smokeParticles.forEach(p => {
-    p.y -= p.speedY;
-    if (p.y < -50) p.y = 500;
-    ctx.fillStyle = `rgba(20, 15, 15, ${p.alpha})`;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-    ctx.fill();
-  });
-
-  // Dynamic Fire Flames on Rooftops
+  // Animated Flames
   ctx.fillStyle = '#ffaa00';
-  for (let i = 0; i < 800; i += 40) {
-    let flameH = Math.sin(Date.now() * 0.01 + i) * 20 + 30;
-    ctx.fillRect(i, 320 - flameH, 25, flameH);
+  for (let i = 0; i < 800; i += 30) {
+    let flameH = Math.sin(STATE.globalTime * 8 + i) * 25 + 35;
+    ctx.fillRect(i, 320 - flameH, 18, flameH);
   }
+
+  // Embers Particle Field
+  embers.forEach(e => {
+    e.y -= e.speedY; e.x += e.speedX;
+    if (e.y < 0) e.y = 600;
+    ctx.fillStyle = `rgba(255, 180, 0, ${e.alpha})`;
+    ctx.fillRect(e.x, e.y, e.size, e.size);
+  });
 
   drawDialogueBox();
 }
 
-// --- SCENE 3: ANIMATED FOREST RUN ---
+// 3. ANIMATED FOREST RUN
 function renderForestRun() {
-  // Dark Atmospheric Forest Background
-  ctx.fillStyle = '#030805';
+  ctx.fillStyle = '#020604';
   ctx.fillRect(0, 0, 800, 600);
 
-  // Parallax Trees
-  ctx.fillStyle = '#0a180d';
-  for (let i = 0; i < 900; i += 90) {
-    ctx.fillRect(i - (runX * 0.5) % 90, 100, 35, 500);
+  // Multi-layered Parallax Forest Trees
+  ctx.fillStyle = '#07140a';
+  for (let i = -100; i < 900; i += 70) {
+    let parallaxX = i - (runX * 0.3) % 70;
+    ctx.fillRect(parallaxX, 80, 25, 520);
   }
 
-  // Ground Line
-  ctx.fillStyle = '#050a06';
-  ctx.fillRect(0, 480, 800, 120);
+  ctx.fillStyle = '#0d2413';
+  for (let i = -100; i < 900; i += 110) {
+    let parallaxX = i - (runX * 0.7) % 110;
+    ctx.fillRect(parallaxX, 140, 45, 460);
+  }
 
-  // Advance Character Running
+  ctx.fillStyle = '#040a05';
+  ctx.fillRect(0, 460, 800, 140);
+
   runX += 4.5;
 
-  // Draw Running Kawmlings (Thick Stickmen)
+  // Skeletal Animated Kawmlings
   function drawRunner(x, y, isMoe) {
-    const legAnim = Math.sin(runX * 0.2) * 15;
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 5;
+    const legSwing = Math.sin(STATE.globalTime * 14) * 16;
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 6;
 
-    // Head
-    ctx.beginPath(); ctx.arc(x, y - 40, 14, 0, Math.PI * 2); ctx.stroke();
-    // Body
-    ctx.beginPath(); ctx.moveTo(x, y - 26); ctx.lineTo(x, y); ctx.stroke();
-    // Running Legs
-    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 12 + legAnim, y + 25); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 12 - legAnim, y + 25); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y - 42, 14, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y - 28); ctx.lineTo(x, y); ctx.stroke();
 
-    // Accessories
+    // Legs
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - legSwing, y + 26); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + legSwing, y + 26); ctx.stroke();
+
     if (isMoe) {
       ctx.fillStyle = '#0055ff';
-      ctx.beginPath(); ctx.arc(x, y - 40, 15, Math.PI * 0.85, Math.PI * 2.15); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y - 42, 15, Math.PI * 0.82, Math.PI * 2.18); ctx.fill();
     } else {
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.moveTo(x - 18, y - 52); ctx.lineTo(x + 18, y - 52); ctx.lineTo(x, y - 65);
+      ctx.moveTo(x - 18, y - 54); ctx.lineTo(x + 18, y - 54); ctx.lineTo(x, y - 66);
       ctx.fill();
     }
   }
 
-  // Draw Moe & McCrack running together
-  drawRunner(runX, 455, true);
-  drawRunner(runX - 45, 455, false);
+  drawRunner(runX, 434, true);
+  drawRunner(runX - 50, 434, false);
 
-  // Transition when run cutscene finishes
-  if (runX > 850) {
-    triggerFadeTo('BOAT_JUMP');
-  }
+  if (runX > 880) triggerFadeTo('BOAT_JUMP');
 }
 
-// --- SCENE 4: ANIMATED BOAT JUMP ---
+// 4. ANIMATED BOAT JUMP
 function renderBoatJump() {
-  // Dark Ocean & Dock Interface
-  ctx.fillStyle = '#02050c';
+  ctx.fillStyle = '#010308';
   ctx.fillRect(0, 0, 800, 600);
 
-  // Timber Dock Platform on Left
-  ctx.fillStyle = '#1a0f0a';
-  ctx.fillRect(0, 420, 280, 180);
+  // Timber Dock Platform
+  ctx.fillStyle = '#160b07';
+  ctx.fillRect(0, 400, 260, 200);
 
-  // Ocean Water on Right
-  ctx.fillStyle = '#00ffff';
-  ctx.fillRect(280, 460, 520, 140);
+  // Ocean Water Area
+  ctx.fillStyle = '#081c33';
+  ctx.fillRect(260, 450, 540, 150);
 
-  // Low-Poly Pixel Boat Hull floating
-  const boatY = 445 + Math.sin(Date.now() * 0.003) * 4;
-  ctx.fillStyle = '#2a1810';
-  ctx.fillRect(450, boatY, 180, 45);
+  const boatY = 435 + Math.sin(STATE.globalTime * 3) * 5;
+  ctx.fillStyle = '#26140b';
+  ctx.fillRect(470, boatY, 190, 50);
 
-  jumpProgress += 0.018;
+  jumpProgress += 0.016;
 
-  // Parabolic Jump Trajectory for Stickmen
-  const startX = 220; const targetX = 510;
+  const startX = 200, targetX = 520;
   const currentX = startX + (targetX - startX) * Math.min(jumpProgress, 1);
-  const arcY = Math.sin(jumpProgress * Math.PI) * 120;
-  const currentY = 420 - arcY;
+  const currentY = 400 - Math.sin(jumpProgress * Math.PI) * 130;
 
-  // Draw Jumping Characters
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 5;
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 6;
 
-  // Moe
+  // Moe Jumping
   ctx.beginPath(); ctx.arc(currentX, currentY - 30, 14, 0, Math.PI * 2); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(currentX, currentY - 16); ctx.lineTo(currentX, currentY + 10); ctx.stroke();
   ctx.fillStyle = '#0055ff';
-  ctx.beginPath(); ctx.arc(currentX, currentY - 30, 15, Math.PI * 0.85, Math.PI * 2.15); ctx.fill();
+  ctx.beginPath(); ctx.arc(currentX, currentY - 30, 15, Math.PI * 0.82, Math.PI * 2.18); ctx.fill();
 
-  // McCrack (Following slightly behind)
-  const mcX = currentX - 40;
-  const mcY = currentY + 10;
+  // McCrack Jumping Behind
+  const mcX = currentX - 45, mcY = currentY + 15;
   ctx.beginPath(); ctx.arc(mcX, mcY - 30, 14, 0, Math.PI * 2); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(mcX, mcY - 16); ctx.lineTo(mcX, mcY + 10); ctx.stroke();
   ctx.fillStyle = '#ffffff';
   ctx.beginPath();
-  ctx.moveTo(mcX - 16, mcY - 42); ctx.lineTo(mcX + 16, mcY - 42); ctx.lineTo(mcX, mcY - 55);
+  ctx.moveTo(mcX - 16, mcY - 42); ctx.lineTo(mcX + 16, mcY - 42); ctx.lineTo(mcX, mcY - 54);
   ctx.fill();
 
-  if (jumpProgress >= 1.1) {
-    triggerFadeTo('OCEAN_DRIFT');
-  }
+  if (jumpProgress >= 1.1) triggerFadeTo('OCEAN_DRIFT');
 }
 
-// --- SCENE 5: KAWM OCEAN DRIFT & DIALOGUE ---
+// 5. OCEAN DRIFT
 function renderOceanDrift() {
-  // Dark Storm Sky
+  // Lightning Flashes
+  if (Math.random() < 0.015) STATE.lightningFlash = 1.0;
+  if (STATE.lightningFlash > 0) STATE.lightningFlash -= 0.08;
+
   let skyGrad = ctx.createLinearGradient(0, 0, 0, 600);
-  skyGrad.addColorStop(0, '#010308');
-  skyGrad.addColorStop(1, '#081426');
+  skyGrad.addColorStop(0, '#010206');
+  skyGrad.addColorStop(1, '#061020');
   ctx.fillStyle = skyGrad;
   ctx.fillRect(0, 0, 800, 600);
 
-  // Faint Distant Yellow Lighthouse Beam on Horizon
-  ctx.fillStyle = 'rgba(255, 255, 150, 0.15)';
+  if (STATE.lightningFlash > 0) {
+    ctx.fillStyle = `rgba(255, 255, 255, ${STATE.lightningFlash * 0.4})`;
+    ctx.fillRect(0, 0, 800, 600);
+  }
+
+  // Faint Distant Yellow Beacon Light
+  ctx.fillStyle = 'rgba(255, 240, 150, 0.18)';
   ctx.beginPath();
-  ctx.moveTo(700, 340);
-  ctx.lineTo(0, 200);
-  ctx.lineTo(0, 380);
+  ctx.moveTo(680, 330); ctx.lineTo(0, 180); ctx.lineTo(0, 380);
   ctx.fill();
 
-  // White Crested Waves (Sine Wave Displacement)
-  waveOffset += 0.04;
+  // Multi-layered Waves
   ctx.fillStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.moveTo(0, 360);
-  for (let x = 0; x <= 800; x += 20) {
-    let y = Math.sin(x * 0.015 + waveOffset) * 14 + 360;
+  ctx.beginPath(); ctx.moveTo(0, 350);
+  for (let x = 0; x <= 800; x += 15) {
+    let y = Math.sin(x * 0.015 + STATE.globalTime * 2.5) * 14 + 350;
     ctx.lineTo(x, y);
   }
-  ctx.lineTo(800, 600);
-  ctx.lineTo(0, 600);
-  ctx.fill();
+  ctx.lineTo(800, 600); ctx.lineTo(0, 600); ctx.fill();
 
-  // Boat Floating with Pitching Motion
-  const boatRock = Math.sin(waveOffset * 1.5) * 8;
-  const boatY = 345 + boatRock;
+  // Floating Rocking Boat
+  const boatRock = Math.sin(STATE.globalTime * 2) * 9;
+  const boatY = 335 + boatRock;
 
   ctx.fillStyle = '#1c0f0a';
   ctx.fillRect(300, boatY, 200, 50);
 
-  // Moe & McCrack Seated in Boat
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 5;
-
-  // Moe Seated
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 6;
   ctx.beginPath(); ctx.arc(340, boatY - 15, 13, 0, Math.PI * 2); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(340, boatY - 2); ctx.lineTo(340, boatY + 20); ctx.stroke();
   ctx.fillStyle = '#0055ff';
-  ctx.beginPath(); ctx.arc(340, boatY - 15, 14, Math.PI * 0.85, Math.PI * 2.15); ctx.fill();
+  ctx.beginPath(); ctx.arc(340, boatY - 15, 14, Math.PI * 0.82, Math.PI * 2.18); ctx.fill();
 
-  // McCrack Seated
   ctx.beginPath(); ctx.arc(440, boatY - 15, 13, 0, Math.PI * 2); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(440, boatY - 2); ctx.lineTo(440, boatY + 20); ctx.stroke();
   ctx.fillStyle = '#ffffff';
@@ -578,49 +508,38 @@ function renderOceanDrift() {
   ctx.moveTo(424, boatY - 26); ctx.lineTo(456, boatY - 26); ctx.lineTo(440, boatY - 40);
   ctx.fill();
 
-  // Angled Storm Rain Particles
-  ctx.strokeStyle = 'rgba(220, 240, 255, 0.5)';
+  // Storm Rain
+  ctx.strokeStyle = 'rgba(200, 230, 255, 0.5)';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   rain.forEach(r => {
-    r.y += r.speed;
-    r.x -= 4;
-    if (r.y > 600) { r.y = -20; r.x = Math.random() * 800; }
-    ctx.moveTo(r.x, r.y);
-    ctx.lineTo(r.x - 8, r.y + r.len);
+    r.y += r.speed; r.x -= 4;
+    if (r.y > 600) { r.y = -20; r.x = Math.random() * 900; }
+    ctx.moveTo(r.x, r.y); ctx.lineTo(r.x - 8, r.y + r.len);
   });
   ctx.stroke();
 
   drawDialogueBox();
 }
 
-// --- MAIN GAME LOOP ---
+// GAME LOOP
 function gameLoop() {
+  STATE.globalTime += 0.03;
   ctx.clearRect(0, 0, 800, 600);
 
   switch (STATE.mode) {
-    case 'MENU':
-      renderMenu();
-      break;
-    case 'VILLAGE_FIRE':
-      renderVillageFire();
-      break;
-    case 'FOREST_RUN':
-      renderForestRun();
-      break;
-    case 'BOAT_JUMP':
-      renderBoatJump();
-      break;
-    case 'OCEAN_DRIFT':
-      renderOceanDrift();
-      break;
+    case 'MENU': renderMenu(); break;
+    case 'VILLAGE_FIRE': renderVillageFire(); break;
+    case 'FOREST_RUN': renderForestRun(); break;
+    case 'BOAT_JUMP': renderBoatJump(); break;
+    case 'OCEAN_DRIFT': renderOceanDrift(); break;
   }
 
   updateFade();
   requestAnimationFrame(gameLoop);
 }
 
-// --- INPUT HANDLERS ---
+// INPUT CONTROLLER
 function handleAdvance() {
   AudioEngine.init();
 
@@ -632,39 +551,24 @@ function handleAdvance() {
   const current = SCRIPT[STATE.dialogueIndex];
   if (!current || current.mode !== STATE.mode) return;
 
-  // Complete dialogue line instantly if clicked while typing
   if (STATE.textCharIndex < current.text.length) {
     STATE.textCharIndex = current.text.length;
   } else {
-    // Advance to next script line
     STATE.dialogueIndex++;
-    STATE.textCharIndex = 0;
-    STATE.textTimer = 0;
-
+    STATE.textCharIndex = 0; STATE.textTimer = 0;
     const nextScript = SCRIPT[STATE.dialogueIndex];
-    if (!nextScript) {
-      // End of intro sequence
-      return;
-    }
-
-    if (nextScript.mode !== STATE.mode) {
-      if (STATE.mode === 'VILLAGE_FIRE') {
-        triggerFadeTo('FOREST_RUN');
-      } else {
-        triggerFadeTo(nextScript.mode);
-      }
+    if (nextScript && nextScript.mode !== STATE.mode) {
+      if (STATE.mode === 'VILLAGE_FIRE') triggerFadeTo('FOREST_RUN');
+      else triggerFadeTo(nextScript.mode);
     }
   }
 }
 
 window.addEventListener('click', handleAdvance);
 window.addEventListener('keydown', (e) => {
-  if (e.code === 'Space' || e.code === 'Enter') {
-    handleAdvance();
-  }
+  if (e.code === 'Space' || e.code === 'Enter') handleAdvance();
 });
 
-// Start loop
 gameLoop();
 </script>
 </body>
