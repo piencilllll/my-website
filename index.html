@@ -34,11 +34,24 @@
             overflow: hidden;
         }
 
+        /* 2D Canvas & 3D WebGL Canvas Layering */
         canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
             display: block;
             image-rendering: pixelated;
+        }
+
+        #stage3d {
+            z-index: 1;
+        }
+
+        #stage2d {
+            z-index: 2;
+            pointer-events: none;
         }
 
         /* Scanlines Overlay */
@@ -107,7 +120,7 @@
             50% { opacity: 1; transform: scale(1); }
         }
 
-        /* Dialogue Box - Authentic Undertale Style */
+        /* Dialogue Box - Undertale Style */
         #dialogue-container {
             position: absolute;
             bottom: 24px;
@@ -162,6 +175,23 @@
             font-weight: bold;
         }
 
+        /* Controls HUD overlay for 3D storm gameplay */
+        #gameplay-hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 25;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            text-shadow: 2px 2px 0px #000;
+            background: rgba(0,0,0,0.6);
+            padding: 10px 16px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            pointer-events: none;
+        }
+
         .hidden {
             display: none !important;
         }
@@ -180,12 +210,16 @@
             transition: opacity 1.5s ease;
         }
     </style>
+
+    <!-- Three.js Library for Retro PS1 3D Rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
 <div id="game-container">
     <div class="scanlines"></div>
-    <canvas id="stage" width="800" height="600"></canvas>
+    <canvas id="stage3d"></canvas>
+    <canvas id="stage2d" width="800" height="600"></canvas>
 
     <div id="fade-overlay"></div>
 
@@ -196,7 +230,13 @@
         <div id="start-prompt" class="prompt-text">[ CLICK ANYWHERE TO ACTIVATE AUDIO ]<br><span style="font-size:10px; color: #888;">(Browsers block audio until user interaction)</span></div>
     </div>
 
-    <!-- Intro Cutscene Dialogue UI - Undertale Style -->
+    <!-- Gameplay HUD -->
+    <div id="gameplay-hud" class="hidden">
+        <div>STEER BOAT: [A] / [D] or [LEFT] / [RIGHT]</div>
+        <div style="color: #38bdf8; margin-top: 4px;">TARGET: REACH THE BEACON IN THE FOG</div>
+    </div>
+
+    <!-- Dialogue UI - Undertale Style -->
     <div id="dialogue-container" class="hidden">
         <canvas id="portrait-canvas" width="55" height="55"></canvas>
         <div class="text-area">
@@ -222,12 +262,11 @@ function initAudio() {
     }
 }
 
-// Procedural Retro Sound Generators
+// Sound Generators
 function playTextBeep(speaker) {
     if (!audioCtx || !isAudioInitialized) return;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-
     osc.type = 'square';
     
     if (speaker === 'Moe') {
@@ -243,7 +282,6 @@ function playTextBeep(speaker) {
 
     osc.connect(gain);
     gain.connect(audioCtx.destination);
-
     osc.start();
     osc.stop(audioCtx.currentTime + 0.035);
 }
@@ -252,7 +290,6 @@ function playAdvanceSound() {
     if (!audioCtx || !isAudioInitialized) return;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(260, audioCtx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(520, audioCtx.currentTime + 0.07);
@@ -262,7 +299,6 @@ function playAdvanceSound() {
 
     osc.connect(gain);
     gain.connect(audioCtx.destination);
-
     osc.start();
     osc.stop(audioCtx.currentTime + 0.07);
 }
@@ -271,7 +307,6 @@ function playStartSound() {
     if (!audioCtx || !isAudioInitialized) return;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-
     osc.type = 'sawtooth';
     osc.frequency.setValueAtTime(120, audioCtx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(360, audioCtx.currentTime + 0.45);
@@ -281,32 +316,31 @@ function playStartSound() {
 
     osc.connect(gain);
     gain.connect(audioCtx.destination);
-
     osc.start();
     osc.stop(audioCtx.currentTime + 0.45);
 }
 
-// --- Canvas Setup ---
-const canvas = document.getElementById('stage');
-const ctx = canvas.getContext('2d');
-ctx.imageSmoothingEnabled = false;
+// --- 2D Canvas Handles ---
+const canvas2d = document.getElementById('stage2d');
+const ctx2d = canvas2d.getContext('2d');
+ctx2d.imageSmoothingEnabled = false;
 
-// Portrait Canvas Setup
 const portraitCanvas = document.getElementById('portrait-canvas');
 const pCtx = portraitCanvas.getContext('2d');
 pCtx.imageSmoothingEnabled = false;
 
-// --- UI Handles ---
 const titleScreen = document.getElementById('title-screen');
 const dialogueBox = document.getElementById('dialogue-container');
 const speechEl = document.getElementById('speech');
 const fadeOverlay = document.getElementById('fade-overlay');
+const gameplayHud = document.getElementById('gameplay-hud');
 
-// --- Game Logic States ---
+// --- Game Logic & Flow ---
+// States: TITLE, INTRO_2D, TRANSITION_3D, CUTSCENE_3D, PLAYABLE_3D, GAME_WIN
 let gameState = 'TITLE';
 let frameCount = 0;
 
-// Rain Particles Array
+// 2D Rain Particles
 const rainDrops = [];
 for (let i = 0; i < 90; i++) {
     rainDrops.push({
@@ -317,54 +351,29 @@ for (let i = 0; i < 90; i++) {
     });
 }
 
-// --- Story Beats Setup ---
+// Script Sequences (Phase 1: Intro 2D | Phase 2: Cutscene 3D)
 let currentScriptIndex = 0;
-const script = [
-    {
-        speaker: "NARRATOR",
-        expression: "none",
-        text: "The sky over our village didn't turn black from the night...",
-        scene: "BURNING_VILLAGE"
-    },
-    {
-        speaker: "NARRATOR",
-        expression: "none",
-        text: "It turned black from smoke. The attack happened without warning. Fire consumed the timber and kinetic towers.",
-        scene: "BURNING_VILLAGE"
-    },
-    {
-        speaker: "McCrack",
-        expression: "worried",
-        text: "Moe! Hurry up! The dock is collapsing! We have to cast off right now!",
-        scene: "ESCAPE_DOCK"
-    },
-    {
-        speaker: "Moe",
-        expression: "determined",
-        text: "Hold on! The ropes are jammed—McCrack, grab the wooden oars!",
-        scene: "ESCAPE_DOCK"
-    },
-    {
-        speaker: "NARRATOR",
-        expression: "none",
-        text: "We pushed off into the dark expanse of the Kawm Ocean, leaving behind the only life we had ever known.",
-        scene: "OCEAN_DRIFT"
-    },
-    {
-        speaker: "McCrack",
-        expression: "neutral",
-        text: "Do you think... anyone else made it out, Moe?",
-        scene: "OCEAN_DRIFT"
-    },
-    {
-        speaker: "Moe",
-        expression: "neutral",
-        text: "...I don't know. But we can't look back now. We keep sailing until we find refuge.",
-        scene: "OCEAN_DRIFT"
-    }
+const script2D = [
+    { speaker: "NARRATOR", expression: "none", text: "The sky over our village didn't turn black from the night...", scene: "BURNING_VILLAGE" },
+    { speaker: "NARRATOR", expression: "none", text: "It turned black from smoke. The attack happened without warning. Fire consumed the timber and kinetic towers.", scene: "BURNING_VILLAGE" },
+    { speaker: "McCrack", expression: "worried", text: "Moe! Hurry up! The dock is collapsing! We have to cast off right now!", scene: "ESCAPE_DOCK" },
+    { speaker: "Moe", expression: "determined", text: "Hold on! The ropes are jammed—McCrack, grab the wooden oars!", scene: "ESCAPE_DOCK" },
+    { speaker: "NARRATOR", expression: "none", text: "We pushed off into the dark expanse of the Kawm Ocean, leaving behind the only life we had ever known.", scene: "OCEAN_DRIFT" }
 ];
 
-// --- Typewriter Effect ---
+const script3D = [
+    { speaker: "McCrack", expression: "neutral", text: "Moe... do you think anyone else escaped the village?", cameraMode: "CLOSE" },
+    { speaker: "Moe", expression: "determined", text: "I don't know... But we have to keep looking. We can't survive out in this ocean forever.", cameraMode: "CLOSE" },
+    { speaker: "Moe", expression: "squint", text: "Wait... hold on...", cameraMode: "SQUINT" },
+    { speaker: "Moe", expression: "determined", text: "McCrack! Look over there! In the fog!", cameraMode: "SQUINT" },
+    { speaker: "McCrack", expression: "worried", text: "Woah—!!", cameraMode: "STAND_UP" },
+    { speaker: "NARRATOR", expression: "none", text: "A gigantic beacon cut through the storm. A refuge!", cameraMode: "LIGHT_BEACON" },
+    { speaker: "McCrack", expression: "neutral", text: "We found something! Moe, take the oars and steer us through these massive waves!", cameraMode: "LIGHT_BEACON" }
+];
+
+let activeScript = script2D;
+
+// --- Typewriter ---
 let typeIndex = 0;
 let isTyping = false;
 let currentText = "";
@@ -375,16 +384,13 @@ function typeWriter(text, cb) {
     typeIndex = 0;
     isTyping = true;
     currentText = text;
-
-    const currentBeat = script[currentScriptIndex];
+    const currentBeat = activeScript[currentScriptIndex];
 
     clearInterval(typeTimer);
     typeTimer = setInterval(() => {
         if (typeIndex < text.length) {
             speechEl.textContent += text.charAt(typeIndex);
-            if (text.charAt(typeIndex) !== ' ') {
-                playTextBeep(currentBeat.speaker);
-            }
+            if (text.charAt(typeIndex) !== ' ') playTextBeep(currentBeat.speaker);
             typeIndex++;
         } else {
             clearInterval(typeTimer);
@@ -394,359 +400,454 @@ function typeWriter(text, cb) {
     }, 38);
 }
 
-// --- Drawing Thicker Kawmling Characters (Stage) ---
-function drawKawmlingStage(x, y, scale = 1, hat = 'none', facing = 1, pose = 'standing') {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(facing * scale, scale);
+// --- 2D Drawing Utilities ---
+function drawKawmling2D(x, y, scale = 1, hat = 'none', facing = 1, pose = 'standing') {
+    ctx2d.save();
+    ctx2d.translate(x, y);
+    ctx2d.scale(facing * scale, scale);
 
-    ctx.strokeStyle = '#ffffff';
-    ctx.fillStyle = '#ffffff';
-    
-    // Thicker body & limbs
+    ctx2d.strokeStyle = '#ffffff';
+    ctx2d.fillStyle = '#ffffff';
     const bodyWidth = 12;
     const limbWidth = 9;
+    ctx2d.lineCap = 'round';
+    ctx2d.lineJoin = 'round';
 
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    // Head
-    ctx.beginPath();
-    ctx.arc(0, -48, 16, 0, Math.PI * 2);
-    ctx.fill();
+    ctx2d.beginPath();
+    ctx2d.arc(0, -48, 16, 0, Math.PI * 2);
+    ctx2d.fill();
 
     if (pose === 'sitting') {
-        // Torso
-        ctx.lineWidth = bodyWidth;
-        ctx.beginPath();
-        ctx.moveTo(0, -32);
-        ctx.lineTo(0, 5);
-        ctx.stroke();
-
-        // Arms (resting on knees)
-        ctx.lineWidth = limbWidth;
-        ctx.beginPath();
-        ctx.moveTo(0, -20);
-        ctx.lineTo(12, -8);
-        ctx.lineTo(18, 2);
-        ctx.stroke();
-
-        // Legs (bent sitting pose)
-        ctx.beginPath();
-        ctx.moveTo(0, 5);
-        ctx.lineTo(18, 5);
-        ctx.lineTo(22, 22);
-        ctx.stroke();
+        ctx2d.lineWidth = bodyWidth;
+        ctx2d.beginPath(); ctx2d.moveTo(0, -32); ctx2d.lineTo(0, 5); ctx2d.stroke();
+        ctx2d.lineWidth = limbWidth;
+        ctx2d.beginPath(); ctx2d.moveTo(0, -20); ctx2d.lineTo(12, -8); ctx2d.lineTo(18, 2); ctx2d.stroke();
+        ctx2d.beginPath(); ctx2d.moveTo(0, 5); ctx2d.lineTo(18, 5); ctx2d.lineTo(22, 22); ctx2d.stroke();
     } else {
-        // Standing Torso
-        ctx.lineWidth = bodyWidth;
-        ctx.beginPath();
-        ctx.moveTo(0, -32);
-        ctx.lineTo(0, 10);
-        ctx.stroke();
-
-        // Arms
-        ctx.lineWidth = limbWidth;
-        ctx.beginPath();
-        ctx.moveTo(0, -22);
-        ctx.lineTo(-14, -6);
-        ctx.moveTo(0, -22);
-        ctx.lineTo(14, -6);
-        ctx.stroke();
-
-        // Legs
-        ctx.beginPath();
-        ctx.moveTo(0, 10);
-        ctx.lineTo(-12, 36);
-        ctx.moveTo(0, 10);
-        ctx.lineTo(12, 36);
-        ctx.stroke();
+        ctx2d.lineWidth = bodyWidth;
+        ctx2d.beginPath(); ctx2d.moveTo(0, -32); ctx2d.lineTo(0, 10); ctx2d.stroke();
+        ctx2d.lineWidth = limbWidth;
+        ctx2d.beginPath(); ctx2d.moveTo(0, -22); ctx2d.lineTo(-14, -6); ctx2d.moveTo(0, -22); ctx2d.lineTo(14, -6); ctx2d.stroke();
+        ctx2d.beginPath(); ctx2d.moveTo(0, 10); ctx2d.lineTo(-12, 36); ctx2d.moveTo(0, 10); ctx2d.lineTo(12, 36); ctx2d.stroke();
     }
 
-    // --- Eyes (Black Dots) ---
-    ctx.fillStyle = '#000000';
-    ctx.beginPath();
-    ctx.arc(4, -48, 2.5, 0, Math.PI * 2);
-    ctx.arc(10, -48, 2.5, 0, Math.PI * 2);
-    ctx.fill();
+    ctx2d.fillStyle = '#000000';
+    ctx2d.beginPath();
+    ctx2d.arc(4, -48, 2.5, 0, Math.PI * 2);
+    ctx2d.arc(10, -48, 2.5, 0, Math.PI * 2);
+    ctx2d.fill();
 
-    // --- Hats ---
     if (hat === 'durag') {
-        // Blue Durag
-        ctx.fillStyle = '#2563eb';
-        ctx.beginPath();
-        ctx.arc(0, -48, 17.5, Math.PI, Math.PI * 2);
-        ctx.fill();
-        // Ties / Flap hanging behind head
-        ctx.beginPath();
-        ctx.moveTo(-16, -48);
-        ctx.lineTo(-24, -36);
-        ctx.lineTo(-12, -40);
-        ctx.fill();
+        ctx2d.fillStyle = '#2563eb';
+        ctx2d.beginPath(); ctx2d.arc(0, -48, 17.5, Math.PI, Math.PI * 2); ctx2d.fill();
+        ctx2d.beginPath(); ctx2d.moveTo(-16, -48); ctx2d.lineTo(-24, -36); ctx2d.lineTo(-12, -40); ctx2d.fill();
     } else if (hat === 'paperboat') {
-        // Paper Boat Hat
-        ctx.fillStyle = '#f4f4f5';
-        ctx.beginPath();
-        ctx.moveTo(-20, -60);
-        ctx.lineTo(20, -60);
-        ctx.lineTo(12, -50);
-        ctx.lineTo(-12, -50);
-        ctx.closePath();
-        ctx.fill();
-        // Triangle Sail Peak
-        ctx.beginPath();
-        ctx.moveTo(-8, -60);
-        ctx.lineTo(0, -74);
-        ctx.lineTo(8, -60);
-        ctx.closePath();
-        ctx.fill();
-        // Crease line
-        ctx.strokeStyle = '#a1a1aa';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(0, -74);
-        ctx.lineTo(0, -50);
-        ctx.stroke();
+        ctx2d.fillStyle = '#f4f4f5';
+        ctx2d.beginPath(); ctx2d.moveTo(-20, -60); ctx2d.lineTo(20, -60); ctx2d.lineTo(12, -50); ctx2d.lineTo(-12, -50); ctx2d.closePath(); ctx2d.fill();
+        ctx2d.beginPath(); ctx2d.moveTo(-8, -60); ctx2d.lineTo(0, -74); ctx2d.lineTo(8, -60); ctx2d.closePath(); ctx2d.fill();
+        ctx2d.strokeStyle = '#a1a1aa'; ctx2d.lineWidth = 1.5;
+        ctx2d.beginPath(); ctx2d.moveTo(0, -74); ctx2d.lineTo(0, -50); ctx2d.stroke();
     }
 
-    ctx.restore();
+    ctx2d.restore();
 }
 
-// --- Drawing Pixel Portraits (Dialogue Box) ---
 function drawPortrait(speaker, expression) {
     pCtx.clearRect(0, 0, portraitCanvas.width, portraitCanvas.height);
-    
     if (speaker === 'NARRATOR') return;
 
     pCtx.fillStyle = '#ffffff';
-    
     const centerX = portraitCanvas.width / 2;
     const centerY = portraitCanvas.height / 2 + 6;
     const headRad = 19;
 
-    // Solid white thicker head
     pCtx.beginPath();
     pCtx.arc(centerX, centerY, headRad, 0, Math.PI * 2);
     pCtx.fill();
 
-    // Hats on Portrait
     if (speaker === 'Moe') {
         pCtx.fillStyle = '#2563eb';
-        pCtx.beginPath();
-        pCtx.arc(centerX, centerY, headRad + 1.5, Math.PI, Math.PI * 2);
-        pCtx.fill();
-        pCtx.beginPath();
-        pCtx.moveTo(centerX - headRad, centerY);
-        pCtx.lineTo(centerX - headRad - 7, centerY + 12);
-        pCtx.lineTo(centerX - headRad + 2, centerY + 9);
-        pCtx.fill();
+        pCtx.beginPath(); pCtx.arc(centerX, centerY, headRad + 1.5, Math.PI, Math.PI * 2); pCtx.fill();
+        pCtx.beginPath(); pCtx.moveTo(centerX - headRad, centerY); pCtx.lineTo(centerX - headRad - 7, centerY + 12); pCtx.lineTo(centerX - headRad + 2, centerY + 9); pCtx.fill();
     } else if (speaker === 'McCrack') {
         pCtx.fillStyle = '#f4f4f5';
-        pCtx.beginPath();
-        pCtx.moveTo(centerX - 22, centerY - headRad - 2);
-        pCtx.lineTo(centerX + 22, centerY - headRad - 2);
-        pCtx.lineTo(centerX + 13, centerY - headRad + 9);
-        pCtx.lineTo(centerX - 13, centerY - headRad + 9);
-        pCtx.closePath();
-        pCtx.fill();
-        pCtx.beginPath();
-        pCtx.moveTo(centerX - 9, centerY - headRad - 2);
-        pCtx.lineTo(centerX, centerY - headRad - 16);
-        pCtx.lineTo(centerX + 9, centerY - headRad - 2);
-        pCtx.closePath();
-        pCtx.fill();
+        pCtx.beginPath(); pCtx.moveTo(centerX - 22, centerY - headRad - 2); pCtx.lineTo(centerX + 22, centerY - headRad - 2); pCtx.lineTo(centerX + 13, centerY - headRad + 9); pCtx.lineTo(centerX - 13, centerY - headRad + 9); pCtx.closePath(); pCtx.fill();
+        pCtx.beginPath(); pCtx.moveTo(centerX - 9, centerY - headRad - 2); pCtx.lineTo(centerX, centerY - headRad - 16); pCtx.lineTo(centerX + 9, centerY - headRad - 2); pCtx.closePath(); pCtx.fill();
     }
 
-    // Black Eyes & Eyebrows
     pCtx.fillStyle = '#000000';
     pCtx.strokeStyle = '#000000';
     pCtx.lineWidth = 2.5;
 
-    // Eyes
-    pCtx.fillRect(centerX - 10, centerY - 2, 4, 6);
-    pCtx.fillRect(centerX + 6, centerY - 2, 4, 6);
+    if (expression === 'squint') {
+        pCtx.fillRect(centerX - 12, centerY - 2, 8, 2);
+        pCtx.fillRect(centerX + 4, centerY - 2, 8, 2);
+    } else {
+        pCtx.fillRect(centerX - 10, centerY - 2, 4, 6);
+        pCtx.fillRect(centerX + 6, centerY - 2, 4, 6);
+    }
 
-    // Eyebrows
     pCtx.beginPath();
     if (expression === 'worried') {
         pCtx.moveTo(centerX - 12, centerY - 11); pCtx.lineTo(centerX - 5, centerY - 7);
         pCtx.moveTo(centerX + 12, centerY - 11); pCtx.lineTo(centerX + 5, centerY - 7);
-    } else if (expression === 'determined') {
+    } else if (expression === 'determined' || expression === 'squint') {
         pCtx.moveTo(centerX - 12, centerY - 7); pCtx.lineTo(centerX - 5, centerY - 11);
         pCtx.moveTo(centerX + 12, centerY - 7); pCtx.lineTo(centerX + 5, centerY - 11);
-    } else { // neutral
+    } else {
         pCtx.moveTo(centerX - 12, centerY - 9); pCtx.lineTo(centerX - 5, centerY - 9);
         pCtx.moveTo(centerX + 12, centerY - 9); pCtx.lineTo(centerX + 5, centerY - 9);
     }
     pCtx.stroke();
 }
 
-// --- Boat Render ---
-function drawBoat(x, y) {
-    ctx.save();
-    ctx.translate(x, y);
-
-    // Wooden Hull with detailed gradient feel
-    ctx.fillStyle = '#1c1310';
-    ctx.beginPath();
-    ctx.moveTo(-70, -5);
-    ctx.lineTo(70, -5);
-    ctx.lineTo(50, 32);
-    ctx.lineTo(-50, 32);
-    ctx.closePath();
-    ctx.fill();
-
-    // Plank lines
-    ctx.strokeStyle = '#3a2720';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    ctx.strokeStyle = '#0d0806';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-60, 10); ctx.lineTo(60, 10);
-    ctx.moveTo(-55, 22); ctx.lineTo(55, 22);
-    ctx.stroke();
-
-    ctx.restore();
+function drawBoat2D(x, y) {
+    ctx2d.save();
+    ctx2d.translate(x, y);
+    ctx2d.fillStyle = '#1c1310';
+    ctx2d.beginPath(); ctx2d.moveTo(-70, -5); ctx2d.lineTo(70, -5); ctx2d.lineTo(50, 32); ctx2d.lineTo(-50, 32); ctx2d.closePath(); ctx2d.fill();
+    ctx2d.strokeStyle = '#3a2720'; ctx2d.lineWidth = 3; ctx2d.stroke();
+    ctx2d.strokeStyle = '#0d0806'; ctx2d.lineWidth = 2;
+    ctx2d.beginPath(); ctx2d.moveTo(-60, 10); ctx2d.lineTo(60, 10); ctx2d.moveTo(-55, 22); ctx2d.lineTo(55, 22); ctx2d.stroke();
+    ctx2d.restore();
 }
 
-// --- Rain Effect Render ---
-function drawRain() {
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-    ctx.lineWidth = 1.8;
-    ctx.lineCap = 'round';
-
-    ctx.beginPath();
+function drawRain2D() {
+    ctx2d.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+    ctx2d.lineWidth = 1.8;
+    ctx2d.lineCap = 'round';
+    ctx2d.beginPath();
     for (let i = 0; i < rainDrops.length; i++) {
         let drop = rainDrops[i];
-        ctx.moveTo(drop.x, drop.y);
-        ctx.lineTo(drop.x - 3, drop.y + drop.length);
-
+        ctx2d.moveTo(drop.x, drop.y);
+        ctx2d.lineTo(drop.x - 3, drop.y + drop.length);
         drop.y += drop.speed;
         drop.x -= 1.5;
-
-        if (drop.y > 600) {
-            drop.y = -20;
-            drop.x = Math.random() * 850;
-        }
+        if (drop.y > 600) { drop.y = -20; drop.x = Math.random() * 850; }
     }
-    ctx.stroke();
+    ctx2d.stroke();
 }
 
-// --- Background Scenes ---
-function renderScene(sceneType) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+function render2DScene(sceneType) {
+    ctx2d.clearRect(0, 0, canvas2d.width, canvas2d.height);
 
     if (sceneType === 'BURNING_VILLAGE') {
-        // Dramatic Dark Red Sky Gradient
-        let grad = ctx.createLinearGradient(0, 0, 0, 600);
-        grad.addColorStop(0, '#0a0305');
-        grad.addColorStop(0.6, '#28080a');
-        grad.addColorStop(1, '#520e0e');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        let grad = ctx2d.createLinearGradient(0, 0, 0, 600);
+        grad.addColorStop(0, '#0a0305'); grad.addColorStop(0.6, '#28080a'); grad.addColorStop(1, '#520e0e');
+        ctx2d.fillStyle = grad; ctx2d.fillRect(0, 0, canvas2d.width, canvas2d.height);
+        ctx2d.fillStyle = '#050203';
+        ctx2d.fillRect(80, 280, 90, 140); ctx2d.fillRect(200, 220, 130, 200); ctx2d.fillRect(480, 250, 110, 170);
 
-        // Distant burning silhouettes
-        ctx.fillStyle = '#050203';
-        ctx.fillRect(80, 280, 90, 140);
-        ctx.fillRect(200, 220, 130, 200);
-        ctx.fillRect(480, 250, 110, 170);
-
-        // Fire embers particle effect
         for (let i = 0; i < 45; i++) {
-            let px = (Math.sin(i * 99 + frameCount * 0.015) * 0.5 + 0.5) * canvas.width;
+            let px = (Math.sin(i * 99 + frameCount * 0.015) * 0.5 + 0.5) * canvas2d.width;
             let py = ((frameCount * (1 + i * 0.08) + i * 40) % 450);
-            ctx.fillStyle = i % 2 === 0 ? '#ff3300' : '#ffb703';
-            ctx.fillRect(px, 500 - py, 3, 3);
+            ctx2d.fillStyle = i % 2 === 0 ? '#ff3300' : '#ffb703';
+            ctx2d.fillRect(px, 500 - py, 3, 3);
         }
     } 
     else if (sceneType === 'ESCAPE_DOCK') {
-        // Burning Dock Scene
-        let grad = ctx.createLinearGradient(0, 0, 0, 600);
-        grad.addColorStop(0, '#0a0712');
-        grad.addColorStop(0.7, '#1f0d1b');
-        grad.addColorStop(1, '#3a111a');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        let grad = ctx2d.createLinearGradient(0, 0, 0, 600);
+        grad.addColorStop(0, '#0a0712'); grad.addColorStop(0.7, '#1f0d1b'); grad.addColorStop(1, '#3a111a');
+        ctx2d.fillStyle = grad; ctx2d.fillRect(0, 0, canvas2d.width, canvas2d.height);
 
-        // Wooden Dock platform
-        ctx.fillStyle = '#171210';
-        ctx.fillRect(0, 410, 360, 190);
-        ctx.strokeStyle = '#2d221e';
-        ctx.lineWidth = 4;
-        for (let x = 0; x < 360; x += 30) {
-            ctx.strokeRect(x, 410, 30, 190);
-        }
+        ctx2d.fillStyle = '#171210'; ctx2d.fillRect(0, 410, 360, 190);
+        ctx2d.strokeStyle = '#2d221e'; ctx2d.lineWidth = 4;
+        for (let x = 0; x < 360; x += 30) ctx2d.strokeRect(x, 410, 30, 190);
 
-        // Ocean Water
-        ctx.fillStyle = '#050914';
-        ctx.fillRect(360, 430, 440, 170);
-
-        drawBoat(480, 425);
-
-        // Thicker Characters
-        drawKawmlingStage(260, 375, 1.15, 'durag', 1, 'standing'); // Moe
-        drawKawmlingStage(480, 395, 1.05, 'paperboat', -1, 'standing'); // McCrack
+        ctx2d.fillStyle = '#050914'; ctx2d.fillRect(360, 430, 440, 170);
+        drawBoat2D(480, 425);
+        drawKawmling2D(260, 375, 1.15, 'durag', 1, 'standing');
+        drawKawmling2D(480, 395, 1.05, 'paperboat', -1, 'standing');
     } 
     else if (sceneType === 'OCEAN_DRIFT') {
-        // Deep Stormy Ocean Sky
-        let grad = ctx.createLinearGradient(0, 0, 0, 600);
-        grad.addColorStop(0, '#010206');
-        grad.addColorStop(0.6, '#080d1a');
-        grad.addColorStop(1, '#111827');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        let grad = ctx2d.createLinearGradient(0, 0, 0, 600);
+        grad.addColorStop(0, '#010206'); grad.addColorStop(0.6, '#080d1a'); grad.addColorStop(1, '#111827');
+        ctx2d.fillStyle = grad; ctx2d.fillRect(0, 0, canvas2d.width, canvas2d.height);
 
-        // Bright White Ocean Waves (Requested)
         let waveOffset = Math.sin(frameCount * 0.03) * 6;
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.moveTo(0, 380 + waveOffset);
-        for (let x = 0; x <= canvas.width; x += 40) {
-            ctx.lineTo(x, 380 + Math.sin(x * 0.02 + frameCount * 0.04) * 8 + waveOffset);
+        ctx2d.fillStyle = '#ffffff';
+        ctx2d.beginPath(); ctx2d.moveTo(0, 380 + waveOffset);
+        for (let x = 0; x <= canvas2d.width; x += 40) {
+            ctx2d.lineTo(x, 380 + Math.sin(x * 0.02 + frameCount * 0.04) * 8 + waveOffset);
         }
-        ctx.lineTo(canvas.width, canvas.height);
-        ctx.lineTo(0, canvas.height);
-        ctx.fill();
+        ctx2d.lineTo(canvas2d.width, canvas2d.height); ctx2d.lineTo(0, canvas2d.height); ctx2d.fill();
 
-        // Gently rocking boat
         let boatY = 380 + waveOffset;
         let boatRot = Math.sin(frameCount * 0.02) * 0.04;
 
-        ctx.save();
-        ctx.translate(400, boatY);
-        ctx.rotate(boatRot);
-
-        drawBoat(0, 0);
-        // Sitting Pose & Thicker Bodies
-        drawKawmlingStage(-22, -18, 1.05, 'durag', 1, 'sitting'); // Moe
-        drawKawmlingStage(22, -18, 1.0, 'paperboat', -1, 'sitting'); // McCrack
-
-        ctx.restore();
-
-        // Atmospheric Rain overlay
-        drawRain();
+        ctx2d.save();
+        ctx2d.translate(400, boatY);
+        ctx2d.rotate(boatRot);
+        drawBoat2D(0, 0);
+        drawKawmling2D(-22, -18, 1.05, 'durag', 1, 'sitting');
+        drawKawmling2D(22, -18, 1.0, 'paperboat', -1, 'sitting');
+        ctx2d.restore();
+        drawRain2D();
     }
 }
 
-// --- Main Loop ---
+// =========================================================================
+// --- THREE.JS PS1-STYLE 3D ENGINE & SCENE SETUP ---
+// =========================================================================
+let scene3d, camera3d, renderer3d;
+let boat3d, moe3d, mcCrack3d, beaconLight3d, oceanMesh;
+let rainParticles3d;
+
+// Interactive Boat Gameplay Variables
+let boatPosX = 0;
+let boatPosZ = 0;
+let boatSpeedZ = 0.8;
+let playerInputs = { left: false, right: false };
+
+function init3DEngine() {
+    const container = document.getElementById('game-container');
+    
+    scene3d = new THREE.Scene();
+    scene3d.background = new THREE.Color(0x020307);
+    scene3d.fog = new THREE.FogExp2(0x020307, 0.015);
+
+    camera3d = new THREE.PerspectiveCamera(50, 800 / 600, 0.1, 1000);
+
+    renderer3d = new THREE.WebGLRenderer({ canvas: document.getElementById('stage3d'), antialias: false });
+    renderer3d.setSize(800, 600);
+    // PS1 Low Resolution Pixelated Effect
+    renderer3d.setPixelRatio(0.35);
+
+    // Ambient & Direct Lighting
+    const ambientLight = new THREE.AmbientLight(0xdbeaff, 0.3);
+    scene3d.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xa5f3fc, 0.5);
+    dirLight.position.set(20, 40, 20);
+    scene3d.add(dirLight);
+
+    // 1. White Kawm Ocean Plane
+    const oceanGeo = new THREE.PlaneGeometry(300, 600, 60, 120);
+    oceanGeo.rotateX(-Math.PI / 2);
+    const oceanMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: false });
+    oceanMesh = new THREE.Mesh(oceanGeo, oceanMat);
+    scene3d.add(oceanMesh);
+
+    // 2. Wooden Boat Construction
+    boat3d = new THREE.Group();
+    const boatMat = new THREE.MeshLambertMaterial({ color: 0x3a251e });
+    
+    // Hull
+    const hullGeo = new THREE.BoxGeometry(4, 1.8, 10);
+    const hullMesh = new THREE.Mesh(hullGeo, boatMat);
+    hullMesh.position.y = 0.5;
+    boat3d.add(hullMesh);
+
+    // Seats
+    const benchGeo = new THREE.BoxGeometry(3.6, 0.3, 1);
+    const benchMesh1 = new THREE.Mesh(benchGeo, boatMat);
+    benchMesh1.position.set(0, 1.1, -2);
+    const benchMesh2 = new THREE.Mesh(benchGeo, boatMat);
+    benchMesh2.position.set(0, 1.1, 2);
+    boat3d.add(benchMesh1);
+    boat3d.add(benchMesh2);
+
+    // 3. Kawmling 3D Characters (White Stick Figures with Thicker Build)
+    function createKawmling3D(hatType) {
+        const kawmGroup = new THREE.Group();
+        const bodyMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+        // Head
+        const headGeo = new THREE.SphereGeometry(0.7, 8, 8);
+        const headMesh = new THREE.Mesh(headGeo, bodyMat);
+        headMesh.position.y = 2.3;
+        kawmGroup.add(headMesh);
+
+        // Eyes (Black)
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+        const eyeGeo = new THREE.BoxGeometry(0.12, 0.18, 0.1);
+        const eye1 = new THREE.Mesh(eyeGeo, eyeMat);
+        eye1.position.set(0.2, 2.35, 0.65);
+        const eye2 = new THREE.Mesh(eyeGeo, eyeMat);
+        eye2.position.set(-0.2, 2.35, 0.65);
+        kawmGroup.add(eye1);
+        kawmGroup.add(eye2);
+
+        // Torso
+        const torsoGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.4, 8);
+        const torsoMesh = new THREE.Mesh(torsoGeo, bodyMat);
+        torsoMesh.position.y = 1.3;
+        kawmGroup.add(torsoMesh);
+
+        // Arms
+        const armGeo = new THREE.CylinderGeometry(0.12, 0.12, 1.1, 6);
+        const leftArm = new THREE.Mesh(armGeo, bodyMat);
+        leftArm.position.set(-0.45, 1.3, 0);
+        leftArm.rotation.z = 0.3;
+        const rightArm = new THREE.Mesh(armGeo, bodyMat);
+        rightArm.position.set(0.45, 1.3, 0);
+        rightArm.rotation.z = -0.3;
+        kawmGroup.add(leftArm);
+        kawmGroup.add(rightArm);
+
+        // Legs
+        const legGeo = new THREE.CylinderGeometry(0.14, 0.14, 1.2, 6);
+        const leftLeg = new THREE.Mesh(legGeo, bodyMat);
+        leftLeg.position.set(-0.22, 0.5, 0);
+        const rightLeg = new THREE.Mesh(legGeo, bodyMat);
+        rightLeg.position.set(0.22, 0.5, 0);
+        kawmGroup.add(leftLeg);
+        kawmGroup.add(rightLeg);
+
+        // Hats
+        if (hatType === 'durag') {
+            const duragMat = new THREE.MeshBasicMaterial({ color: 0x2563eb });
+            const duragGeo = new THREE.SphereGeometry(0.74, 8, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+            const duragMesh = new THREE.Mesh(duragGeo, duragMat);
+            duragMesh.position.y = 2.32;
+            kawmGroup.add(duragMesh);
+        } else if (hatType === 'paperboat') {
+            const boatHatMat = new THREE.MeshBasicMaterial({ color: 0xe4e4e7 });
+            const boatHatGeo = new THREE.ConeGeometry(0.8, 0.6, 4);
+            const boatHatMesh = new THREE.Mesh(boatHatGeo, boatHatMat);
+            boatHatMesh.position.y = 3.1;
+            boatHatMesh.rotation.y = Math.PI / 4;
+            kawmGroup.add(boatHatMesh);
+        }
+
+        return kawmGroup;
+    }
+
+    moe3d = createKawmling3D('durag');
+    moe3d.position.set(0, 0.8, -2);
+    boat3d.add(moe3d);
+
+    mcCrack3d = createKawmling3D('paperboat');
+    mcCrack3d.position.set(0, 0.8, 2);
+    mcCrack3d.rotation.y = Math.PI;
+    boat3d.add(mcCrack3d);
+
+    scene3d.add(boat3d);
+
+    // 4. Glowing Beacon in Fog
+    const beaconGeo = new THREE.CylinderGeometry(2, 6, 40, 16);
+    const beaconMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+    const beaconMesh = new THREE.Mesh(beaconGeo, beaconMat);
+    beaconMesh.position.set(0, 10, -250);
+    scene3d.add(beaconMesh);
+
+    const lightGeo = new THREE.SphereGeometry(12, 16, 16);
+    const lightMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+    beaconLight3d = new THREE.Mesh(lightGeo, lightMat);
+    beaconLight3d.position.set(0, 25, -250);
+    scene3d.add(beaconLight3d);
+
+    // 5. 3D Rain Particles
+    const rainGeo = new THREE.BufferGeometry();
+    const rainCount = 600;
+    const rainPos = new Float32Array(rainCount * 3);
+
+    for (let i = 0; i < rainCount * 3; i += 3) {
+        rainPos[i] = (Math.random() - 0.5) * 120;
+        rainPos[i + 1] = Math.random() * 50;
+        rainPos[i + 2] = (Math.random() - 0.5) * 200;
+    }
+
+    rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
+    const rainMat = new THREE.PointsMaterial({ color: 0x93c5fd, size: 0.4, transparent: true, opacity: 0.6 });
+    rainParticles3d = new THREE.Points(rainGeo, rainMat);
+    scene3d.add(rainParticles3d);
+}
+
+// 3D Wave Dynamics & Animation Loop
+function animate3D() {
+    if (gameState !== 'CUTSCENE_3D' && gameState !== 'PLAYABLE_3D' && gameState !== 'GAME_WIN') return;
+
+    // Ocean Waves Displacement Animation
+    const time = Date.now() * 0.003;
+    const pos = oceanMesh.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const z = pos.getZ(i);
+        const y = Math.sin(x * 0.2 + time) * 1.5 + Math.cos(z * 0.1 + time) * 2.0;
+        pos.setY(i, y);
+    }
+    oceanMesh.geometry.attributes.position.needsUpdate = true;
+
+    // Calculate wave height under boat
+    const boatWaveY = Math.sin(boat3d.position.x * 0.2 + time) * 1.5 + Math.cos(boat3d.position.z * 0.1 + time) * 2.0;
+    boat3d.position.y = boatWaveY;
+    boat3d.rotation.z = Math.sin(time * 0.8) * 0.1;
+    boat3d.rotation.x = Math.cos(time * 0.6) * 0.08;
+
+    // Rain Animation
+    const rainPos = rainParticles3d.geometry.attributes.position.array;
+    for (let i = 1; i < rainPos.length; i += 3) {
+        rainPos[i] -= 1.8;
+        if (rainPos[i] < 0) rainPos[i] = 50;
+    }
+    rainParticles3d.geometry.attributes.position.needsUpdate = true;
+
+    // Camera Cutscene Modes
+    if (gameState === 'CUTSCENE_3D') {
+        const beat = script3D[currentScriptIndex];
+        if (beat.cameraMode === 'CLOSE') {
+            camera3d.position.set(boat3d.position.x + 5, boat3d.position.y + 3, boat3d.position.z + 6);
+            camera3d.lookAt(boat3d.position.x, boat3d.position.y + 1, boat3d.position.z);
+        } else if (beat.cameraMode === 'SQUINT') {
+            camera3d.position.set(boat3d.position.x - 2, boat3d.position.y + 2, boat3d.position.z - 3);
+            camera3d.lookAt(moe3d.position.x + boat3d.position.x, moe3d.position.y + boat3d.position.y + 1, moe3d.position.z + boat3d.position.z);
+        } else if (beat.cameraMode === 'STAND_UP') {
+            mcCrack3d.position.y = 1.4; // McCrack stands up
+            mcCrack3d.rotation.x = -0.2;
+            camera3d.position.set(boat3d.position.x + 3, boat3d.position.y + 2.5, boat3d.position.z + 2);
+            camera3d.lookAt(mcCrack3d.position.x + boat3d.position.x, mcCrack3d.position.y + boat3d.position.y + 1, mcCrack3d.position.z + boat3d.position.z);
+        } else if (beat.cameraMode === 'LIGHT_BEACON') {
+            camera3d.position.set(boat3d.position.x, boat3d.position.y + 4, boat3d.position.z + 12);
+            camera3d.lookAt(0, 15, -250);
+        }
+    } 
+    else if (gameState === 'PLAYABLE_3D') {
+        // Player Steering Input
+        if (playerInputs.left) boatPosX -= 0.25;
+        if (playerInputs.right) boatPosX += 0.25;
+
+        // Steering limits
+        boatPosX = Math.max(-25, Math.min(25, boatPosX));
+
+        boat3d.position.x = boatPosX;
+        boat3d.position.z -= boatSpeedZ;
+
+        // Camera Follow Behind Boat
+        camera3d.position.set(boat3d.position.x, boat3d.position.y + 6, boat3d.position.z + 16);
+        camera3d.lookAt(boat3d.position.x, boat3d.position.y + 2, boat3d.position.z - 10);
+
+        // Check if reached beacon target
+        if (boat3d.position.z <= -230) {
+            gameState = 'GAME_WIN';
+            fadeOverlay.style.opacity = '1';
+            setTimeout(() => {
+                alert("YOU REACHED THE BEACON! Chapter I Intro Complete.");
+            }, 1600);
+        }
+    }
+
+    renderer3d.render(scene3d, camera3d);
+}
+
+// --- Main Combined Game Loop ---
 function loop() {
     frameCount++;
 
     if (gameState === 'TITLE') {
-        renderScene('BURNING_VILLAGE');
-    } else if (gameState === 'DIALOGUE') {
-        let currentScene = script[currentScriptIndex].scene;
-        renderScene(currentScene);
-    } else if (gameState === 'END_INTRO') {
-        renderScene('OCEAN_DRIFT');
+        render2DScene('BURNING_VILLAGE');
+    } else if (gameState === 'INTRO_2D') {
+        let currentScene = script2D[currentScriptIndex].scene;
+        render2DScene(currentScene);
+    } else if (gameState === 'CUTSCENE_3D' || gameState === 'PLAYABLE_3D' || gameState === 'GAME_WIN') {
+        ctx2d.clearRect(0, 0, canvas2d.width, canvas2d.height); // Clear 2D layer
+        animate3D(); // Render 3D engine
     }
 
     requestAnimationFrame(loop);
 }
 
-// --- Game Logic Handling ---
+// --- Story Beats Flow Manager ---
 function triggerNextBeat() {
     if (!isAudioInitialized) {
         initAudio();
@@ -757,9 +858,10 @@ function triggerNextBeat() {
         playStartSound();
         titleScreen.classList.add('hidden');
         dialogueBox.classList.remove('hidden');
-        gameState = 'DIALOGUE';
+        gameState = 'INTRO_2D';
         advanceScript();
-    } else if (gameState === 'DIALOGUE') {
+    } 
+    else if (gameState === 'INTRO_2D') {
         if (isTyping) {
             clearInterval(typeTimer);
             speechEl.textContent = currentText;
@@ -767,35 +869,73 @@ function triggerNextBeat() {
         } else {
             playAdvanceSound();
             currentScriptIndex++;
-            if (currentScriptIndex < script.length) {
+            if (currentScriptIndex < script2D.length) {
                 advanceScript();
             } else {
+                // Transition 2D to 3D
                 dialogueBox.classList.add('hidden');
                 fadeOverlay.style.opacity = '1';
-                gameState = 'END_INTRO';
+                gameState = 'TRANSITION_3D';
+
+                setTimeout(() => {
+                    init3DEngine();
+                    activeScript = script3D;
+                    currentScriptIndex = 0;
+                    gameState = 'CUTSCENE_3D';
+                    dialogueBox.classList.remove('hidden');
+                    fadeOverlay.style.opacity = '0';
+                    advanceScript();
+                }, 1600);
+            }
+        }
+    } 
+    else if (gameState === 'CUTSCENE_3D') {
+        if (isTyping) {
+            clearInterval(typeTimer);
+            speechEl.textContent = currentText;
+            isTyping = false;
+        } else {
+            playAdvanceSound();
+            currentScriptIndex++;
+            if (currentScriptIndex < script3D.length) {
+                advanceScript();
+            } else {
+                // Start Storm Gameplay
+                dialogueBox.classList.add('hidden');
+                gameplayHud.classList.remove('hidden');
+                gameState = 'PLAYABLE_3D';
             }
         }
     }
 }
 
 function advanceScript() {
-    const beat = script[currentScriptIndex];
+    const beat = activeScript[currentScriptIndex];
     drawPortrait(beat.speaker, beat.expression);
     typeWriter(beat.text);
 }
 
-// --- Listeners ---
+// --- Keyboard & Touch Input Listeners ---
 window.addEventListener('keydown', (e) => {
     if (e.code === 'Space' || e.code === 'Enter') {
         triggerNextBeat();
     }
+    if (e.code === 'KeyA' || e.code === 'ArrowLeft') playerInputs.left = true;
+    if (e.code === 'KeyD' || e.code === 'ArrowRight') playerInputs.right = true;
+});
+
+window.addEventListener('keyup', (e) => {
+    if (e.code === 'KeyA' || e.code === 'ArrowLeft') playerInputs.left = false;
+    if (e.code === 'KeyD' || e.code === 'ArrowRight') playerInputs.right = false;
 });
 
 document.getElementById('game-container').addEventListener('click', () => {
-    triggerNextBeat();
+    if (gameState !== 'PLAYABLE_3D') {
+        triggerNextBeat();
+    }
 });
 
-// Start loop
+// Start Main Loop
 loop();
 </script>
 </body>
