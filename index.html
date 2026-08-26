@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kawm: Exodus</title>
+    <title>Kawm: Far From Home</title>
     <style>
         * {
             margin: 0;
@@ -174,8 +174,8 @@
 
     <!-- Title / Start Screen -->
     <div id="title-screen" class="ui-layer">
-        <div class="title-logo">KAWM: EXODUS</div>
-        <div class="subtitle">CHAPTER I - THE ASHES OF HOME</div>
+        <div class="title-logo">KAWM</div>
+        <div class="subtitle">FAR FROM HOME</div>
         <div class="prompt-text">[ PRESS ANYKEY OR CLICK TO EMBARK ]</div>
     </div>
 
@@ -190,6 +190,83 @@
 </div>
 
 <script>
+// --- Web Audio API Setup ---
+let audioCtx = null;
+
+function initAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+}
+
+// Procedural Retro Sound Generators
+function playTextBeep(speaker) {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = 'square';
+    
+    // Pitch varies depending on speaker for unique voice chitters
+    if (speaker === 'Moe') {
+        osc.frequency.setValueAtTime(220 + Math.random() * 30, audioCtx.currentTime); // Lower pitch for Moe
+    } else if (speaker === 'McCrack') {
+        osc.frequency.setValueAtTime(440 + Math.random() * 50, audioCtx.currentTime); // Higher pitch for McCrack
+    } else {
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime); // Deep pitch for Narrator
+    }
+
+    gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.04);
+}
+
+function playAdvanceSound() {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.08);
+
+    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.08);
+}
+
+function playStartSound() {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(450, audioCtx.currentTime + 0.3);
+
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.3);
+}
+
 // --- Canvas Setup ---
 const canvas = document.getElementById('stage');
 const ctx = canvas.getContext('2d');
@@ -258,10 +335,18 @@ function typeWriter(text, cb) {
     isTyping = true;
     currentText = text;
 
+    const currentSpeaker = script[currentScriptIndex].speaker;
+
     clearInterval(typeTimer);
     typeTimer = setInterval(() => {
         if (typeIndex < text.length) {
             speechEl.textContent += text.charAt(typeIndex);
+            
+            // Play sound effect on non-space characters
+            if (text.charAt(typeIndex) !== ' ') {
+                playTextBeep(currentSpeaker);
+            }
+            
             typeIndex++;
         } else {
             clearInterval(typeTimer);
@@ -336,7 +421,7 @@ function drawKawmling(x, y, scale = 1, expression = 'neutral', hat = 'none', fac
 
     // --- Hats ---
     if (hat === 'durag') {
-        // Moe's Durag (Purple/Dark Blue Cloth with hanging flap back)
+        // Moe's Durag (Blue Cloth with hanging flap back)
         ctx.fillStyle = '#3b82f6';
         ctx.beginPath();
         ctx.arc(0, -46, 15, Math.PI, Math.PI * 2);
@@ -495,7 +580,10 @@ function loop() {
 
 // --- Game Logic Handling ---
 function triggerNextBeat() {
+    initAudio();
+
     if (gameState === 'TITLE') {
+        playStartSound();
         titleScreen.classList.add('hidden');
         dialogueBox.classList.remove('hidden');
         gameState = 'DIALOGUE';
@@ -507,6 +595,7 @@ function triggerNextBeat() {
             speechEl.textContent = currentText;
             isTyping = false;
         } else {
+            playAdvanceSound();
             currentScriptIndex++;
             if (currentScriptIndex < script.length) {
                 advanceScript();
@@ -515,11 +604,6 @@ function triggerNextBeat() {
                 dialogueBox.classList.add('hidden');
                 fadeOverlay.style.opacity = '1';
                 gameState = 'END_INTRO';
-
-                setTimeout(() => {
-                    // Placeholder prompt for next stage
-                    alert("INTRO COMPLETE! Next stage: 3D Platformer / World transition.");
-                }, 1600);
             }
         }
     }
