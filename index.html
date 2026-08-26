@@ -34,7 +34,7 @@
             overflow: hidden;
         }
 
-        /* Canvas Layering */
+        /* Fixed absolute positioning for canvases */
         canvas {
             position: absolute;
             top: 0;
@@ -46,15 +46,15 @@
         }
 
         #stage3d {
-            z-index: 1;
+            z-index: 1; /* 3D layer on bottom */
         }
 
         #stage2d {
-            z-index: 5;
+            z-index: 5; /* 2D gameplay layer above 3D */
             pointer-events: none;
         }
 
-        /* CRT Scanline FX */
+        /* Scanlines Overlay */
         .scanlines {
             position: absolute;
             top: 0;
@@ -81,6 +81,7 @@
             z-index: 20;
             background: radial-gradient(circle, rgba(15, 12, 25, 0.75) 0%, rgba(3, 2, 6, 0.95) 100%);
             transition: opacity 1.5s ease;
+            pointer-events: auto;
         }
 
         .title-logo {
@@ -120,24 +121,34 @@
             50% { opacity: 1; transform: scale(1); }
         }
 
-        /* Fixed Dialogue Box Layout */
+        /* FIXED Dialogue Box UI Layer - Absolute on Top */
+        #ui-overlay-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 25; /* Higher than canvases and scanlines */
+            pointer-events: none; /* Let clicks pass to container unless dialogue is active */
+            display: flex;
+            justify-content: center;
+        }
+
         #dialogue-container {
             position: absolute;
-            bottom: 20px;
-            left: 40px;
+            bottom: 24px;
             width: 720px;
-            height: 150px;
+            height: 155px;
             background: #000000;
-            border: 4px solid #ffffff;
+            border: 5px solid #ffffff;
             border-radius: 6px;
             padding: 16px;
-            z-index: 20;
             display: flex;
             flex-direction: row;
-            align-items: center;
+            align-items: center; /* Center portrait vertically */
             gap: 20px;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.9);
-            pointer-events: auto;
+            pointer-events: auto; /* Active clicking for spacebar prompt */
         }
 
         #portrait-wrapper {
@@ -145,18 +156,17 @@
             height: 110px;
             min-width: 110px;
             min-height: 110px;
-            flex-shrink: 0;
             background: #050508;
             border: 2px solid #222222;
             display: flex;
             justify-content: center;
             align-items: center;
+            overflow: hidden;
+            image-rendering: pixelated;
         }
 
         #portrait-canvas {
-            width: 110px;
-            height: 110px;
-            image-rendering: pixelated;
+            display: block;
         }
 
         .text-area {
@@ -165,29 +175,27 @@
             flex-direction: column;
             justify-content: space-between;
             height: 100%;
-            overflow: hidden;
         }
 
         .dialogue-text {
-            font-size: 18px;
+            font-size: 20px;
             line-height: 1.4;
             color: #ffffff;
             white-space: pre-wrap;
             font-family: 'Courier New', Courier, monospace;
             font-weight: bold;
             letter-spacing: 1px;
-            word-wrap: break-word;
         }
 
         .next-prompt {
             align-self: flex-end;
-            font-size: 11px;
+            font-size: 12px;
             color: #888888;
             animation: pulse 1s infinite;
             font-weight: bold;
         }
 
-        /* Gameplay HUD Overlay */
+        /* Gameplay HUD */
         #gameplay-hud {
             position: absolute;
             top: 20px;
@@ -195,21 +203,20 @@
             z-index: 25;
             color: #ffffff;
             font-family: monospace;
-            font-size: 13px;
+            font-size: 14px;
             text-shadow: 2px 2px #000000;
             pointer-events: none;
-            background: rgba(0, 0, 0, 0.65);
-            padding: 12px 16px;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
             border-radius: 4px;
-            border: 1px solid #444444;
-            line-height: 1.5;
+            border: 1px solid #444;
         }
 
         .hidden {
             display: none !important;
         }
 
-        /* Transition Blackout */
+        /* Cinematic Fade Overlay */
         #fade-overlay {
             position: absolute;
             top: 0;
@@ -232,18 +239,18 @@
 <div id="game-container">
     <div class="scanlines"></div>
     
-    <!-- 3D Scene Layer -->
+    <!-- 3D Layer -->
     <canvas id="stage3d"></canvas>
     
-    <!-- 2D Overlay Layer -->
+    <!-- 2D Layer (Intro + UI) -->
     <canvas id="stage2d" width="800" height="600"></canvas>
 
     <div id="fade-overlay"></div>
 
     <!-- Gameplay HUD -->
     <div id="gameplay-hud" class="hidden">
-        CONTROLS: [A / D] or [LEFT / RIGHT ARROWS] to steer.<br>
-        Avoid the stone pillars and safely navigate toward the beacon!
+        CONTROLS: [WASD] or [ARROWS] to steer.<br>
+        Avoid the rocks! Reach the lighthouse light!
     </div>
 
     <!-- Title Screen -->
@@ -253,20 +260,23 @@
         <div id="start-prompt" class="prompt-text">[ CLICK ANYWHERE TO ACTIVATE AUDIO ]<br><span style="font-size:10px; color: #888;">(Required for browser sound playback)</span></div>
     </div>
 
-    <!-- Undertale-Style Dialogue Box -->
-    <div id="dialogue-container" class="hidden">
-        <div id="portrait-wrapper">
-            <canvas id="portrait-canvas" width="110" height="110"></canvas>
-        </div>
-        <div class="text-area">
-            <div id="speech" class="dialogue-text"></div>
-            <div class="next-prompt">[ PRESS SPACE ]</div>
+    <!-- Independent UI Layer -->
+    <div id="ui-overlay-container">
+        <!-- Intro Cutscene Dialogue UI - Undertale Style -->
+        <div id="dialogue-container" class="hidden">
+            <div id="portrait-wrapper">
+                <canvas id="portrait-canvas" width="110" height="110"></canvas>
+            </div>
+            <div class="text-area">
+                <div id="speech" class="dialogue-text"></div>
+                <div class="next-prompt">[ PRESS SPACE ]</div>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-// --- Web Audio Synthesizer ---
+// --- Web Audio API Setup ---
 let audioCtx = null;
 let isAudioInitialized = false;
 
@@ -277,16 +287,18 @@ function initAudio() {
         isAudioInitialized = true;
         document.getElementById('start-prompt').innerHTML = "[ PRESS SPACE OR CLICK TO EMBARK ]";
     } catch (e) {
-        console.error("Audio Context initialization failed.", e);
+        console.error("Web Audio API not supported.");
     }
 }
 
+// Procedural Retro Sound Generators
 function playTextBeep(speaker) {
     if (!audioCtx || !isAudioInitialized) return;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
 
     osc.type = 'square';
+    
     if (speaker === 'Moe') {
         osc.frequency.setValueAtTime(190 + Math.random() * 25, audioCtx.currentTime);
     } else if (speaker === 'McCrack') {
@@ -344,26 +356,30 @@ function playStartSound() {
 }
 
 // =========================================================================
-// --- 2D CANVAS ENGINE ---
+// --- 2D CANVAS ENGINE (FIRST PART - DO NOT MESS UP) ---
 // =========================================================================
 const canvas = document.getElementById('stage2d');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
+// Portrait Canvas Setup
 const portraitCanvas = document.getElementById('portrait-canvas');
 const pCtx = portraitCanvas.getContext('2d');
 pCtx.imageSmoothingEnabled = false;
 
+// UI Handles
 const titleScreen = document.getElementById('title-screen');
 const dialogueBox = document.getElementById('dialogue-container');
 const speechEl = document.getElementById('speech');
 const fadeOverlay = document.getElementById('fade-overlay');
 const gameplayHud = document.getElementById('gameplay-hud');
 
+// Game States
+// TITLE, INTRO_2D, TRANSITION_TO_3D, CUTSCENE_3D, GAMEPLAY_3D, FINISH
 let gameState = 'TITLE'; 
 let frameCount = 0;
 
-// Rain System (2D)
+// Rain Particles Array (2D)
 const rainDrops2D = [];
 for (let i = 0; i < 90; i++) {
     rainDrops2D.push({
@@ -374,7 +390,7 @@ for (let i = 0; i < 90; i++) {
     });
 }
 
-// Dialogue Sequences
+// Script Sequences
 const script2D = [
     { speaker: "NARRATOR", expression: "none", text: "The sky over our village didn't turn black from the night...", scene: "BURNING_VILLAGE" },
     { speaker: "NARRATOR", expression: "none", text: "It turned black from smoke. The attack happened without warning. Fire consumed the timber and kinetic towers.", scene: "BURNING_VILLAGE" },
@@ -385,16 +401,17 @@ const script2D = [
 
 const script3D = [
     { speaker: "McCrack", expression: "neutral", text: "Moe... do you think... anyone else made it out?", cameraMode: "TALK_McCRACK" },
-    { speaker: "Moe", expression: "neutral", text: "...I don't know. But we can't look back now. We have to find a new home.", cameraMode: "TALK_MOE" },
-    { speaker: "Moe", expression: "squint", text: "Wait... hold on. Do you see that?", cameraMode: "SQUINT_MOE" },
-    { speaker: "Moe", expression: "determined", text: "There's a light! McCrack, look! Over there through the fog!", cameraMode: "SQUINT_MOE" },
-    { speaker: "McCrack", expression: "worried", text: "Woah! It is! It's a beacon!", cameraMode: "STAND_McCRACK" },
-    { speaker: "McCrack", expression: "neutral", text: "Grab the oars, Moe! We have to steer through this storm to reach it!", cameraMode: "LOOK_AT_LIGHT" }
+    { speaker: "Moe", expression: "neutral", text: "...I don't know. But we can't look back now. We keep sailing until we find refuge.", cameraMode: "TALK_MOE" },
+    { speaker: "Moe", expression: "squint", text: "Wait... hold on.", cameraMode: "SQUINT_MOE" },
+    { speaker: "Moe", expression: "determined", text: "McCrack! Look over there! Through the fog!", cameraMode: "SQUINT_MOE" },
+    { speaker: "McCrack", expression: "worried", text: "Woah! Is that... a beacon?!", cameraMode: "STAND_McCRACK" },
+    { speaker: "NARRATOR", expression: "none", text: "We have to reach it! Moe, take the oars and steer through this storm!", cameraMode: "LOOK_AT_LIGHT" }
 ];
 
 let activeScript = script2D;
 let currentScriptIndex = 0;
 
+// Typewriter Effect
 let typeIndex = 0;
 let isTyping = false;
 let currentText = "";
@@ -421,6 +438,7 @@ function typeWriter(text, cb) {
     }, 38);
 }
 
+// --- 2D Drawing Utilities ---
 function drawKawmlingStage2D(x, y, scale = 1, hat = 'none', facing = 1, pose = 'standing') {
     ctx.save();
     ctx.translate(x, y);
@@ -460,49 +478,58 @@ function drawKawmlingStage2D(x, y, scale = 1, hat = 'none', facing = 1, pose = '
     ctx.restore();
 }
 
+// **FIXED: drawPortrait2D centers the heads in the pixel wrapper**
 function drawPortrait2D(speaker, expression) {
     pCtx.clearRect(0, 0, portraitCanvas.width, portraitCanvas.height);
     if (speaker === 'NARRATOR') return;
 
     pCtx.fillStyle = '#ffffff';
-    const centerX = portraitCanvas.width / 2;
-    const centerY = portraitCanvas.height / 2 + 10;
-    const headRad = 32;
+    // Center of 110x110 internal canvas
+    const centerX = 55; 
+    const centerY = 65; // Positioned lower to center entire head + hat
+    const headRad = 36;
 
+    // Solid white thicker head
     pCtx.beginPath();
     pCtx.arc(centerX, centerY, headRad, 0, Math.PI * 2);
     pCtx.fill();
 
+    // Hats on Portrait
     if (speaker === 'Moe') {
         pCtx.fillStyle = '#2563eb';
-        pCtx.beginPath(); pCtx.arc(centerX, centerY, headRad + 2, Math.PI, Math.PI * 2); pCtx.fill();
-        pCtx.beginPath(); pCtx.moveTo(centerX - headRad, centerY); pCtx.lineTo(centerX - headRad - 12, centerY + 20); pCtx.lineTo(centerX - headRad + 4, centerY + 15); pCtx.fill();
+        pCtx.beginPath(); pCtx.arc(centerX, centerY, headRad + 3, Math.PI, Math.PI * 2); pCtx.fill();
+        pCtx.beginPath(); pCtx.moveTo(centerX - headRad, centerY); pCtx.lineTo(centerX - headRad - 14, centerY + 25); pCtx.lineTo(centerX - headRad + 4, centerY + 18); pCtx.fill();
     } else if (speaker === 'McCrack') {
         pCtx.fillStyle = '#f4f4f5';
-        pCtx.beginPath(); pCtx.moveTo(centerX - 38, centerY - headRad - 2); pCtx.lineTo(centerX + 38, centerY - headRad - 2); pCtx.lineTo(centerX + 22, centerY - headRad + 16); pCtx.lineTo(centerX - 22, centerY - headRad + 16); pCtx.closePath(); pCtx.fill();
-        pCtx.beginPath(); pCtx.moveTo(centerX - 16, centerY - headRad - 2); pCtx.lineTo(centerX, centerY - headRad - 28); pCtx.lineTo(centerX + 16, centerY - headRad - 2); pCtx.closePath(); pCtx.fill();
+        pCtx.beginPath(); pCtx.moveTo(centerX - 42, centerY - headRad - 4); pCtx.lineTo(centerX + 42, centerY - headRad - 4); pCtx.lineTo(centerX + 26, centerY - headRad + 18); pCtx.lineTo(centerX - 26, centerY - headRad + 18); pCtx.closePath(); pCtx.fill();
+        pCtx.beginPath(); pCtx.moveTo(centerX - 20, centerY - headRad - 4); pCtx.lineTo(centerX, centerY - headRad - 34); pCtx.lineTo(centerX + 20, centerY - headRad - 4); pCtx.closePath(); pCtx.fill();
     }
 
-    pCtx.fillStyle = '#000000'; pCtx.strokeStyle = '#000000'; pCtx.lineWidth = 4;
+    // Black Eyes & Eyebrows
+    pCtx.fillStyle = '#000000';
+    pCtx.strokeStyle = '#000000';
+    pCtx.lineWidth = 5;
 
+    // Eyes
     if (expression === 'squint') {
-        pCtx.fillRect(centerX - 20, centerY - 2, 14, 4);
-        pCtx.fillRect(centerX + 6, centerY - 2, 14, 4);
+        pCtx.fillRect(centerX - 22, centerY - 6, 16, 4); // Squint L
+        pCtx.fillRect(centerX + 6, centerY - 6, 16, 4);  // Squint R
     } else {
-        pCtx.fillRect(centerX - 18, centerY - 4, 8, 12);
-        pCtx.fillRect(centerX + 10, centerY - 4, 8, 12);
+        pCtx.fillRect(centerX - 18, centerY - 8, 8, 14);
+        pCtx.fillRect(centerX + 10, centerY - 8, 8, 14);
     }
 
+    // Eyebrows
     pCtx.beginPath();
     if (expression === 'worried') {
-        pCtx.moveTo(centerX - 22, centerY - 18); pCtx.lineTo(centerX - 8, centerY - 10);
-        pCtx.moveTo(centerX + 22, centerY - 18); pCtx.lineTo(centerX + 8, centerY - 10);
+        pCtx.moveTo(centerX - 24, centerY - 22); pCtx.lineTo(centerX - 10, centerY - 14);
+        pCtx.moveTo(centerX + 24, centerY - 22); pCtx.lineTo(centerX + 10, centerY - 14);
     } else if (expression === 'determined' || expression === 'squint') {
-        pCtx.moveTo(centerX - 22, centerY - 10); pCtx.lineTo(centerX - 8, centerY - 18);
-        pCtx.moveTo(centerX + 22, centerY - 10); pCtx.lineTo(centerX + 8, centerY - 18);
-    } else {
-        pCtx.moveTo(centerX - 22, centerY - 14); pCtx.lineTo(centerX - 8, centerY - 14);
-        pCtx.moveTo(centerX + 22, centerY - 14); pCtx.lineTo(centerX + 8, centerY - 14);
+        pCtx.moveTo(centerX - 24, centerY - 14); pCtx.lineTo(centerX - 10, centerY - 22);
+        pCtx.moveTo(centerX + 24, centerY - 14); pCtx.lineTo(centerX + 10, centerY - 22);
+    } else { // neutral
+        pCtx.moveTo(centerX - 24, centerY - 18); pCtx.lineTo(centerX - 10, centerY - 18);
+        pCtx.moveTo(centerX + 24, centerY - 18); pCtx.lineTo(centerX + 10, centerY - 18);
     }
     pCtx.stroke();
 }
@@ -567,60 +594,62 @@ function render2DScene(sceneType) {
 }
 
 // =========================================================================
-// --- 3D THREE.JS ENGINE ---
+// --- 3D ENGINE (SECOND PART - FIXED VISIBILITY & SCALING) ---
 // =========================================================================
-let scene3d, camera3d, renderer3d, ocean3d, boat3d, moe3d, mcCrack3d, beacon3d, rocks3d;
+let scene3d, camera3d, renderer3d, oceanMesh;
+let boat3d, moe3d, mcCrack3d, lighthouseGroup, rocksGroup;
 let rainSystem3d;
 
 let boatX = 0;
 let boatZ = 0;
 let inputs = { left: false, right: false };
-const GAME_LENGTH = 1400;
+const GAME_LENGTH = 1600;
 
-function init3DSequence() {
+function init3DEngine() {
     const stage3d = document.getElementById('stage3d');
     
-    // Renderer
-    renderer3d = new THREE.WebGLRenderer({ canvas: stage3d, antialias: true, alpha: false });
+    // Renderer - Higher scale for PS1 fidelity
+    renderer3d = new THREE.WebGLRenderer({ canvas: stage3d, antialias: false, alpha: false });
     renderer3d.setSize(800, 600);
-    renderer3d.setPixelRatio(1.0);
+    renderer3d.setPixelRatio(1.0); // No pixelation scale to maintain sharpness
 
     scene3d = new THREE.Scene();
-    scene3d.background = new THREE.Color(0x050814);
-    scene3d.fog = new THREE.FogExp2(0x050814, 0.003); // Lighter fog so everything is visible
+    scene3d.background = new THREE.Color(0x050814); // Very dark blue
+    scene3d.fog = new THREE.FogExp2(0x050814, 0.003); // LIGHTER FOG for visibility
 
-    // Camera
+    // Camera - closer FOV
     camera3d = new THREE.PerspectiveCamera(55, 800 / 600, 0.1, 2000);
 
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0xdbeaff, 0.85);
+    // Dynamic Lighting for visibility
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.9); // BRIGHT AMBIENT
     scene3d.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.75);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
     dirLight.position.set(40, 80, 50);
     scene3d.add(dirLight);
 
-    // 1. Stylized Water Plane
+    // 1. Water Plane (White Waves)
+    // Scaled DOWN so it doesn't break visibility
     const oceanGeo = new THREE.PlaneGeometry(300, 2400, 60, 240);
     oceanGeo.rotateX(-Math.PI / 2);
     const oceanMat = new THREE.MeshLambertMaterial({ color: 0xffffff, wireframe: false });
-    ocean3d = new THREE.Mesh(oceanGeo, oceanMat);
-    scene3d.add(ocean3d);
+    oceanMesh = new THREE.Mesh(oceanGeo, oceanMat);
+    scene3d.add(oceanMesh);
 
-    // 2. Boat Model
+    // 2. The Boat
     boat3d = new THREE.Group();
     const hullGeo = new THREE.BoxGeometry(4.5, 2.2, 11);
     const hullMat = new THREE.MeshLambertMaterial({ color: 0x1f1410 });
     const hull = new THREE.Mesh(hullGeo, hullMat);
-    hull.position.y = 1.1;
+    hull.position.y = 1.1; // Sits above water plane base
     boat3d.add(hull);
     scene3d.add(boat3d);
 
-    // 3. 3D Kawmlings
+    // 3. Characters (Stick Figures with Thickness)
     function createKawmling3D(hatType) {
         const group = new THREE.Group();
         const whiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        const limbGeo = new THREE.CylinderGeometry(0.18, 0.18, 2.2, 8);
+        const limbGeo = new THREE.CylinderGeometry(0.18, 0.18, 2.2, 8); // Thicker
 
         // Head
         const headGeo = new THREE.SphereGeometry(0.8, 16, 16);
@@ -678,46 +707,47 @@ function init3DSequence() {
     mcCrack3d.rotation.y = Math.PI;
     boat3d.add(mcCrack3d);
 
-    // 4. Beacon Structure
-    beacon3d = new THREE.Group();
-    beacon3d.position.set(0, 0, -GAME_LENGTH);
+    // 4. Lighthouse Beacon (Light Source is VISIBLE)
+    lighthouseGroup = new THREE.Group();
+    lighthouseGroup.position.set(0, 0, -GAME_LENGTH);
 
     const baseGeo = new THREE.CylinderGeometry(8, 12, 70, 12);
     const baseMat = new THREE.MeshLambertMaterial({ color: 0x2d3748 });
     const tower = new THREE.Mesh(baseGeo, baseMat);
     tower.position.y = 35;
-    beacon3d.add(tower);
+    lighthouseGroup.add(tower);
 
-    // Glowing Lamp Center
+    // Glowing Lamp Center (Actually visible)
     const bulbGeo = new THREE.SphereGeometry(8, 16, 16);
-    const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffea00 });
-    const bulb = new THREE.Mesh(bulbGeo, bulbMat);
-    bulb.position.y = 75;
-    beacon3d.add(bulb);
+    const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffea00 }); // VISIBLE YELLOW
+    const bulbMesh = new THREE.Mesh(bulbGeo, bulbMat);
+    bulbMesh.position.y = 75;
+    lighthouseGroup.add(bulbMesh);
 
+    // Strong Point Light for environment
     const beaconLight = new THREE.PointLight(0xffea00, 3, 400);
     beaconLight.position.y = 75;
-    beacon3d.add(beaconLight);
+    lighthouseGroup.add(beaconLight);
 
-    scene3d.add(beacon3d);
+    scene3d.add(lighthouseGroup);
 
-    // 5. Rocks to Avoid
-    rocks3d = new THREE.Group();
-    const rockMat = new THREE.MeshLambertMaterial({ color: 0x111827 });
+    // 5. Rocks to Dodge
+    rocksGroup = new THREE.Group();
+    const rockMat = new THREE.MeshLambertMaterial({ color: 0x111827 }); // dark gray
     for (let i = 0; i < 35; i++) {
         const h = 25 + Math.random() * 50;
         const rGeo = new THREE.ConeGeometry(6 + Math.random() * 6, h, 6);
         const rock = new THREE.Mesh(rGeo, rockMat);
         rock.position.set(
             (Math.random() - 0.5) * 70,
-            h / 2 - 4,
+            h / 2 - 4, // embedded
             -200 - Math.random() * (GAME_LENGTH - 300)
         );
-        rocks3d.add(rock);
+        rocksGroup.add(rock);
     }
-    scene3d.add(rocks3d);
+    scene3d.add(rocksGroup);
 
-    // 6. Rain System
+    // 6. 3D Rain
     const rainGeo = new THREE.BufferGeometry();
     const rainCount = 1200;
     const rainPositions = new Float32Array(rainCount * 3);
@@ -733,82 +763,95 @@ function init3DSequence() {
 }
 
 function animate3D() {
+    if (gameState === 'TITLE' || gameState === 'INTRO_2D' || gameState === 'FINISH') return;
+
     const time = Date.now() * 0.002;
 
-    // Ocean Waves
-    const oceanCoords = ocean3d.geometry.attributes.position;
+    // Ocean Waves Displacement
+    const oceanCoords = oceanMesh.geometry.attributes.position;
     for (let i = 0; i < oceanCoords.count; i++) {
         const x = oceanCoords.getX(i);
         const z = oceanCoords.getZ(i);
+        // Smaller chaotic waves
         const y = Math.sin(x * 0.08 + time) * 2.5 + Math.cos(z * 0.04 + time * 1.4) * 3;
         oceanCoords.setY(i, y);
     }
     oceanCoords.needsUpdate = true;
 
-    // Boat Buoyancy
+    // Boat Buoyancy (Calculate Y based on waves under boat position)
     const waveY = Math.sin(boat3d.position.x * 0.08 + time) * 2.5 + Math.cos(boat3d.position.z * 0.04 + time * 1.4) * 3;
     boat3d.position.y = waveY;
-    boat3d.rotation.z = Math.sin(time) * 0.12;
-    boat3d.rotation.x = Math.cos(time * 1.2) * 0.08;
+    boat3d.rotation.z = Math.sin(time) * 0.12; // Roll chaotic
+    boat3d.rotation.x = Math.cos(time * 1.2) * 0.08; // Pitch chaotic
 
     // Characters Idle Motion
     moe3d.arms.rotation.x = Math.sin(time * 2) * 0.15;
     mcCrack3d.arms.rotation.x = Math.sin(time * 2 + 1) * 0.15;
 
-    // Rain Movement
+    // Rain Movement relative to camera
     rainSystem3d.position.z = camera3d.position.z - 40;
     const rainPos = rainSystem3d.geometry.attributes.position.array;
     for (let i = 1; i < rainPos.length; i += 3) {
-        rainPos[i] -= 1.8;
-        if (rainPos[i] < 0) rainPos[i] = 80;
+        rainPos[i] -= 1.8; // Fall
+        if (rainPos[i] < 0) rainPos[i] = 80; // Reset top
     }
     rainSystem3d.geometry.attributes.position.needsUpdate = true;
 
     // Cutscene Camera Directions
     if (gameState === 'CUTSCENE_3D') {
-        const beat = script3D[currentScriptIndex];
+        const beat = activeScript[currentScriptIndex];
 
         if (beat.cameraMode === "TALK_McCRACK") {
+            // Close up of McCrack
             camera3d.position.set(boat3d.position.x - 7, boat3d.position.y + 5, boat3d.position.z + 6);
             camera3d.lookAt(boat3d.position.x, boat3d.position.y + 3.5, boat3d.position.z + 2.5);
         } else if (beat.cameraMode === "TALK_MOE") {
+            // Close up of Moe
             camera3d.position.set(boat3d.position.x + 7, boat3d.position.y + 5, boat3d.position.z - 6);
             camera3d.lookAt(boat3d.position.x, boat3d.position.y + 3.5, boat3d.position.z - 2.5);
         } else if (beat.cameraMode === "SQUINT_MOE") {
+            // Tight Squint Plan
             camera3d.position.set(boat3d.position.x + 3, boat3d.position.y + 4.5, boat3d.position.z - 6.5);
             camera3d.lookAt(boat3d.position.x, boat3d.position.y + 3.5, boat3d.position.z - 2.5);
-            moe3d.rotation.x = -0.25;
+            moe3d.rotation.x = -0.25; // animation lean forward
         } else if (beat.cameraMode === "STAND_McCRACK") {
             moe3d.rotation.x = 0;
+            // animation stand up
             mcCrack3d.position.y = 1.7 + Math.abs(Math.sin(time * 6) * 0.25);
-            mcCrack3d.rotation.x = -0.3;
+            mcCrack3d.rotation.x = -0.3; // leaning back slightly chaotic
             camera3d.position.set(boat3d.position.x, boat3d.position.y + 6, boat3d.position.z + 8.5);
             camera3d.lookAt(boat3d.position.x, boat3d.position.y + 4, boat3d.position.z + 2);
         } else if (beat.cameraMode === "LOOK_AT_LIGHT") {
             mcCrack3d.position.y = 1.5;
             mcCrack3d.rotation.x = 0;
+            // Boat far away in the storm view toward light
             camera3d.position.set(boat3d.position.x, boat3d.position.y + 7, boat3d.position.z + 16);
             camera3d.lookAt(0, 20, -GAME_LENGTH);
         }
     } else if (gameState === 'GAMEPLAY_3D') {
+        // Longer journey speed Z
         boatZ -= 1.1;
 
+        // Steering
         if (inputs.left) boatX += 0.45;
         if (inputs.right) boatX -= 0.45;
 
+        // Clamp
         boatX = Math.max(-28, Math.min(28, boatX));
 
         boat3d.position.z = boatZ;
         boat3d.position.x = boatX;
 
+        // Third person follow camera
         camera3d.position.set(boatX, boat3d.position.y + 8, boatZ + 18);
         camera3d.lookAt(boatX, boat3d.position.y + 2.5, boatZ - 15);
 
-        // Rock Collision Detection
+        // simple collision logic with rocks
         const boatBox = new THREE.Box3().setFromObject(boat3d);
-        rocks3d.children.forEach(rock => {
+        rocksGroup.children.forEach(rock => {
             const rockBox = new THREE.Box3().setFromObject(rock);
             if (boatBox.intersectsBox(rockBox)) {
+                // Hti rock - knock boat back
                 boatZ += 40;
                 boatX = 0;
                 if (audioCtx) playAdvanceSound();
@@ -829,7 +872,7 @@ function animate3D() {
 }
 
 // =========================================================================
-// --- GAME LOOP & EVENT HANDLERS ---
+// --- COMBINED GAME LOOP & EVENT HANDLERS ---
 // =========================================================================
 function loop() {
     frameCount++;
@@ -839,7 +882,7 @@ function loop() {
         const sceneType = gameState === 'TITLE' ? "BURNING_VILLAGE" : activeScript[currentScriptIndex].scene;
         render2DScene(sceneType);
     } else if (gameState === 'CUTSCENE_3D' || gameState === 'GAMEPLAY_3D') {
-        ctx.clearRect(0, 0, 800, 600);
+        ctx.clearRect(0, 0, 800, 600); // 2D canvas pure overlay
         animate3D();
     }
 
@@ -878,7 +921,7 @@ function handleSequenceEnd() {
         dialogueBox.classList.add('hidden');
 
         setTimeout(() => {
-            init3DSequence();
+            init3DEngine();
             gameState = 'CUTSCENE_3D';
             activeScript = script3D;
             currentScriptIndex = 0;
@@ -923,6 +966,7 @@ document.getElementById('game-container').addEventListener('click', () => {
     if (gameState !== 'GAMEPLAY_3D' && gameState !== 'FINISH') triggerNextBeat();
 });
 
+// Start loop
 loop();
 </script>
 </body>
