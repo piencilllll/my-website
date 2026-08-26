@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PSX Cyber Core 3D</title>
+    <title>PS1 3D Platformer</title>
     <style>
         * {
             margin: 0;
@@ -32,7 +32,6 @@
             background: #000;
         }
 
-        /* Pixelated canvas container */
         canvas {
             width: 100%;
             height: 100%;
@@ -57,27 +56,6 @@
             z-index: 10;
         }
 
-        .crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 8px;
-            height: 8px;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            z-index: 10;
-        }
-
-        .crosshair::before, .crosshair::after {
-            content: '';
-            position: absolute;
-            background: #00f0ff;
-            box-shadow: 0 0 4px #00f0ff;
-        }
-
-        .crosshair::before { top: 3px; left: 0; width: 8px; height: 2px; }
-        .crosshair::after { top: 0; left: 3px; width: 2px; height: 8px; }
-
         .overlay {
             position: absolute;
             top: 0;
@@ -95,7 +73,7 @@
         }
 
         h1 {
-            font-size: 44px;
+            font-size: 40px;
             letter-spacing: 3px;
             color: #00f0ff;
             margin-bottom: 12px;
@@ -131,7 +109,6 @@
             display: none !important;
         }
 
-        /* Reticle effect overlay */
         .scanlines {
             position: absolute;
             top: 0;
@@ -152,204 +129,215 @@
 
 <div id="viewport">
     <div class="scanlines"></div>
-    <div class="crosshair"></div>
 
     <div class="hud">
-        <div>CORE INTEGRITY: <span id="hp">100</span>%</div>
-        <div>DATA PURGED: <span id="score">0</span></div>
+        <div>CRYSTALS: <span id="gems">0</span> / 5</div>
+        <div>LIVES: <span id="lives">3</span></div>
     </div>
 
     <div id="start-screen" class="overlay">
-        <h1>CYBER_CORE 1998</h1>
-        <p>PS1-Style 3D Polygon Arena<br>WASD: Walk | MOUSE: Aim | CLICK: Fire Pulse</p>
-        <button id="start-btn">INITIALIZE SYSTEM</button>
+        <h1>NEO_HOPPER 64</h1>
+        <p>PS1-Style 3D Platformer<br>WASD: Walk | SPACE: Jump (Hold for higher hop)<br>MOUSE: Orbit Camera</p>
+        <button id="start-btn">START GAME</button>
     </div>
 
     <div id="game-over" class="overlay hidden">
-        <h1 style="color: #ff0055; text-shadow: 3px 3px #00f0ff;">FATAL ERROR</h1>
-        <p>Entities Cleared: <span id="final-score">0</span></p>
-        <button id="restart-btn">REBOOT SYSTEM</button>
+        <h1 id="end-title" style="color: #ff0055; text-shadow: 3px 3px #00f0ff;">SYSTEM VOID</h1>
+        <p id="end-msg">You fell into the abyss.</p>
+        <button id="restart-btn">RETRY LEVEL</button>
     </div>
 </div>
 
 <script>
-// --- Game Engine Variables ---
+// --- Game Setup ---
 let scene, camera, renderer;
-let player, controls;
-let targets = [];
-let projectiles = [];
+let player, playerBox;
+let platforms = [];
+let gems = [];
 let particles = [];
-let hp = 100;
-let score = 0;
+let gemCount = 0;
+let lives = 3;
 let isRunning = false;
 
-// Controls tracking
-const keys = { KeyW: false, KeyS: false, KeyA: false, KeyD: false };
-let isLocked = false;
+// Physics / Movement
+const velocity = new THREE.Vector3();
+let isGrounded = false;
+const GRAVITY = -0.015;
+const JUMP_FORCE = 0.32;
+const SPEED = 0.12;
+
+// Controls
+const keys = { KeyW: false, KeyS: false, KeyA: false, KeyD: false, Space: false };
+let cameraAngle = 0;
+let isMouseDown = false;
+let previousMouseX = 0;
 
 // UI Elements
-const hpEl = document.getElementById('hp');
-const scoreEl = document.getElementById('score');
+const gemsEl = document.getElementById('gems');
+const livesEl = document.getElementById('lives');
 const startScreen = document.getElementById('start-screen');
 const gameOverScreen = document.getElementById('game-over');
+const endTitle = document.getElementById('end-title');
+const endMsg = document.getElementById('end-msg');
 const startBtn = document.getElementById('start-btn');
 const restartBtn = document.getElementById('restart-btn');
-const finalScoreEl = document.getElementById('final-score');
 const viewport = document.getElementById('viewport');
 
-// Low-resolution 3D rendering setup (320x240 for genuine PS1 pixel vibe)
+// Low PS1 Render Resolution
 const RENDER_W = 320;
 const RENDER_H = 240;
 
 function initEngine() {
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x030308);
-    scene.fog = new THREE.FogExp2(0x030308, 0.04);
+    scene.background = new THREE.Color(0x05020a);
+    scene.fog = new THREE.FogExp2(0x05020a, 0.025);
 
-    camera = new THREE.PerspectiveCamera(70, RENDER_W / RENDER_H, 0.1, 100);
-    
+    camera = new THREE.PerspectiveCamera(65, RENDER_W / RENDER_H, 0.1, 100);
+
     renderer = new THREE.WebGLRenderer({ antialias: false });
     renderer.setSize(RENDER_W, RENDER_H);
     viewport.appendChild(renderer.domElement);
 
-    // Flat low-poly lighting setup
-    const ambientLight = new THREE.AmbientLight(0x333355);
+    // Retro Lighting Setup
+    const ambientLight = new THREE.AmbientLight(0x443366);
     scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0x00f0ff, 0.8);
-    dirLight.position.set(5, 10, 7);
+    const dirLight = new THREE.DirectionalLight(0x00f0ff, 0.9);
+    dirLight.position.set(10, 20, 15);
     scene.add(dirLight);
 
-    buildArena();
     setupControls();
+    buildLevel();
+    createPlayer();
 }
 
-// Low-poly Arena Builder
-function buildArena() {
-    // Flat flat-shaded checkerboard floor
-    const floorGeo = new THREE.PlaneGeometry(60, 60, 20, 20);
-    const floorMat = new THREE.MeshLambertMaterial({ 
-        color: 0x111122, 
-        wireframe: false,
-        flatShading: true
+function createPlayer() {
+    // Low-poly character (PS1 style mascot build)
+    const group = new THREE.Group();
+
+    // Body
+    const bodyGeo = new THREE.BoxGeometry(0.8, 0.9, 0.8);
+    const bodyMat = new THREE.MeshLambertMaterial({ color: 0x00f0ff, flatShading: true });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 0.45;
+    group.add(body);
+
+    // Head
+    const headGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
+    const headMat = new THREE.MeshLambertMaterial({ color: 0xff0055, flatShading: true });
+    const head = new THREE.Mesh(headGeo, headMat);
+    head.position.y = 1.1;
+    group.add(head);
+
+    // Eyes
+    const eyeGeo = new THREE.BoxGeometry(0.15, 0.15, 0.1);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+    eyeL.position.set(-0.18, 1.15, 0.3);
+    const eyeR = eyeL.clone();
+    eyeR.position.x = 0.18;
+    group.add(eyeL);
+    group.add(eyeR);
+
+    player = group;
+    scene.add(player);
+
+    playerBox = new THREE.Box3();
+}
+
+function buildLevel() {
+    // Clear old elements
+    platforms.forEach(p => scene.remove(p));
+    gems.forEach(g => scene.remove(g));
+    platforms = [];
+    gems = [];
+
+    // Platform layout configuration [x, y, z, width, depth]
+    const platformData = [
+        [0, 0, 0, 6, 6],           // Spawn platform
+        [0, 1, -8, 4, 4],          // Step 1
+        [6, 2.5, -12, 4, 4],       // Step 2
+        [12, 4, -8, 5, 5],         // Middle hub
+        [12, 6, 0, 4, 4],          // High platform
+        [5, 7.5, 4, 4, 4],         // Peak path 1
+        [-2, 9, 0, 5, 5],          // Peak hub
+        [-10, 11, -5, 6, 6]        // Goal island
+    ];
+
+    const platMat = new THREE.MeshLambertMaterial({ color: 0x221133, flatShading: true });
+    const topMat = new THREE.MeshLambertMaterial({ color: 0x338899, flatShading: true });
+
+    platformData.forEach(([x, y, z, w, d]) => {
+        const platGroup = new THREE.Group();
+
+        // Base block
+        const geo = new THREE.BoxGeometry(w, 2, d);
+        const mesh = new THREE.Mesh(geo, platMat);
+        mesh.position.y = -1;
+        platGroup.add(mesh);
+
+        // Top surface trim
+        const topGeo = new THREE.BoxGeometry(w, 0.1, d);
+        const topMesh = new THREE.Mesh(topGeo, topMat);
+        topMesh.position.y = 0.05;
+        platGroup.add(topMesh);
+
+        platGroup.position.set(x, y, z);
+        platGroup.userData = { bounds: new THREE.Box3().setFromObject(platGroup) };
+
+        platforms.push(platGroup);
+        scene.add(platGroup);
     });
-    
-    // Deform terrain slightly for PS1 geometric grit
-    const pos = floorGeo.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-        pos.setZ(i, (Math.random() - 0.5) * 0.4);
-    }
-    floorGeo.computeVertexNormals();
 
-    const floor = new THREE.Mesh(floorGeo, floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    scene.add(floor);
+    // Gem positions
+    const gemData = [
+        [0, 2, -8],
+        [6, 3.5, -12],
+        [12, 7.5, 0],
+        [-2, 10.5, 0],
+        [-10, 12.5, -5] // Final gem
+    ];
 
-    // Outer low-poly pillars/monoliths
-    const wallGeo = new THREE.BoxGeometry(2, 8, 2);
-    const wallMat = new THREE.MeshLambertMaterial({ color: 0x221133, flatShading: true });
+    const gemGeo = new THREE.OctahedronGeometry(0.5, 0);
+    const gemMat = new THREE.MeshLambertMaterial({ color: 0xff0055, emissive: 0x660022, flatShading: true });
 
-    for (let i = -30; i <= 30; i += 6) {
-        let p1 = new THREE.Mesh(wallGeo, wallMat);
-        p1.position.set(i, 4, -30);
-        scene.add(p1);
-
-        let p2 = new THREE.Mesh(wallGeo, wallMat);
-        p2.position.set(i, 4, 30);
-        scene.add(p2);
-
-        let p3 = new THREE.Mesh(wallGeo, wallMat);
-        p3.position.set(-30, 4, i);
-        scene.add(p3);
-
-        let p4 = new THREE.Mesh(wallGeo, wallMat);
-        p4.position.set(30, 4, i);
-        scene.add(p4);
-    }
+    gemData.forEach(([x, y, z]) => {
+        const gem = new THREE.Mesh(gemGeo, gemMat);
+        gem.position.set(x, y, z);
+        gems.push(gem);
+        scene.add(gem);
+    });
 }
 
-// FPS Pointer Lock Controls
 function setupControls() {
-    let yaw = 0;
-    let pitch = 0;
+    window.addEventListener('keydown', (e) => {
+        if (e.code in keys) keys[e.code] = true;
+    });
 
-    viewport.addEventListener('click', () => {
-        if (isRunning && !isLocked) {
-            viewport.requestPointerLock();
+    window.addEventListener('keyup', (e) => {
+        if (e.code in keys) keys[e.code] = false;
+    });
+
+    // Mouse Orbit Controls for Camera
+    viewport.addEventListener('mousedown', (e) => {
+        isMouseDown = true;
+        previousMouseX = e.clientX;
+    });
+
+    window.addEventListener('mouseup', () => { isMouseDown = false; });
+
+    window.addEventListener('mousemove', (e) => {
+        if (isMouseDown) {
+            const delta = e.clientX - previousMouseX;
+            cameraAngle -= delta * 0.008;
+            previousMouseX = e.clientX;
         }
     });
-
-    document.addEventListener('pointerlockchange', () => {
-        isLocked = document.pointerLockElement === viewport;
-    });
-
-    document.addEventListener('mousemove', (e) => {
-        if (!isLocked || !isRunning) return;
-
-        const sensitivity = 0.0025;
-        yaw -= e.movementX * sensitivity;
-        pitch -= e.movementY * sensitivity;
-
-        pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
-
-        camera.rotation.order = "YXZ";
-        camera.rotation.y = yaw;
-        camera.rotation.x = pitch;
-    });
-
-    window.addEventListener('keydown', (e) => { if (e.code in keys) keys[e.code] = true; });
-    window.addEventListener('keyup', (e) => { if (e.code in keys) keys[e.code] = false; });
-    window.addEventListener('mousedown', (e) => {
-        if (isLocked && isRunning && e.button === 0) fireProjectile();
-    });
 }
 
-// Enemy Spawner (Low-poly floating octahedrons)
-function spawnEnemy() {
-    const geo = new THREE.OctahedronGeometry(1.2, 0); // Flat shading 3D poly
-    const mat = new THREE.MeshLambertMaterial({ 
-        color: 0xff0055, 
-        flatShading: true,
-        emissive: 0x440011 
-    });
-    const enemy = new THREE.Mesh(geo, mat);
-
-    // Random placement along perimeter
-    const angle = Math.random() * Math.PI * 2;
-    const dist = 18 + Math.random() * 8;
-    enemy.position.set(Math.cos(angle) * dist, 1.2, Math.sin(angle) * dist);
-
-    enemy.userData = {
-        hp: 2,
-        speed: 0.04 + Math.random() * 0.03,
-        rotSpeed: (Math.random() - 0.5) * 0.1
-    };
-
-    targets.push(enemy);
-    scene.add(enemy);
-}
-
-// Player Projectiles
-function fireProjectile() {
-    const geo = new THREE.TetrahedronGeometry(0.3, 0);
-    const mat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
-    const proj = new THREE.Mesh(geo, mat);
-
-    proj.position.copy(camera.position);
-
-    // Get forward vector
-    const dir = new THREE.Vector3();
-    camera.getWorldDirection(dir);
-    proj.userData = { dir: dir, life: 60 };
-
-    projectiles.push(proj);
-    scene.add(proj);
-}
-
-// Low-poly Explosion Effect
-function createExplosion(pos, color = 0xff0055) {
-    for (let i = 0; i < 8; i++) {
-        const geo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+function createParticles(pos, color = 0xff0055) {
+    for (let i = 0; i < 10; i++) {
+        const geo = new THREE.BoxGeometry(0.15, 0.15, 0.15);
         const mat = new THREE.MeshBasicMaterial({ color: color });
         const p = new THREE.Mesh(geo, mat);
         p.position.copy(pos);
@@ -357,10 +345,10 @@ function createExplosion(pos, color = 0xff0055) {
         p.userData = {
             vel: new THREE.Vector3(
                 (Math.random() - 0.5) * 0.2,
-                (Math.random() - 0.5) * 0.2,
+                Math.random() * 0.2,
                 (Math.random() - 0.5) * 0.2
             ),
-            life: 20
+            life: 25
         };
 
         particles.push(p);
@@ -368,149 +356,164 @@ function createExplosion(pos, color = 0xff0055) {
     }
 }
 
-// Game Logic Loop
-function update() {
+function updatePhysics() {
     if (!isRunning) return;
 
-    // Player Movement
-    const speed = 0.12;
-    const dir = new THREE.Vector3();
+    // Movement relative to camera perspective
+    const inputDir = new THREE.Vector3();
+    if (keys.KeyW) inputDir.z -= 1;
+    if (keys.KeyS) inputDir.z += 1;
+    if (keys.KeyA) inputDir.x -= 1;
+    if (keys.KeyD) inputDir.x += 1;
 
-    if (keys.KeyW) dir.z -= 1;
-    if (keys.KeyS) dir.z += 1;
-    if (keys.KeyA) dir.x -= 1;
-    if (keys.KeyD) dir.x += 1;
+    inputDir.normalize();
 
-    dir.normalize();
-    dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), camera.rotation.y);
+    // Rotate input vector relative to orbit camera angle
+    const moveDir = inputDir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraAngle);
 
-    camera.position.x += dir.x * speed;
-    camera.position.z += dir.z * speed;
-    camera.position.y = 1.6; // Eyes height
+    velocity.x = moveDir.x * SPEED;
+    velocity.z = moveDir.z * SPEED;
 
-    // Lock player within arena
-    camera.position.x = Math.max(-26, Math.min(26, camera.position.x));
-    camera.position.z = Math.max(-26, Math.min(26, camera.position.z));
+    // Jumping
+    if (keys.Space && isGrounded) {
+        velocity.y = JUMP_FORCE;
+        isGrounded = false;
+        createParticles(player.position, 0x00f0ff);
+    }
 
-    // Update Projectiles
-    for (let i = projectiles.length - 1; i >= 0; i--) {
-        const p = projectiles[i];
-        p.position.addScaledVector(p.userData.dir, 0.8);
-        p.rotation.x += 0.2;
-        p.userData.life--;
+    // Apply gravity
+    velocity.y += GRAVITY;
 
-        // Collision with enemies
-        for (let j = targets.length - 1; j >= 0; j--) {
-            const t = targets[j];
-            if (p.position.distanceTo(t.position) < 1.4) {
-                t.userData.hp--;
-                createExplosion(p.position, 0x00f0ff);
+    // Move player
+    player.position.x += velocity.x;
+    player.position.y += velocity.y;
+    player.position.z += velocity.z;
 
-                // Destroy projectile
-                scene.remove(p);
-                projectiles.splice(i, 1);
+    // Rotate player mesh toward move direction
+    if (inputDir.length() > 0) {
+        const targetRot = Math.atan2(moveDir.x, moveDir.z);
+        player.rotation.y = targetRot;
+    }
 
-                if (t.userData.hp <= 0) {
-                    createExplosion(t.position, 0xff0055);
-                    scene.remove(t);
-                    targets.splice(j, 1);
-                    score += 100;
-                    scoreEl.textContent = score;
+    // Ground & Platform Collision
+    playerBox.setFromObject(player);
+    isGrounded = false;
 
-                    // Respawn replacements
-                    setTimeout(spawnEnemy, 1000);
-                    if (Math.random() > 0.5) setTimeout(spawnEnemy, 1500);
-                }
-                break;
+    platforms.forEach(plat => {
+        const box = plat.userData.bounds;
+        
+        // Simple bounding box platform detection
+        if (player.position.x >= box.min.x && player.position.x <= box.max.x &&
+            player.position.z >= box.min.z && player.position.z <= box.max.z) {
+            
+            const platTop = box.max.y;
+            // Landing check
+            if (player.position.y <= platTop && player.position.y >= platTop - 0.4 && velocity.y <= 0) {
+                player.position.y = platTop;
+                velocity.y = 0;
+                isGrounded = true;
             }
         }
+    });
 
-        if (p.userData.life <= 0 && scene.children.includes(p)) {
-            scene.remove(p);
-            projectiles.splice(i, 1);
+    // Collect Gem Collision
+    for (let i = gems.length - 1; i >= 0; i--) {
+        const gem = gems[i];
+        gem.rotation.y += 0.05;
+
+        if (player.position.distanceTo(gem.position) < 1.2) {
+            createParticles(gem.position, 0xff0055);
+            scene.remove(gem);
+            gems.splice(i, 1);
+            gemCount++;
+            gemsEl.textContent = gemCount;
+
+            if (gemCount >= 5) {
+                victory();
+            }
         }
     }
 
-    // Update Enemies
-    for (let i = targets.length - 1; i >= 0; i--) {
-        const t = targets[i];
-
-        // Move towards player camera
-        const toPlayer = new THREE.Vector3().subVectors(camera.position, t.position);
-        toPlayer.y = 0; // Lock to floor level
-        toPlayer.normalize();
-
-        t.position.addScaledVector(toPlayer, t.userData.speed);
-        t.rotation.y += t.userData.rotSpeed;
-        t.rotation.x += t.userData.rotSpeed;
-
-        // Hit player
-        if (t.position.distanceTo(camera.position) < 1.5) {
-            hp -= 20;
-            hpEl.textContent = Math.max(0, hp);
-            createExplosion(t.position, 0xff0055);
-
-            scene.remove(t);
-            targets.splice(i, 1);
-            setTimeout(spawnEnemy, 1000);
-
-            if (hp <= 0) endGame();
-        }
-    }
-
-    // Update Particle FX
+    // Particle Updates
     for (let i = particles.length - 1; i >= 0; i--) {
-        const pt = particles[i];
-        pt.position.add(pt.userData.vel);
-        pt.userData.life--;
-
-        if (pt.userData.life <= 0) {
-            scene.remove(pt);
+        const p = particles[i];
+        p.position.add(p.userData.vel);
+        p.userData.life--;
+        if (p.userData.life <= 0) {
+            scene.remove(p);
             particles.splice(i, 1);
         }
     }
+
+    // Abyss Fall Check
+    if (player.position.y < -12) {
+        respawnPlayer();
+    }
+
+    // Orbit Camera Position
+    const camDist = 9;
+    const camHeight = 4.5;
+    camera.position.x = player.position.x + Math.sin(cameraAngle) * camDist;
+    camera.position.z = player.position.z + Math.cos(cameraAngle) * camDist;
+    camera.position.y = player.position.y + camHeight;
+    camera.lookAt(player.position.x, player.position.y + 0.8, player.position.z);
+}
+
+function respawnPlayer() {
+    lives--;
+    livesEl.textContent = lives;
+    createParticles(player.position, 0xff0055);
+
+    if (lives <= 0) {
+        endGame(false);
+    } else {
+        player.position.set(0, 2, 0);
+        velocity.set(0, 0, 0);
+    }
+}
+
+function endGame(won) {
+    isRunning = false;
+    if (won) {
+        endTitle.textContent = "LEVEL CLEARED!";
+        endTitle.style.color = "#00f0ff";
+        endMsg.textContent = "All 5 crystals recovered successfully.";
+    } else {
+        endTitle.textContent = "SYSTEM VOID";
+        endTitle.style.color = "#ff0055";
+        endMsg.textContent = "Out of lives. You fell into the abyss.";
+    }
+    gameOverScreen.classList.remove('hidden');
+}
+
+function victory() {
+    endGame(true);
 }
 
 function animate() {
     requestAnimationFrame(animate);
-    update();
+    updatePhysics();
     renderer.render(scene, camera);
 }
 
 function startGame() {
-    hp = 100;
-    score = 0;
-    hpEl.textContent = hp;
-    scoreEl.textContent = score;
+    gemCount = 0;
+    lives = 3;
+    gemsEl.textContent = gemCount;
+    livesEl.textContent = lives;
 
-    camera.position.set(0, 1.6, 0);
-    camera.rotation.set(0, 0, 0);
+    player.position.set(0, 2, 0);
+    velocity.set(0, 0, 0);
+    cameraAngle = 0;
 
-    // Clear active entities
-    targets.forEach(t => scene.remove(t));
-    projectiles.forEach(p => scene.remove(p));
-    particles.forEach(pt => scene.remove(pt));
-    targets = [];
-    projectiles = [];
-    particles = [];
-
-    // Spawn initial wave
-    for (let i = 0; i < 4; i++) spawnEnemy();
+    buildLevel();
 
     isRunning = true;
     startScreen.classList.add('hidden');
     gameOverScreen.classList.add('hidden');
-    viewport.requestPointerLock();
 }
 
-function endGame() {
-    isRunning = false;
-    document.exitPointerLock?.();
-    finalScoreEl.textContent = score;
-    gameOverScreen.classList.remove('hidden');
-}
-
-// System Init
+// System Launch
 initEngine();
 animate();
 
