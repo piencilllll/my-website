@@ -65,7 +65,7 @@
             justify-content: center;
             align-items: center;
             z-index: 20;
-            background: rgba(3, 2, 6, 0.75);
+            background: rgba(3, 2, 6, 0.85);
             transition: opacity 1.5s ease;
         }
 
@@ -92,6 +92,8 @@
             letter-spacing: 2px;
             animation: pulse 1.6s infinite ease-in-out;
             cursor: pointer;
+            text-align: center;
+            line-height: 1.5;
         }
 
         @keyframes pulse {
@@ -99,49 +101,52 @@
             50% { opacity: 1; }
         }
 
-        /* Dialogue Box */
+        /* Dialogue Box - Undertale Style */
         #dialogue-container {
             position: absolute;
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
             width: 720px;
-            min-height: 120px;
-            background: rgba(8, 8, 12, 0.92);
-            border: 2px solid #3f3f46;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
-            padding: 16px 20px;
+            height: 150px;
+            background: #000;
+            border: 4px solid #fff;
+            padding: 15px;
             z-index: 20;
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            gap: 20px;
+        }
+
+        #portrait-canvas {
+            width: 110px;
+            height: 110px;
+            border: 2px solid #333; /* guidelines */
+            image-rendering: pixelated;
+            flex-shrink: 0;
+        }
+
+        .text-area {
+            flex-grow: 1;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-        }
-
-        .speaker-name {
-            font-size: 14px;
-            font-weight: bold;
-            color: #38bdf8;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
-            text-shadow: 1px 1px #000;
-        }
-
-        .speaker-name.mc-crack {
-            color: #fbbf24;
+            height: 100%;
         }
 
         .dialogue-text {
-            font-size: 15px;
-            line-height: 1.5;
-            color: #e4e4e7;
+            font-size: 18px;
+            line-height: 1.3;
+            color: #fff;
             white-space: pre-wrap;
+            font-family: monospace; /* Monospace is essential for style */
         }
 
         .next-prompt {
             align-self: flex-end;
             font-size: 11px;
             color: #71717a;
-            margin-top: 8px;
             animation: pulse 1s infinite;
         }
 
@@ -163,6 +168,7 @@
             transition: opacity 1.5s ease;
         }
     </style>
+
 </head>
 <body>
 
@@ -176,35 +182,41 @@
     <div id="title-screen" class="ui-layer">
         <div class="title-logo">KAWM</div>
         <div class="subtitle">FAR FROM HOME</div>
-        <div class="prompt-text">[ PRESS ANYKEY OR CLICK TO EMBARK ]</div>
+        <div id="start-prompt" class="prompt-text">[ CLICK ANYWHERE TO ACTIVATE AUDIO ]<br><span style="font-size:10px">(Browsers block sound until interact)</span></div>
     </div>
 
-    <!-- Intro Cutscene Dialogue UI -->
+    <!-- Intro Cutscene Dialogue UI - Undertale Style -->
     <div id="dialogue-container" class="hidden">
-        <div>
-            <div id="speaker" class="speaker-name">Moe</div>
+        <!-- Pixel portrait canvas -->
+        <canvas id="portrait-canvas" width="55" height="55"></canvas>
+        
+        <div class="text-area">
             <div id="speech" class="dialogue-text"></div>
+            <div class="next-prompt">[ PRESS SPACE ]</div>
         </div>
-        <div class="next-prompt">[ CLICK OR PRESS SPACE TO CONTINUE ]</div>
     </div>
 </div>
 
 <script>
 // --- Web Audio API Setup ---
 let audioCtx = null;
+let isAudioInitialized = false;
 
 function initAudio() {
-    if (!audioCtx) {
+    if (isAudioInitialized) return;
+    try {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
+        isAudioInitialized = true;
+        console.log("Audio Context Initialized.");
+        document.getElementById('start-prompt').innerHTML = "[ PRESS ANYKEY OR CLICK TO EMBARK ]";
+    } catch (e) {
+        console.error("Web Audio API not supported.");
     }
 }
 
 // Procedural Retro Sound Generators
 function playTextBeep(speaker) {
-    if (!audioCtx) return;
+    if (!audioCtx || !isAudioInitialized) return;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
 
@@ -212,59 +224,59 @@ function playTextBeep(speaker) {
     
     // Pitch varies depending on speaker for unique voice chitters
     if (speaker === 'Moe') {
-        osc.frequency.setValueAtTime(220 + Math.random() * 30, audioCtx.currentTime); // Lower pitch for Moe
+        osc.frequency.setValueAtTime(200 + Math.random() * 20, audioCtx.currentTime); // Lower pitch for Moe
     } else if (speaker === 'McCrack') {
-        osc.frequency.setValueAtTime(440 + Math.random() * 50, audioCtx.currentTime); // Higher pitch for McCrack
+        osc.frequency.setValueAtTime(380 + Math.random() * 40, audioCtx.currentTime); // Higher pitch for McCrack
     } else {
-        osc.frequency.setValueAtTime(150, audioCtx.currentTime); // Deep pitch for Narrator
+        osc.frequency.setValueAtTime(120, audioCtx.currentTime); // Deep pitch for Narrator
     }
 
-    gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+    gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.03);
 
     osc.connect(gain);
     gain.connect(audioCtx.destination);
 
     osc.start();
-    osc.stop(audioCtx.currentTime + 0.04);
+    osc.stop(audioCtx.currentTime + 0.03);
 }
 
 function playAdvanceSound() {
-    if (!audioCtx) return;
+    if (!audioCtx || !isAudioInitialized) return;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
 
     osc.type = 'triangle';
-    osc.frequency.setValueAtTime(300, audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.08);
+    osc.frequency.setValueAtTime(250, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(500, audioCtx.currentTime + 0.06);
 
-    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.06);
 
     osc.connect(gain);
     gain.connect(audioCtx.destination);
 
     osc.start();
-    osc.stop(audioCtx.currentTime + 0.08);
+    osc.stop(audioCtx.currentTime + 0.06);
 }
 
 function playStartSound() {
-    if (!audioCtx) return;
+    if (!audioCtx || !isAudioInitialized) return;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
 
     osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(450, audioCtx.currentTime + 0.3);
+    osc.frequency.setValueAtTime(110, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(330, audioCtx.currentTime + 0.4);
 
-    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
 
     osc.connect(gain);
     gain.connect(audioCtx.destination);
 
     osc.start();
-    osc.stop(audioCtx.currentTime + 0.3);
+    osc.stop(audioCtx.currentTime + 0.4);
 }
 
 // --- Canvas Setup ---
@@ -272,10 +284,14 @@ const canvas = document.getElementById('stage');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
+// Portrait Canvas Setup (Internal low-res for pixel effect)
+const portraitCanvas = document.getElementById('portrait-canvas');
+const pCtx = portraitCanvas.getContext('2d');
+pCtx.imageSmoothingEnabled = false;
+
 // --- UI Handles ---
 const titleScreen = document.getElementById('title-screen');
 const dialogueBox = document.getElementById('dialogue-container');
-const speakerEl = document.getElementById('speaker');
 const speechEl = document.getElementById('speech');
 const fadeOverlay = document.getElementById('fade-overlay');
 
@@ -288,36 +304,43 @@ let currentScriptIndex = 0;
 const script = [
     {
         speaker: "NARRATOR",
+        expression: "none",
         text: "The sky over our village didn't turn black from the night...",
         scene: "BURNING_VILLAGE"
     },
     {
         speaker: "NARRATOR",
+        expression: "none",
         text: "It turned black from smoke. The attack happened without warning. Fire consumed the timber and kinetic towers.",
         scene: "BURNING_VILLAGE"
     },
     {
         speaker: "McCrack",
+        expression: "worried",
         text: "Moe! Hurry up! The dock is collapsing! We have to cast off right now!",
         scene: "ESCAPE_DOCK"
     },
     {
         speaker: "Moe",
+        expression: "determined",
         text: "Hold on! The ropes are jammed—McCrack, grab the wooden oars!",
         scene: "ESCAPE_DOCK"
     },
     {
         speaker: "NARRATOR",
+        expression: "none",
         text: "We pushed off into the dark expanse of the Kawm Ocean, leaving behind the only life we had ever known.",
         scene: "OCEAN_DRIFT"
     },
     {
         speaker: "McCrack",
+        expression: "neutral",
         text: "Do you think... anyone else made it out, Moe?",
         scene: "OCEAN_DRIFT"
     },
     {
         speaker: "Moe",
+        expression: "neutral",
         text: "...I don't know. But we can't look back now. We keep sailing until we find refuge.",
         scene: "OCEAN_DRIFT"
     }
@@ -335,7 +358,7 @@ function typeWriter(text, cb) {
     isTyping = true;
     currentText = text;
 
-    const currentSpeaker = script[currentScriptIndex].speaker;
+    const currentBeat = script[currentScriptIndex];
 
     clearInterval(typeTimer);
     typeTimer = setInterval(() => {
@@ -344,7 +367,7 @@ function typeWriter(text, cb) {
             
             // Play sound effect on non-space characters
             if (text.charAt(typeIndex) !== ' ') {
-                playTextBeep(currentSpeaker);
+                playTextBeep(currentBeat.speaker);
             }
             
             typeIndex++;
@@ -353,11 +376,11 @@ function typeWriter(text, cb) {
             isTyping = false;
             if (cb) cb();
         }
-    }, 32);
+    }, 40); // Slightly slower for Undertale feel
 }
 
-// --- Drawing Kawmling Characters ---
-function drawKawmling(x, y, scale = 1, expression = 'neutral', hat = 'none', facing = 1) {
+// --- Drawing Kawmling Characters (Stage) ---
+function drawKawmlingStage(x, y, scale = 1, hat = 'none', facing = 1) {
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(facing * scale, scale);
@@ -394,68 +417,105 @@ function drawKawmling(x, y, scale = 1, expression = 'neutral', hat = 'none', fac
     ctx.lineTo(10, 32);
     ctx.stroke();
 
-    // --- Face Details (Eyes & Eyebrows ONLY) ---
+    // Eyes (Stage Version simplified)
     ctx.fillStyle = '#000000';
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2.5;
-
-    // Eyes
     ctx.beginPath();
     ctx.arc(3, -46, 2, 0, Math.PI * 2);
     ctx.arc(8, -46, 2, 0, Math.PI * 2);
     ctx.fill();
 
-    // Eyebrows (Dynamic based on expression)
-    ctx.beginPath();
-    if (expression === 'worried') {
-        ctx.moveTo(1, -52); ctx.lineTo(5, -50);
-        ctx.moveTo(10, -50); ctx.lineTo(6, -52);
-    } else if (expression === 'determined') {
-        ctx.moveTo(1, -50); ctx.lineTo(5, -48);
-        ctx.moveTo(10, -48); ctx.lineTo(6, -50);
-    } else { // Neutral
-        ctx.moveTo(1, -50); ctx.lineTo(5, -50);
-        ctx.moveTo(6, -50); ctx.lineTo(10, -50);
-    }
-    ctx.stroke();
-
-    // --- Hats ---
+    // Hats (Stage)
     if (hat === 'durag') {
-        // Moe's Durag (Blue Cloth with hanging flap back)
         ctx.fillStyle = '#3b82f6';
         ctx.beginPath();
         ctx.arc(0, -46, 15, Math.PI, Math.PI * 2);
         ctx.fill();
-        // Flap back
-        ctx.beginPath();
-        ctx.moveTo(-14, -46);
-        ctx.lineTo(-20, -36);
-        ctx.lineTo(-10, -38);
-        ctx.fill();
+        ctx.beginPath(); ctx.moveTo(-14, -46); ctx.lineTo(-20, -36); ctx.lineTo(-10, -38); ctx.fill();
     } else if (hat === 'paperboat') {
-        // McCrack's Paper Boat Hat
         ctx.fillStyle = '#e4e4e7';
         ctx.beginPath();
-        ctx.moveTo(-16, -56);
-        ctx.lineTo(16, -56);
-        ctx.lineTo(10, -48);
-        ctx.lineTo(-10, -48);
-        ctx.closePath();
-        ctx.fill();
-        // Sail Peak
-        ctx.beginPath();
-        ctx.moveTo(-6, -56);
-        ctx.lineTo(0, -68);
-        ctx.lineTo(6, -56);
-        ctx.closePath();
-        ctx.fill();
-        // Outline detail
-        ctx.strokeStyle = '#a1a1aa';
-        ctx.lineWidth = 1;
-        ctx.stroke();
+        ctx.moveTo(-16, -56); ctx.lineTo(16, -56); ctx.lineTo(10, -48); ctx.lineTo(-10, -48);
+        ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(-6, -56); ctx.lineTo(0, -68); ctx.lineTo(6, -56);
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#a1a1aa'; ctx.lineWidth = 1; ctx.stroke();
     }
 
     ctx.restore();
+}
+
+// --- Drawing Pixel Portraits (Dialogue Box) ---
+function drawPortrait(speaker, expression) {
+    pCtx.clearRect(0, 0, portraitCanvas.width, portraitCanvas.height);
+    
+    if (speaker === 'NARRATOR') return; // Empty portrait
+
+    pCtx.fillStyle = '#ffffff';
+    
+    // Low-res Head shape (approx 28x28 pixels wide in internal res)
+    const centerX = portraitCanvas.width / 2;
+    const centerY = portraitCanvas.height / 2 + 5;
+    const headRad = 18;
+
+    pCtx.beginPath();
+    pCtx.arc(centerX, centerY, headRad, 0, Math.PI * 2);
+    pCtx.fill();
+
+    // Low-res Hats
+    if (speaker === 'Moe') {
+        // Durag (Blue)
+        pCtx.fillStyle = '#3b82f6';
+        pCtx.beginPath();
+        pCtx.arc(centerX, centerY, headRad + 1, Math.PI, Math.PI * 2);
+        pCtx.fill();
+        // Flap
+        pCtx.beginPath();
+        pCtx.moveTo(centerX - headRad, centerY);
+        pCtx.lineTo(centerX - headRad - 6, centerY + 10);
+        pCtx.lineTo(centerX - headRad + 2, centerY + 8);
+        pCtx.fill();
+    } else if (speaker === 'McCrack') {
+        // Paperboat (Gray)
+        pCtx.fillStyle = '#e4e4e7';
+        pCtx.beginPath();
+        pCtx.moveTo(centerX - 20, centerY - headRad - 2);
+        pCtx.lineTo(centerX + 20, centerY - headRad - 2);
+        pCtx.lineTo(centerX + 12, centerY - headRad + 8);
+        pCtx.lineTo(centerX - 12, centerY - headRad + 8);
+        pCtx.closePath();
+        pCtx.fill();
+        // Peak
+        pCtx.beginPath();
+        pCtx.moveTo(centerX - 8, centerY - headRad - 2);
+        pCtx.lineTo(centerX, centerY - headRad - 14);
+        pCtx.lineTo(centerX + 8, centerY - headRad - 2);
+        pCtx.closePath();
+        pCtx.fill();
+    }
+
+    // --- High-Contrast Face (Black details) ---
+    pCtx.fillStyle = '#000000';
+    pCtx.strokeStyle = '#000000';
+    pCtx.lineWidth = 2;
+    pCtx.lineCap = 'square';
+
+    // Large Pixel Eyes
+    pCtx.fillRect(centerX - 10, centerY - 2, 4, 6);
+    pCtx.fillRect(centerX + 6, centerY - 2, 4, 6);
+
+    // Expressions (Eyebrows only, high contrast)
+    pCtx.beginPath();
+    if (expression === 'worried') {
+        pCtx.moveTo(centerX - 12, centerY - 10); pCtx.lineTo(centerX - 6, centerY - 7);
+        pCtx.moveTo(centerX + 12, centerY - 10); pCtx.lineTo(centerX + 6, centerY - 7);
+    } else if (expression === 'determined') {
+        pCtx.moveTo(centerX - 12, centerY - 8); pCtx.lineTo(centerX - 6, centerY - 4);
+        pCtx.moveTo(centerX + 12, centerY - 8); pCtx.lineTo(centerX + 6, centerY - 4);
+    } else { // neutral
+        pCtx.moveTo(centerX - 12, centerY - 8); pCtx.lineTo(centerX - 6, centerY - 8);
+        pCtx.moveTo(centerX + 12, centerY - 8); pCtx.lineTo(centerX + 6, centerY - 8);
+    }
+    pCtx.stroke();
 }
 
 // --- Boat Render ---
@@ -463,17 +523,11 @@ function drawBoat(x, y) {
     ctx.save();
     ctx.translate(x, y);
 
-    // Wood Hull
     ctx.fillStyle = '#271c19';
     ctx.beginPath();
-    ctx.moveTo(-60, 0);
-    ctx.lineTo(60, 0);
-    ctx.lineTo(45, 30);
-    ctx.lineTo(-45, 30);
-    ctx.closePath();
-    ctx.fill();
+    ctx.moveTo(-60, 0); ctx.lineTo(60, 0); ctx.lineTo(45, 30); ctx.lineTo(-45, 30);
+    ctx.closePath(); ctx.fill();
 
-    // Rim
     ctx.strokeStyle = '#44312c';
     ctx.lineWidth = 4;
     ctx.stroke();
@@ -486,22 +540,18 @@ function renderScene(sceneType) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (sceneType === 'BURNING_VILLAGE') {
-        // Dark background with distant fire glow
         ctx.fillStyle = '#0a0508';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Distant burning silhouettes
         let fireGlow = Math.sin(frameCount * 0.1) * 20;
         ctx.fillStyle = `rgb(${180 + fireGlow}, 40, 10)`;
         ctx.fillRect(0, 350, canvas.width, 250);
 
-        // Silhouette houses
         ctx.fillStyle = '#050305';
         ctx.fillRect(100, 300, 80, 80);
         ctx.fillRect(220, 260, 120, 120);
         ctx.fillRect(500, 280, 100, 100);
 
-        // Fire embers particle effect
         for (let i = 0; i < 30; i++) {
             let px = (Math.sin(i * 99 + frameCount * 0.02) * 0.5 + 0.5) * canvas.width;
             let py = ((frameCount * (1 + i * 0.1) + i * 50) % 400);
@@ -510,33 +560,29 @@ function renderScene(sceneType) {
         }
     } 
     else if (sceneType === 'ESCAPE_DOCK') {
-        // Night dock scene with intense close flame background
         ctx.fillStyle = '#0d0714';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Dock platform
         ctx.fillStyle = '#1c1917';
         ctx.fillRect(0, 420, 380, 180);
 
-        // Water
+        // Standard water color here
         ctx.fillStyle = '#060a17';
         ctx.fillRect(380, 440, 420, 160);
 
-        // Boat at dock
         drawBoat(480, 435);
 
-        // Characters on dock/boat
-        drawKawmling(280, 395, 1.1, 'determined', 'durag', 1); // Moe running to boat
-        drawKawmling(480, 410, 1.0, 'worried', 'paperboat', -1); // McCrack in boat
+        drawKawmlingStage(280, 395, 1.1, 'durag', 1); // Moe
+        drawKawmlingStage(480, 410, 1.0, 'paperboat', -1); // McCrack
     } 
     else if (sceneType === 'OCEAN_DRIFT') {
         // Deep endless ocean night
         ctx.fillStyle = '#02040a';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Ocean Waves
+        // --- White Waves (Special Request) ---
         let waveOffset = Math.sin(frameCount * 0.03) * 6;
-        ctx.fillStyle = '#050c1e';
+        ctx.fillStyle = '#ffffff'; // White water
         ctx.beginPath();
         ctx.moveTo(0, 380 + waveOffset);
         for (let x = 0; x <= canvas.width; x += 40) {
@@ -555,8 +601,8 @@ function renderScene(sceneType) {
         ctx.rotate(boatRot);
 
         drawBoat(0, 0);
-        drawKawmling(-20, -22, 1.0, 'determined', 'durag', 1); // Moe sitting left
-        drawKawmling(22, -22, 0.95, 'worried', 'paperboat', -1); // McCrack sitting right
+        drawKawmlingStage(-20, -22, 1.0, 'durag', 1); // Moe sitting left
+        drawKawmlingStage(22, -22, 0.95, 'paperboat', -1); // McCrack sitting right
 
         ctx.restore();
     }
@@ -580,7 +626,10 @@ function loop() {
 
 // --- Game Logic Handling ---
 function triggerNextBeat() {
-    initAudio();
+    if (!isAudioInitialized) {
+        initAudio();
+        return; // Prevent starting game on the very first click used to enable audio
+    }
 
     if (gameState === 'TITLE') {
         playStartSound();
@@ -611,20 +660,12 @@ function triggerNextBeat() {
 
 function advanceScript() {
     const beat = script[currentScriptIndex];
+    
+    // Draw the portrait inside the dialogue box
+    drawPortrait(beat.speaker, beat.expression);
 
-    if (beat.speaker === 'NARRATOR') {
-        speakerEl.textContent = "— HISTORY —";
-        speakerEl.className = "speaker-name";
-        speakerEl.style.color = "#a1a1aa";
-    } else if (beat.speaker === 'Moe') {
-        speakerEl.textContent = "Moe (You)";
-        speakerEl.className = "speaker-name";
-        speakerEl.style.color = "#38bdf8";
-    } else if (beat.speaker === 'McCrack') {
-        speakerEl.textContent = "McCrack";
-        speakerEl.className = "speaker-name mc-crack";
-    }
-
+    // Undertale style doesn't use speaker name labels, 
+    // the voice beep and portrait tell you who is talking.
     typeWriter(beat.text);
 }
 
