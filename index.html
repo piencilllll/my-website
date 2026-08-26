@@ -16,7 +16,7 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #000;
+            background-color: #050505;
             font-family: 'Courier New', Courier, monospace;
             color: #fff;
         }
@@ -39,6 +39,21 @@
             z-index: 1;
         }
 
+        /* Post-Processing CRT Overlay */
+        .crt-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            pointer-events: none;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 4px, 6px 100%;
+            box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.9);
+        }
+
         /* UI Overlays */
         .overlay {
             position: absolute;
@@ -50,73 +65,113 @@
             text-align: center;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.4);
-            transition: opacity 1s ease-in-out;
+            background: rgba(0, 0, 0, 0.45);
+            transition: opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         h1.title {
-            font-size: 4rem;
-            letter-spacing: 12px;
+            font-size: 4.5rem;
+            letter-spacing: 16px;
             text-transform: uppercase;
-            margin-bottom: 20px;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+            margin-bottom: 25px;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.8), 0 0 40px rgba(255, 255, 255, 0.3);
+            animation: glow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 0 0 15px rgba(255, 255, 255, 0.6); }
+            to { text-shadow: 0 0 30px rgba(255, 255, 255, 0.9), 0 0 50px rgba(255, 255, 255, 0.4); }
         }
 
         .tap-prompt {
-            font-size: 1.2rem;
-            letter-spacing: 4px;
-            animation: blink 1.5s infinite;
+            font-size: 1.1rem;
+            letter-spacing: 6px;
+            color: #aaa;
+            animation: pulse 2s infinite;
             cursor: pointer;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            padding-bottom: 6px;
         }
 
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.2; }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.9; transform: scale(1); }
+            50% { opacity: 0.3; transform: scale(0.98); }
         }
 
         /* Cinematic Text Box */
         #cinematic-overlay {
             display: none;
             background: transparent;
-            padding: 20px;
+            pointer-events: none;
+        }
+
+        .story-container {
+            position: absolute;
+            bottom: 10%;
+            width: 80%;
+            max-width: 900px;
+            background: rgba(10, 10, 10, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(8px);
+            padding: 30px 40px;
+            border-radius: 4px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+            pointer-events: auto;
+            cursor: pointer;
         }
 
         .story-text {
-            font-size: 1.5rem;
-            line-height: 1.8;
-            max-width: 800px;
+            font-size: 1.35rem;
+            line-height: 1.9;
             letter-spacing: 2px;
-            text-shadow: 0 0 8px #000, 0 0 15px #000;
-            margin-top: auto;
-            margin-bottom: 80px;
-            min-height: 100px;
+            color: #ececec;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            min-height: 80px;
+            text-align: left;
+        }
+
+        .click-hint {
+            position: absolute;
+            bottom: 12px;
+            right: 20px;
+            font-size: 0.75rem;
+            letter-spacing: 3px;
+            color: #666;
+            animation: pulse 1.5s infinite;
         }
 
         .hidden {
-            display: none !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
         }
     </style>
 </head>
 <body>
 
     <div id="game-container">
-        <!-- Canvas layer for pixelated visuals and animations -->
+        <!-- Canvas layer for pixelated visuals and atmospheric rendering -->
         <canvas id="mainCanvas"></canvas>
+        <div class="crt-overlay"></div>
 
         <!-- Main Menu -->
         <div id="menu-overlay" class="overlay">
-            <h1 class="title">Far From Home</h1>
-            <div class="tap-prompt">TAP ANYWHERE TO START</div>
+            <h1 class="title">FAR FROM HOME</h1>
+            <div class="tap-prompt">TAP ANYWHERE TO BEGIN</div>
         </div>
 
         <!-- Cinematic Overlay -->
         <div id="cinematic-overlay" class="overlay">
-            <div id="story-text" class="story-text"></div>
+            <div class="story-container">
+                <div id="story-text" class="story-text"></div>
+                <div class="click-hint">CLICK TO CONTINUE ▶</div>
+            </div>
         </div>
     </div>
 
     <script>
-        // --- CANVAS SETUP & PIXEL ART GRAPHICS ---
+        // --- ENGINE SETUP ---
         const canvas = document.getElementById('mainCanvas');
         const ctx = canvas.getContext('2d');
 
@@ -127,29 +182,43 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        // Scene States: 'MENU', 'CINEMATIC_VILLAGE', 'CINEMATIC_WOODS', 'CINEMATIC_BOAT', 'END'
+        // State Machine
         let currentScene = 'MENU';
         let sceneAlpha = 1.0;
         let fadeTarget = 1.0;
-        let fadeSpeed = 0.02;
+        let fadeSpeed = 0.015;
+        let shakeIntensity = 0;
 
-        // Rain effect state
-        const rainDrops = Array.from({ length: 150 }, () => ({
-            x: Math.random() * window.innerWidth,
+        // Dynamic Camera Offset
+        let cameraX = 0;
+        let cameraY = 0;
+
+        // Weather & Atmospheric Particles
+        const rainDrops = Array.from({ length: 250 }, () => ({
+            x: Math.random() * window.innerWidth * 1.5 - window.innerWidth * 0.25,
             y: Math.random() * window.innerHeight,
-            length: Math.random() * 20 + 10,
-            speed: Math.random() * 10 + 10
+            length: Math.random() * 25 + 15,
+            speed: Math.random() * 12 + 14,
+            weight: Math.random() * 1.5 + 0.5
         }));
 
-        // --- AUDIO SYNTHESIZER (No external files needed) ---
+        const particles = Array.from({ length: 60 }, () => ({
+            x: Math.random() * window.innerWidth,
+            y: Math.random() * window.innerHeight,
+            size: Math.random() * 3 + 1,
+            vx: (Math.random() - 0.5) * 0.8,
+            vy: -Math.random() * 1.2 - 0.3,
+            alpha: Math.random() * 0.8 + 0.2
+        }));
+
+        // --- AUDIO ENGINE (SYNTHESIZED ATMOSPHERE) ---
         let audioCtx = null;
-        let rainNoiseNode = null;
 
         function initAudio() {
             if (audioCtx) return;
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             
-            // Generate Ambient Rain Noise
+            // 1. Rain Synthesizer
             const bufferSize = audioCtx.sampleRate * 2;
             const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const output = noiseBuffer.getChannelData(0);
@@ -157,21 +226,57 @@
                 output[i] = Math.random() * 2 - 1;
             }
 
-            rainNoiseNode = audioCtx.createBufferSource();
-            rainNoiseNode.buffer = noiseBuffer;
-            rainNoiseNode.loop = true;
+            const rainNoise = audioCtx.createBufferSource();
+            rainNoise.buffer = noiseBuffer;
+            rainNoise.loop = true;
 
             const filter = audioCtx.createBiquadFilter();
             filter.type = 'lowpass';
-            filter.frequency.value = 800;
+            filter.frequency.value = 1000;
 
-            const gainNode = audioCtx.createGain();
-            gainNode.gain.value = 0.08;
+            const rainGain = audioCtx.createGain();
+            rainGain.gain.value = 0.07;
 
-            rainNoiseNode.connect(filter);
-            filter.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            rainNoiseNode.start();
+            rainNoise.connect(filter);
+            filter.connect(rainGain);
+            rainGain.connect(audioCtx.destination);
+            rainNoise.start();
+
+            // Thunder Generator
+            scheduleThunder();
+        }
+
+        function triggerThunder() {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(50, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 1.5);
+
+            gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.8);
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 150;
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + 1.8);
+
+            // Screen Flash
+            shakeIntensity = 12;
+        }
+
+        function scheduleThunder() {
+            setTimeout(() => {
+                if (Math.random() > 0.4) triggerThunder();
+                scheduleThunder();
+            }, Math.random() * 10000 + 8000);
         }
 
         function playTextClickSound() {
@@ -179,28 +284,28 @@
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(400 + Math.random() * 200, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+            osc.frequency.setValueAtTime(300 + Math.random() * 150, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.015, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start();
-            osc.stop(audioCtx.currentTime + 0.05);
+            osc.stop(audioCtx.currentTime + 0.04);
         }
 
-        function playDroneSound() {
+        function playAtmosphericPad() {
             if (!audioCtx) return;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(60, audioCtx.currentTime);
-            
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(65.41, audioCtx.currentTime); // C2 Note
+
             const filter = audioCtx.createBiquadFilter();
             filter.type = 'lowpass';
-            filter.frequency.value = 200;
+            filter.frequency.setValueAtTime(120, audioCtx.currentTime);
 
-            gain.gain.setValueAtTime(0.01, audioCtx.currentTime);
-            gain.gain.linearRampToValueAtTime(0.05, audioCtx.currentTime + 2);
+            gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.08, audioCtx.currentTime + 3);
 
             osc.connect(filter);
             filter.connect(gain);
@@ -208,219 +313,295 @@
             osc.start();
         }
 
-        // --- DRAWING FUNCTIONS ---
-        function drawRain() {
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
+        // --- ARTISTIC GRAPHICS & RENDERING ---
+        function drawAtmosphere() {
+            // Rain Rendering with velocity blurring
+            ctx.strokeStyle = 'rgba(200, 220, 255, 0.2)';
             rainDrops.forEach(drop => {
-                ctx.moveTo(drop.x, drop.y);
-                ctx.lineTo(drop.x - 2, drop.y + drop.length);
+                ctx.lineWidth = drop.weight;
+                ctx.beginPath();
+                ctx.moveTo(drop.x + cameraX, drop.y + cameraY);
+                ctx.lineTo(drop.x - drop.length * 0.2 + cameraX, drop.y + drop.length + cameraY);
+                ctx.stroke();
+
                 drop.y += drop.speed;
-                drop.x -= 1;
+                drop.x -= drop.speed * 0.2;
                 if (drop.y > canvas.height) {
-                    drop.y = -20;
-                    drop.x = Math.random() * canvas.width;
+                    drop.y = -30;
+                    drop.x = Math.random() * canvas.width * 1.5 - canvas.width * 0.25;
                 }
             });
-            ctx.stroke();
+
+            // Drifting Ember/Ash Particles
+            particles.forEach(p => {
+                ctx.fillStyle = currentScene === 'CINEMATIC_VILLAGE' ? 
+                    `rgba(255, ${Math.floor(Math.random() * 150 + 50)}, 50, ${p.alpha})` : 
+                    `rgba(200, 200, 200, ${p.alpha * 0.5})`;
+                ctx.fillRect(p.x + cameraX, p.y + cameraY, p.size, p.size);
+
+                p.x += p.vx;
+                p.y += p.vy;
+                if (p.y < 0) {
+                    p.y = canvas.height + 10;
+                    p.x = Math.random() * canvas.width;
+                }
+            });
         }
 
-        // Kawmling Stickman Renderer (Thicker, distinct style)
-        function drawKawmling(x, y, scale, headAccessory) {
+        // Detailed Kawmling Renderer (Thicker White Stickman with custom accessory detail)
+        function drawKawmling(x, y, scale, accessory, animFrame = 0) {
             ctx.save();
-            ctx.translate(x, y);
+            ctx.translate(x + cameraX, y + cameraY);
             ctx.scale(scale, scale);
+
+            // Subtle Idle/Walk Breathing Cycle
+            const breath = Math.sin(animFrame * 0.05) * 2;
+            
             ctx.strokeStyle = '#FFFFFF';
             ctx.fillStyle = '#FFFFFF';
-            ctx.lineWidth = 6;
+            ctx.lineWidth = 7;
             ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
 
-            // Head
+            // Head & Expression
             ctx.beginPath();
-            ctx.arc(0, -40, 16, 0, Math.PI * 2);
+            ctx.arc(0, -42 + breath, 18, 0, Math.PI * 2);
             ctx.stroke();
 
-            // Accessories
-            if (headAccessory === 'durag') { // Moe
-                ctx.fillStyle = '#FFFFFF';
+            // Eyes (Dark Pixel Detail)
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(4, -46 + breath, 3, 5);
+            ctx.fillRect(-2, -46 + breath, 3, 5);
+            ctx.fillStyle = '#FFFFFF';
+
+            // Custom Head Accessories
+            if (accessory === 'durag') { // Moe
+                // Main Cap
                 ctx.beginPath();
-                ctx.arc(0, -42, 18, Math.PI, 0);
+                ctx.arc(0, -44 + breath, 20, Math.PI * 0.85, 0.15 * Math.PI);
                 ctx.fill();
-                // Durag tails
-                ctx.lineWidth = 4;
+                // Flowing Durag Cape/Tails at Back
                 ctx.beginPath();
-                ctx.moveTo(-12, -40);
-                ctx.lineTo(-24, -25);
-                ctx.moveTo(-12, -40);
-                ctx.lineTo(-20, -18);
-                ctx.stroke();
-                ctx.lineWidth = 6;
-            } else if (headAccessory === 'paperboat') { // McCrack
-                ctx.fillStyle = '#FFFFFF';
+                ctx.moveTo(-16, -42 + breath);
+                ctx.quadraticCurveTo(-30, -35 + breath, -35 + Math.sin(animFrame * 0.08) * 4, -20 + breath);
+                ctx.quadraticCurveTo(-25, -30 + breath, -14, -36 + breath);
+                ctx.fill();
+            } else if (accessory === 'paperboat') { // McCrack
+                // Crisp Origami Paperboat Hat
                 ctx.beginPath();
-                ctx.moveTo(-22, -52);
-                ctx.lineTo(0, -70);
-                ctx.lineTo(22, -52);
-                ctx.lineTo(12, -52);
-                ctx.lineTo(0, -60);
-                ctx.lineTo(-12, -52);
+                ctx.moveTo(-26, -54 + breath);
+                ctx.lineTo(0, -78 + breath);
+                ctx.lineTo(26, -54 + breath);
+                ctx.lineTo(14, -54 + breath);
+                ctx.lineTo(0, -66 + breath);
+                ctx.lineTo(-14, -54 + breath);
                 ctx.closePath();
                 ctx.fill();
+                ctx.strokeStyle = '#CCCCCC';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.lineWidth = 7;
             }
 
             // Body
             ctx.beginPath();
-            ctx.moveTo(0, -24);
-            ctx.lineTo(0, 20);
+            ctx.moveTo(0, -24 + breath);
+            ctx.lineTo(0, 22);
             ctx.stroke();
 
-            // Arms
+            // Dynamic Arms
+            const armOffset = Math.sin(animFrame * 0.1) * 6;
             ctx.beginPath();
-            ctx.moveTo(0, -10);
-            ctx.lineTo(-18, 5);
-            ctx.moveTo(0, -10);
-            ctx.lineTo(18, 5);
+            ctx.moveTo(0, -10 + breath);
+            ctx.lineTo(-20, 8 + armOffset);
+            ctx.moveTo(0, -10 + breath);
+            ctx.lineTo(20, 8 - armOffset);
             ctx.stroke();
 
             // Legs
+            const legOffset = Math.sin(animFrame * 0.1) * 8;
             ctx.beginPath();
-            ctx.moveTo(0, 20);
-            ctx.lineTo(-14, 50);
-            ctx.moveTo(0, 20);
-            ctx.lineTo(14, 50);
+            ctx.moveTo(0, 22);
+            ctx.lineTo(-16 - legOffset, 54);
+            ctx.moveTo(0, 22);
+            ctx.lineTo(16 + legOffset, 54);
             ctx.stroke();
 
             ctx.restore();
         }
 
-        // Background visual scenes
-        function drawVillageScene() {
+        // --- SCENE BACKGROUND ARTISTS ---
+        function drawVillageScene(time) {
             const cx = canvas.width / 2;
-            const cy = canvas.height / 2;
+            const cy = canvas.height / 2 + 50;
 
-            // Silhouetted Destroyed Village / Flames
-            ctx.fillStyle = '#111';
-            ctx.fillRect(cx - 200, cy - 100, 400, 200);
+            // Fire Glow Layer
+            const glow = ctx.createRadialGradient(cx, cy - 50, 20, cx, cy - 50, 450);
+            glow.addColorStop(0, 'rgba(255, 90, 20, 0.35)');
+            glow.addColorStop(0.5, 'rgba(150, 30, 0, 0.15)');
+            glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = glow;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Fire Effect (Pixelated particles)
-            for (let i = 0; i < 40; i++) {
-                let fx = cx - 180 + Math.random() * 360;
-                let fy = cy + 50 - Math.random() * 120;
-                let size = Math.random() * 12 + 4;
-                ctx.fillStyle = Math.random() > 0.5 ? '#FFFFFF' : '#888888';
-                ctx.fillRect(fx, fy, size, size);
+            // Distant Burning Silhouettes
+            ctx.fillStyle = '#080808';
+            ctx.beginPath();
+            ctx.moveTo(cx - 350, cy);
+            ctx.lineTo(cx - 280, cy - 120);
+            ctx.lineTo(cx - 200, cy);
+            ctx.lineTo(cx - 120, cy - 160);
+            ctx.lineTo(cx - 30, cy);
+            ctx.lineTo(cx + 80, cy - 140);
+            ctx.lineTo(cx + 200, cy);
+            ctx.lineTo(cx + 320, cy - 100);
+            ctx.lineTo(cx + 400, cy);
+            ctx.fill();
+
+            // Dynamic Fire Particles
+            for (let i = 0; i < 35; i++) {
+                let fx = cx - 250 + (i * 16) + Math.sin(time * 0.005 + i) * 10;
+                let fy = cy - 20 - Math.random() * 140;
+                let size = Math.random() * 16 + 6;
+                ctx.fillStyle = i % 2 === 0 ? '#FFFFFF' : '#888888';
+                ctx.fillRect(fx + cameraX, fy + cameraY, size, size);
             }
 
-            // House Silhouettes
+            // Foreground Ground Line
             ctx.fillStyle = '#000000';
-            ctx.beginPath();
-            ctx.moveTo(cx - 150, cy + 50);
-            ctx.lineTo(cx - 100, cy - 30);
-            ctx.lineTo(cx - 50, cy + 50);
-            ctx.moveTo(cx + 20, cy + 50);
-            ctx.lineTo(cx + 80, cy - 50);
-            ctx.lineTo(cx + 140, cy + 50);
-            ctx.fill();
+            ctx.fillRect(0, cy, canvas.width, canvas.height - cy);
         }
 
-        function drawWoodsScene() {
+        function drawWoodsScene(time) {
             const cx = canvas.width / 2;
-            const cy = canvas.height / 2;
+            const cy = canvas.height / 2 + 80;
 
-            // Forest background silhouettes
-            ctx.fillStyle = '#1a1a1a';
-            for (let i = -4; i <= 4; i++) {
-                let tx = cx + i * 70;
+            // Fog Gradient
+            const fog = ctx.createLinearGradient(0, cy - 200, 0, cy);
+            fog.addColorStop(0, 'rgba(10, 15, 20, 0)');
+            fog.addColorStop(1, 'rgba(20, 25, 30, 0.8)');
+            ctx.fillStyle = fog;
+            ctx.fillRect(0, cy - 200, canvas.width, 200);
+
+            // Layered Forest Parallax Trees
+            ctx.fillStyle = '#0d0d0d';
+            for (let i = -6; i <= 6; i++) {
+                let tx = cx + i * 110;
                 ctx.beginPath();
-                ctx.moveTo(tx - 30, cy + 100);
-                ctx.lineTo(tx, cy - 80);
-                ctx.lineTo(tx + 30, cy + 100);
+                ctx.moveTo(tx - 40, cy);
+                ctx.lineTo(tx, cy - 220);
+                ctx.lineTo(tx + 40, cy);
                 ctx.fill();
             }
 
-            // Running Kawmlings
-            drawKawmling(cx - 60, cy + 40, 0.9, 'durag');
-            drawKawmling(cx + 40, cy + 40, 0.9, 'paperboat');
+            // Foreground Ground
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, cy, canvas.width, canvas.height - cy);
+
+            // Escaping Characters running rightwards
+            const runAnim = time * 0.05;
+            drawKawmling(cx - 100, cy - 54, 0.85, 'durag', runAnim);
+            drawKawmling(cx + 20, cy - 54, 0.85, 'paperboat', runAnim + 5);
         }
 
-        function drawBoatScene() {
+        function drawBoatScene(time) {
             const cx = canvas.width / 2;
-            const cy = canvas.height / 2;
+            const cy = canvas.height / 2 + 30;
 
-            // White Kawm Ocean
+            // White Kawm Ocean (Pure glowing aesthetic)
             ctx.fillStyle = '#FFFFFF';
             ctx.fillRect(0, cy + 40, canvas.width, canvas.height - (cy + 40));
 
-            // Waves
-            ctx.strokeStyle = '#CCCCCC';
-            ctx.lineWidth = 3;
+            // Animated Wave Patterns
+            ctx.strokeStyle = '#E0E0E0';
+            ctx.lineWidth = 4;
             ctx.beginPath();
-            let time = Date.now() * 0.003;
-            for (let x = 0; x < canvas.width; x += 20) {
-                ctx.lineTo(x, cy + 40 + Math.sin(x * 0.02 + time) * 5);
+            for (let x = -50; x < canvas.width + 50; x += 30) {
+                let waveY = cy + 40 + Math.sin(x * 0.015 + time * 0.003) * 8;
+                ctx.lineTo(x + cameraX, waveY + cameraY);
             }
             ctx.stroke();
 
-            // Simple Dark Boat
-            ctx.fillStyle = '#000000';
+            // Boat Bobbing Physics
+            const boatY = cy + Math.sin(time * 0.002) * 6;
+            const boatRot = Math.sin(time * 0.002) * 0.04;
+
+            ctx.save();
+            ctx.translate(cx + cameraX, boatY + cameraY);
+            ctx.rotate(boatRot);
+
+            // Dark Boat Silhouette
+            ctx.fillStyle = '#050505';
             ctx.beginPath();
-            ctx.moveTo(cx - 80, cy + 20);
-            ctx.lineTo(cx + 80, cy + 20);
-            ctx.lineTo(cx + 50, cy + 60);
-            ctx.lineTo(cx - 50, cy + 60);
+            ctx.moveTo(-110, 10);
+            ctx.lineTo(110, 10);
+            ctx.lineTo(70, 65);
+            ctx.lineTo(-70, 65);
             ctx.closePath();
             ctx.fill();
 
-            // Friends in Boat
-            drawKawmling(cx - 20, cy + 5, 0.6, 'durag');
-            drawKawmling(cx + 20, cy + 5, 0.6, 'paperboat');
+            // Friends Inside Boat
+            drawKawmling(-35, -5, 0.65, 'durag', time * 0.02);
+            drawKawmling(25, -5, 0.65, 'paperboat', time * 0.02 + 2);
+
+            ctx.restore();
         }
 
-        // --- MAIN RENDER LOOP ---
-        function render() {
+        // --- MAIN GAME RENDER LOOP ---
+        function render(timestamp) {
+            // Apply Screen Shake
+            if (shakeIntensity > 0) {
+                cameraX = (Math.random() - 0.5) * shakeIntensity;
+                cameraY = (Math.random() - 0.5) * shakeIntensity;
+                shakeIntensity *= 0.9;
+                if (shakeIntensity < 0.5) shakeIntensity = 0;
+            } else {
+                cameraX = 0;
+                cameraY = 0;
+            }
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Smooth scene transitions
+            // Smooth Fade Transitions
             if (sceneAlpha < fadeTarget) sceneAlpha = Math.min(1, sceneAlpha + fadeSpeed);
             if (sceneAlpha > fadeTarget) sceneAlpha = Math.max(0, sceneAlpha - fadeSpeed);
 
             ctx.save();
             ctx.globalAlpha = sceneAlpha;
 
-            // Draw current active visual background
-            if (currentScene === 'CINEMATIC_VILLAGE') drawVillageScene();
-            else if (currentScene === 'CINEMATIC_WOODS') drawWoodsScene();
-            else if (currentScene === 'CINEMATIC_BOAT') drawBoatScene();
+            // Render Active Scene Graphics
+            if (currentScene === 'CINEMATIC_VILLAGE') drawVillageScene(timestamp);
+            else if (currentScene === 'CINEMATIC_WOODS') drawWoodsScene(timestamp);
+            else if (currentScene === 'CINEMATIC_BOAT') drawBoatScene(timestamp);
 
             ctx.restore();
 
-            // Ambient rain always renders in background
-            drawRain();
+            // Always Layer Ambient Particles & Weather
+            drawAtmosphere();
 
             requestAnimationFrame(render);
         }
 
-        // --- CINEMATIC SCRIPT & STORY SYSTEM ---
+        // --- CINEMATIC SCRIPT ENGINE ---
         const storyScript = [
             {
                 scene: 'CINEMATIC_VILLAGE',
-                text: "Our home... the village. It was destroyed in an instant by sudden terror attacks. Everything burned to ashes."
+                text: "Our home... the peaceful village of Kawm. It was shattered in an instant by sudden terror attacks. Everything burned to ashes before our eyes."
             },
             {
                 scene: 'CINEMATIC_WOODS',
-                text: "Two friends—Moe, wearing his classic durag, and McCrack, with his paperboat hat—managed to escape into the dark woods."
+                text: "Two friends—Moe, wearing his signature durag, and McCrack, with his paperboat hat—barely escaped the chaos, fleeing deep into the dark woods."
             },
             {
                 scene: 'CINEMATIC_BOAT',
-                text: "Reaching the edge of the land, they set sail onto the white waters of the Kawm Ocean, searching desperately for a new place to call home..."
+                text: "Reaching the coast, they boarded a small wooden boat onto the endless white waters of the Kawm Ocean... searching for a sanctuary far from home."
             }
         ];
 
         let scriptIndex = 0;
         let isTyping = false;
 
-        function typeWriter(text, element, speed = 40) {
+        function typeWriter(text, element, speed = 35) {
             element.innerHTML = "";
             isTyping = true;
             let i = 0;
@@ -439,34 +620,34 @@
         }
 
         function advanceCinematic() {
-            if (isTyping) return; // Prevent skipping while writing text
+            if (isTyping) return; // Prevent skipping during text rendering
 
             if (scriptIndex < storyScript.length) {
                 const step = storyScript[scriptIndex];
 
-                // Trigger fade transition if scene changes
+                // Smooth scene transition
                 if (currentScene !== step.scene) {
                     fadeTarget = 0;
                     setTimeout(() => {
                         currentScene = step.scene;
                         fadeTarget = 1;
-                    }, 500);
+                    }, 600);
                 }
 
                 typeWriter(step.text, document.getElementById('story-text'));
                 scriptIndex++;
             } else {
-                // End Cinematic Sequence
+                // Cinematic Fade Out
                 fadeTarget = 0;
                 document.getElementById('cinematic-overlay').classList.add('hidden');
                 setTimeout(() => {
                     currentScene = 'END';
-                    alert("To be continued... (Game Demo Ends Here)");
-                }, 1000);
+                    alert("DEMO COMPLETE — Far From Home");
+                }, 1200);
             }
         }
 
-        // --- EVENT LISTENERS ---
+        // --- INTERACTION CONTROLS ---
         const menuOverlay = document.getElementById('menu-overlay');
         const cinematicOverlay = document.getElementById('cinematic-overlay');
 
@@ -476,15 +657,15 @@
             if (currentScene === 'MENU') {
                 menuOverlay.classList.add('hidden');
                 cinematicOverlay.style.display = 'flex';
-                playDroneSound();
+                playAtmosphericPad();
                 advanceCinematic();
             } else if (currentScene.startsWith('CINEMATIC')) {
                 advanceCinematic();
             }
         });
 
-        // Initialize Loop
-        render();
+        // Launch Engine
+        requestAnimationFrame(render);
     </script>
 </body>
 </html>
