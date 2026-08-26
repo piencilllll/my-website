@@ -34,27 +34,27 @@
             overflow: hidden;
         }
 
-        /* Canvas Layering: 3D on bottom, 2D UI on top */
+        /* Canvas Layering */
         canvas {
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 800px;
+            height: 600px;
             display: block;
-            image-rendering: pixelated; /* PS1 crispness */
-        }
-
-        #stage2d {
-            z-index: 5; /* Above 3D scene */
-            pointer-events: none; /* Let clicks pass through to container */
+            image-rendering: pixelated;
         }
 
         #stage3d {
-            z-index: 1; /* Background */
+            z-index: 1;
         }
 
-        /* Scanlines Overlay */
+        #stage2d {
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        /* CRT Scanline FX */
         .scanlines {
             position: absolute;
             top: 0;
@@ -120,34 +120,43 @@
             50% { opacity: 1; transform: scale(1); }
         }
 
-        /* Dialogue Box - Authentic Undertale Style */
+        /* Fixed Dialogue Box Layout */
         #dialogue-container {
             position: absolute;
-            bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%);
+            bottom: 20px;
+            left: 40px;
             width: 720px;
-            height: 155px;
-            background: #000;
-            border: 5px solid #fff;
+            height: 150px;
+            background: #000000;
+            border: 4px solid #ffffff;
             border-radius: 6px;
             padding: 16px;
             z-index: 20;
             display: flex;
             flex-direction: row;
-            align-items: flex-start;
+            align-items: center;
             gap: 20px;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.9);
-            pointer-events: auto; /* Re-enable pointer events for clicking 'next' */
+            pointer-events: auto;
+        }
+
+        #portrait-wrapper {
+            width: 110px;
+            height: 110px;
+            min-width: 110px;
+            min-height: 110px;
+            flex-shrink: 0;
+            background: #050508;
+            border: 2px solid #222222;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         #portrait-canvas {
             width: 110px;
             height: 110px;
-            background: #050508;
-            border: 2px solid #222;
             image-rendering: pixelated;
-            flex-shrink: 0;
         }
 
         .text-area {
@@ -156,63 +165,66 @@
             flex-direction: column;
             justify-content: space-between;
             height: 100%;
+            overflow: hidden;
         }
 
         .dialogue-text {
-            font-size: 20px;
+            font-size: 18px;
             line-height: 1.4;
-            color: #fff;
+            color: #ffffff;
             white-space: pre-wrap;
             font-family: 'Courier New', Courier, monospace;
             font-weight: bold;
             letter-spacing: 1px;
+            word-wrap: break-word;
         }
 
         .next-prompt {
             align-self: flex-end;
-            font-size: 12px;
-            color: #888;
+            font-size: 11px;
+            color: #888888;
             animation: pulse 1s infinite;
             font-weight: bold;
         }
 
-        /* Gameplay HUD */
+        /* Gameplay HUD Overlay */
         #gameplay-hud {
             position: absolute;
             top: 20px;
             left: 20px;
             z-index: 25;
-            color: #fff;
+            color: #ffffff;
             font-family: monospace;
-            font-size: 14px;
-            text-shadow: 2px 2px #000;
+            font-size: 13px;
+            text-shadow: 2px 2px #000000;
             pointer-events: none;
-            background: rgba(0,0,0,0.5);
-            padding: 10px;
+            background: rgba(0, 0, 0, 0.65);
+            padding: 12px 16px;
             border-radius: 4px;
-            border: 1px solid #444;
+            border: 1px solid #444444;
+            line-height: 1.5;
         }
 
         .hidden {
             display: none !important;
         }
 
-        /* Cinematic Overlay Blackout */
+        /* Transition Blackout */
         #fade-overlay {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: #000;
+            background: #000000;
             z-index: 30;
             pointer-events: none;
             opacity: 0;
-            transition: opacity 1.5s ease;
+            transition: opacity 1.2s ease;
         }
     </style>
 
-    <!-- Three.js Library for 3D Sequence -->
+    <!-- Three.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
@@ -220,30 +232,32 @@
 <div id="game-container">
     <div class="scanlines"></div>
     
-    <!-- 3D Layer -->
+    <!-- 3D Scene Layer -->
     <canvas id="stage3d"></canvas>
     
-    <!-- 2D Layer (Intro + UI) -->
+    <!-- 2D Overlay Layer -->
     <canvas id="stage2d" width="800" height="600"></canvas>
 
     <div id="fade-overlay"></div>
 
     <!-- Gameplay HUD -->
     <div id="gameplay-hud" class="hidden">
-        CONTROLS: [WASD] or [ARROWS] to steer.<br>
-        Avoid the rocks! Reach the light!
+        CONTROLS: [A / D] or [LEFT / RIGHT ARROWS] to steer.<br>
+        Avoid the stone pillars and safely navigate toward the beacon!
     </div>
 
-    <!-- Title / Start Screen -->
+    <!-- Title Screen -->
     <div id="title-screen" class="ui-layer">
         <div class="title-logo">KAWM</div>
         <div class="subtitle">FAR FROM HOME</div>
-        <div id="start-prompt" class="prompt-text">[ CLICK ANYWHERE TO ACTIVATE AUDIO ]<br><span style="font-size:10px; color: #888;">(Browsers block audio until user interaction)</span></div>
+        <div id="start-prompt" class="prompt-text">[ CLICK ANYWHERE TO ACTIVATE AUDIO ]<br><span style="font-size:10px; color: #888;">(Required for browser sound playback)</span></div>
     </div>
 
-    <!-- Intro Cutscene Dialogue UI - Undertale Style -->
+    <!-- Undertale-Style Dialogue Box -->
     <div id="dialogue-container" class="hidden">
-        <canvas id="portrait-canvas" width="55" height="55"></canvas>
+        <div id="portrait-wrapper">
+            <canvas id="portrait-canvas" width="110" height="110"></canvas>
+        </div>
         <div class="text-area">
             <div id="speech" class="dialogue-text"></div>
             <div class="next-prompt">[ PRESS SPACE ]</div>
@@ -252,7 +266,7 @@
 </div>
 
 <script>
-// --- Web Audio API Setup ---
+// --- Web Audio Synthesizer ---
 let audioCtx = null;
 let isAudioInitialized = false;
 
@@ -261,20 +275,18 @@ function initAudio() {
     try {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         isAudioInitialized = true;
-        document.getElementById('start-prompt').innerHTML = "[ PRESS ANY KEY OR CLICK TO EMBARK ]";
+        document.getElementById('start-prompt').innerHTML = "[ PRESS SPACE OR CLICK TO EMBARK ]";
     } catch (e) {
-        console.error("Web Audio API not supported.");
+        console.error("Audio Context initialization failed.", e);
     }
 }
 
-// Procedural Retro Sound Generators
 function playTextBeep(speaker) {
     if (!audioCtx || !isAudioInitialized) return;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
 
     osc.type = 'square';
-    
     if (speaker === 'Moe') {
         osc.frequency.setValueAtTime(190 + Math.random() * 25, audioCtx.currentTime);
     } else if (speaker === 'McCrack') {
@@ -332,30 +344,26 @@ function playStartSound() {
 }
 
 // =========================================================================
-// --- 2D CANVAS ENGINE (FIRST PART - DO NOT MESS UP) ---
+// --- 2D CANVAS ENGINE ---
 // =========================================================================
 const canvas = document.getElementById('stage2d');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
-// Portrait Canvas Setup
 const portraitCanvas = document.getElementById('portrait-canvas');
 const pCtx = portraitCanvas.getContext('2d');
 pCtx.imageSmoothingEnabled = false;
 
-// UI Handles
 const titleScreen = document.getElementById('title-screen');
 const dialogueBox = document.getElementById('dialogue-container');
 const speechEl = document.getElementById('speech');
 const fadeOverlay = document.getElementById('fade-overlay');
 const gameplayHud = document.getElementById('gameplay-hud');
 
-// Game States
-// TITLE, INTRO_2D, TRANSITION_TO_3D, CUTSCENE_3D, GAMEPLAY_3D, FINISH
 let gameState = 'TITLE'; 
 let frameCount = 0;
 
-// Rain Particles Array (2D)
+// Rain System (2D)
 const rainDrops2D = [];
 for (let i = 0; i < 90; i++) {
     rainDrops2D.push({
@@ -366,7 +374,7 @@ for (let i = 0; i < 90; i++) {
     });
 }
 
-// Script Sequences
+// Dialogue Sequences
 const script2D = [
     { speaker: "NARRATOR", expression: "none", text: "The sky over our village didn't turn black from the night...", scene: "BURNING_VILLAGE" },
     { speaker: "NARRATOR", expression: "none", text: "It turned black from smoke. The attack happened without warning. Fire consumed the timber and kinetic towers.", scene: "BURNING_VILLAGE" },
@@ -381,13 +389,12 @@ const script3D = [
     { speaker: "Moe", expression: "squint", text: "Wait... hold on. Do you see that?", cameraMode: "SQUINT_MOE" },
     { speaker: "Moe", expression: "determined", text: "There's a light! McCrack, look! Over there through the fog!", cameraMode: "SQUINT_MOE" },
     { speaker: "McCrack", expression: "worried", text: "Woah! It is! It's a beacon!", cameraMode: "STAND_McCRACK" },
-    { speaker: "McCrack", expression: "neutral", text: "Grab the oars, Moe! We have to steer through this storm to get to it!", cameraMode: "LOOK_AT_LIGHT" }
+    { speaker: "McCrack", expression: "neutral", text: "Grab the oars, Moe! We have to steer through this storm to reach it!", cameraMode: "LOOK_AT_LIGHT" }
 ];
 
 let activeScript = script2D;
 let currentScriptIndex = 0;
 
-// Typewriter Effect
 let typeIndex = 0;
 let isTyping = false;
 let currentText = "";
@@ -414,7 +421,6 @@ function typeWriter(text, cb) {
     }, 38);
 }
 
-// --- 2D Drawing Utilities ---
 function drawKawmlingStage2D(x, y, scale = 1, hat = 'none', facing = 1, pose = 'standing') {
     ctx.save();
     ctx.translate(x, y);
@@ -457,41 +463,46 @@ function drawKawmlingStage2D(x, y, scale = 1, hat = 'none', facing = 1, pose = '
 function drawPortrait2D(speaker, expression) {
     pCtx.clearRect(0, 0, portraitCanvas.width, portraitCanvas.height);
     if (speaker === 'NARRATOR') return;
+
     pCtx.fillStyle = '#ffffff';
-    const centerX = portraitCanvas.width / 2; const centerY = portraitCanvas.height / 2 + 6; const headRad = 19;
-    pCtx.beginPath(); pCtx.arc(centerX, centerY, headRad, 0, Math.PI * 2); pCtx.fill();
+    const centerX = portraitCanvas.width / 2;
+    const centerY = portraitCanvas.height / 2 + 10;
+    const headRad = 32;
+
+    pCtx.beginPath();
+    pCtx.arc(centerX, centerY, headRad, 0, Math.PI * 2);
+    pCtx.fill();
 
     if (speaker === 'Moe') {
         pCtx.fillStyle = '#2563eb';
-        pCtx.beginPath(); pCtx.arc(centerX, centerY, headRad + 1.5, Math.PI, Math.PI * 2); pCtx.fill();
-        pCtx.beginPath(); pCtx.moveTo(centerX - headRad, centerY); pCtx.lineTo(centerX - headRad - 7, centerY + 12); pCtx.lineTo(centerX - headRad + 2, centerY + 9); pCtx.fill();
+        pCtx.beginPath(); pCtx.arc(centerX, centerY, headRad + 2, Math.PI, Math.PI * 2); pCtx.fill();
+        pCtx.beginPath(); pCtx.moveTo(centerX - headRad, centerY); pCtx.lineTo(centerX - headRad - 12, centerY + 20); pCtx.lineTo(centerX - headRad + 4, centerY + 15); pCtx.fill();
     } else if (speaker === 'McCrack') {
         pCtx.fillStyle = '#f4f4f5';
-        pCtx.beginPath(); pCtx.moveTo(centerX - 22, centerY - headRad - 2); pCtx.lineTo(centerX + 22, centerY - headRad - 2); pCtx.lineTo(centerX + 13, centerY - headRad + 9); pCtx.lineTo(centerX - 13, centerY - headRad + 9); pCtx.closePath(); pCtx.fill();
-        pCtx.beginPath(); pCtx.moveTo(centerX - 9, centerY - headRad - 2); pCtx.lineTo(centerX, centerY - headRad - 16); pCtx.lineTo(centerX + 9, centerY - headRad - 2); pCtx.closePath(); pCtx.fill();
+        pCtx.beginPath(); pCtx.moveTo(centerX - 38, centerY - headRad - 2); pCtx.lineTo(centerX + 38, centerY - headRad - 2); pCtx.lineTo(centerX + 22, centerY - headRad + 16); pCtx.lineTo(centerX - 22, centerY - headRad + 16); pCtx.closePath(); pCtx.fill();
+        pCtx.beginPath(); pCtx.moveTo(centerX - 16, centerY - headRad - 2); pCtx.lineTo(centerX, centerY - headRad - 28); pCtx.lineTo(centerX + 16, centerY - headRad - 2); pCtx.closePath(); pCtx.fill();
     }
 
-    pCtx.fillStyle = '#000000'; pCtx.strokeStyle = '#000000'; pCtx.lineWidth = 2.5;
+    pCtx.fillStyle = '#000000'; pCtx.strokeStyle = '#000000'; pCtx.lineWidth = 4;
 
-    // Standard eyes vs Squinting eyes (for 3D part)
     if (expression === 'squint') {
-        pCtx.fillRect(centerX - 12, centerY - 2, 8, 2); // Left Squint
-        pCtx.fillRect(centerX + 4, centerY - 2, 8, 2);  // Right Squint
+        pCtx.fillRect(centerX - 20, centerY - 2, 14, 4);
+        pCtx.fillRect(centerX + 6, centerY - 2, 14, 4);
     } else {
-        pCtx.fillRect(centerX - 10, centerY - 2, 4, 6);
-        pCtx.fillRect(centerX + 6, centerY - 2, 4, 6);
+        pCtx.fillRect(centerX - 18, centerY - 4, 8, 12);
+        pCtx.fillRect(centerX + 10, centerY - 4, 8, 12);
     }
 
     pCtx.beginPath();
     if (expression === 'worried') {
-        pCtx.moveTo(centerX - 12, centerY - 11); pCtx.lineTo(centerX - 5, centerY - 7);
-        pCtx.moveTo(centerX + 12, centerY - 11); pCtx.lineTo(centerX + 5, centerY - 7);
+        pCtx.moveTo(centerX - 22, centerY - 18); pCtx.lineTo(centerX - 8, centerY - 10);
+        pCtx.moveTo(centerX + 22, centerY - 18); pCtx.lineTo(centerX + 8, centerY - 10);
     } else if (expression === 'determined' || expression === 'squint') {
-        pCtx.moveTo(centerX - 12, centerY - 7); pCtx.lineTo(centerX - 5, centerY - 11);
-        pCtx.moveTo(centerX + 12, centerY - 7); pCtx.lineTo(centerX + 5, centerY - 11);
-    } else { // neutral
-        pCtx.moveTo(centerX - 12, centerY - 9); pCtx.lineTo(centerX - 5, centerY - 9);
-        pCtx.moveTo(centerX + 12, centerY - 9); pCtx.lineTo(centerX + 5, centerY - 9);
+        pCtx.moveTo(centerX - 22, centerY - 10); pCtx.lineTo(centerX - 8, centerY - 18);
+        pCtx.moveTo(centerX + 22, centerY - 10); pCtx.lineTo(centerX + 8, centerY - 18);
+    } else {
+        pCtx.moveTo(centerX - 22, centerY - 14); pCtx.lineTo(centerX - 8, centerY - 14);
+        pCtx.moveTo(centerX + 22, centerY - 14); pCtx.lineTo(centerX + 8, centerY - 14);
     }
     pCtx.stroke();
 }
@@ -556,284 +567,261 @@ function render2DScene(sceneType) {
 }
 
 // =========================================================================
-// --- 3D THREE.JS ENGINE (SECOND PART - THE REQUEST) ---
+// --- 3D THREE.JS ENGINE ---
 // =========================================================================
 let scene3d, camera3d, renderer3d, ocean3d, boat3d, moe3d, mcCrack3d, beacon3d, rocks3d;
 let rainSystem3d;
 
-// Gameplay state
 let boatX = 0;
 let boatZ = 0;
 let inputs = { left: false, right: false };
-const GAME_LENGTH = 1500; // Total Z distance to reach lighthouse
+const GAME_LENGTH = 1400;
 
 function init3DSequence() {
-    // Canvas setup
     const stage3d = document.getElementById('stage3d');
     
-    // Renderer with PS1 resolution scaling
-    renderer3d = new THREE.WebGLRenderer({ canvas: stage3d, antialias: false });
+    // Renderer
+    renderer3d = new THREE.WebGLRenderer({ canvas: stage3d, antialias: true, alpha: false });
     renderer3d.setSize(800, 600);
-    renderer3d.setPixelRatio(0.4); // Downscale for pixelation
+    renderer3d.setPixelRatio(1.0);
 
     scene3d = new THREE.Scene();
-    scene3d.background = new THREE.Color(0x010206);
-    scene3d.fog = new THREE.FogExp2(0x010206, 0.012); // Dense fog
+    scene3d.background = new THREE.Color(0x050814);
+    scene3d.fog = new THREE.FogExp2(0x050814, 0.003); // Lighter fog so everything is visible
 
     // Camera
-    camera3d = new THREE.PerspectiveCamera(60, 800 / 600, 0.1, 1000);
+    camera3d = new THREE.PerspectiveCamera(55, 800 / 600, 0.1, 2000);
 
-    // Lights
-    const ambientLight = new THREE.AmbientLight(0x222244, 0.5);
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xdbeaff, 0.85);
     scene3d.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
-    directionalLight.position.set(10, 20, 10);
-    scene3d.add(directionalLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.75);
+    dirLight.position.set(40, 80, 50);
+    scene3d.add(dirLight);
 
-    // -- Create Objects --
-
-    // 1. White Waves Ocean
-    const oceanGeo = new THREE.PlaneGeometry(200, 2000, 50, 200); // Tessellated for vertex waves
+    // 1. Stylized Water Plane
+    const oceanGeo = new THREE.PlaneGeometry(300, 2400, 60, 240);
     oceanGeo.rotateX(-Math.PI / 2);
-    const oceanMat = new THREE.MeshBasicMaterial({ color: 0xffffff }); // Bright white
+    const oceanMat = new THREE.MeshLambertMaterial({ color: 0xffffff, wireframe: false });
     ocean3d = new THREE.Mesh(oceanGeo, oceanMat);
     scene3d.add(ocean3d);
 
-    // 2. The Boat
+    // 2. Boat Model
     boat3d = new THREE.Group();
-    const hullGeo = new THREE.BoxGeometry(4, 2, 10);
-    const darkWoodMat = new THREE.MeshLambertMaterial({ color: 0x1c1310 });
-    const hull = new THREE.Mesh(hullGeo, darkWoodMat);
-    hull.position.y = 1;
+    const hullGeo = new THREE.BoxGeometry(4.5, 2.2, 11);
+    const hullMat = new THREE.MeshLambertMaterial({ color: 0x1f1410 });
+    const hull = new THREE.Mesh(hullGeo, hullMat);
+    hull.position.y = 1.1;
     boat3d.add(hull);
     scene3d.add(boat3d);
 
-    // 3. The Characters (Stick figures with thickness)
+    // 3. 3D Kawmlings
     function createKawmling3D(hatType) {
         const group = new THREE.Group();
         const whiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        const limbGeo = new THREE.CylinderGeometry(0.15, 0.15, 2, 6); // Thicker limbs
+        const limbGeo = new THREE.CylinderGeometry(0.18, 0.18, 2.2, 8);
 
         // Head
-        const headGeo = new THREE.SphereGeometry(0.7, 8, 8);
+        const headGeo = new THREE.SphereGeometry(0.8, 16, 16);
         const head = new THREE.Mesh(headGeo, whiteMat);
-        head.position.y = 3;
+        head.position.y = 3.2;
         group.add(head);
 
-        // Eyes (Black)
+        // Eyes
         const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-        const eyeGeo = new THREE.BoxGeometry(0.15, 0.25, 0.1);
-        const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.25, 3.1, 0.6);
-        const eyeR = new THREE.Mesh(eyeGeo, eyeMat); eyeR.position.set(0.25, 3.1, 0.6);
+        const eyeGeo = new THREE.BoxGeometry(0.18, 0.3, 0.1);
+        const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.3, 3.3, 0.7);
+        const eyeR = new THREE.Mesh(eyeGeo, eyeMat); eyeR.position.set(0.3, 3.3, 0.7);
         group.add(eyeL, eyeR);
 
         // Body
-        const bodyGeo = new THREE.CylinderGeometry(0.3, 0.3, 2, 8);
+        const bodyGeo = new THREE.CylinderGeometry(0.35, 0.35, 2.2, 8);
         const body = new THREE.Mesh(bodyGeo, whiteMat);
-        body.position.y = 1.5;
+        body.position.y = 1.6;
         group.add(body);
 
-        // Arm container (for rotation)
+        // Arms Container
         group.arms = new THREE.Group();
-        group.arms.position.y = 2.2;
+        group.arms.position.y = 2.4;
         group.add(group.arms);
 
-        const armL = new THREE.Mesh(limbGeo, whiteMat); armL.position.set(-0.5, -0.8, 0); armL.rotation.z = Math.PI / 8;
-        const armR = new THREE.Mesh(limbGeo, whiteMat); armR.position.set(0.5, -0.8, 0); armR.rotation.z = -Math.PI / 8;
+        const armL = new THREE.Mesh(limbGeo, whiteMat); armL.position.set(-0.6, -0.9, 0); armL.rotation.z = Math.PI / 7;
+        const armR = new THREE.Mesh(limbGeo, whiteMat); armR.position.set(0.6, -0.9, 0); armR.rotation.z = -Math.PI / 7;
         group.arms.add(armL, armR);
 
-        // Hat
+        // Hats
         if (hatType === 'durag') {
             const duragMat = new THREE.MeshBasicMaterial({ color: 0x2563eb });
-            const duragGeo = new THREE.SphereGeometry(0.75, 8, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+            const duragGeo = new THREE.SphereGeometry(0.85, 12, 12, 0, Math.PI * 2, 0, Math.PI / 2);
             const durag = new THREE.Mesh(duragGeo, duragMat);
-            durag.position.y = 3.05;
+            durag.position.y = 3.25;
             group.add(durag);
         } else if (hatType === 'paperboat') {
-            const boatMat = new THREE.MeshBasicMaterial({ color: 0xf4f4f5 });
-            const pBoatGeo = new THREE.ConeGeometry(0.9, 0.7, 4);
-            const pBoatHat = new THREE.Mesh(pBoatGeo, boatMat);
-            pBoatHat.position.y = 3.9;
-            pBoatHat.rotation.y = Math.PI/4;
-            group.add(pBoatHat);
+            const hatMat = new THREE.MeshBasicMaterial({ color: 0xf4f4f5 });
+            const pBoatGeo = new THREE.ConeGeometry(1.0, 0.8, 4);
+            const pBoat = new THREE.Mesh(pBoatGeo, hatMat);
+            pBoat.position.y = 4.1;
+            pBoat.rotation.y = Math.PI / 4;
+            group.add(pBoat);
         }
 
         return group;
     }
 
     moe3d = createKawmling3D('durag');
-    moe3d.position.set(0, 1.5, -2); // Front seat
+    moe3d.position.set(0, 1.5, -2.5);
     boat3d.add(moe3d);
 
     mcCrack3d = createKawmling3D('paperboat');
-    mcCrack3d.position.set(0, 1.5, 2); // Back seat
-    mcCrack3d.rotation.y = Math.PI; // Face Moe
+    mcCrack3d.position.set(0, 1.5, 2.5);
+    mcCrack3d.rotation.y = Math.PI;
     boat3d.add(mcCrack3d);
 
-    // 4. Lighthouse Beacon
+    // 4. Beacon Structure
     beacon3d = new THREE.Group();
-    beacon3d.position.set(0, 0, -GAME_LENGTH); // far away
+    beacon3d.position.set(0, 0, -GAME_LENGTH);
 
-    const towerGeo = new THREE.CylinderGeometry(5, 8, 60, 8);
-    const towerMat = new THREE.MeshLambertMaterial({ color: 0x444444 });
-    const tower = new THREE.Mesh(towerGeo, towerMat);
-    tower.position.y = 30;
+    const baseGeo = new THREE.CylinderGeometry(8, 12, 70, 12);
+    const baseMat = new THREE.MeshLambertMaterial({ color: 0x2d3748 });
+    const tower = new THREE.Mesh(baseGeo, baseMat);
+    tower.position.y = 35;
     beacon3d.add(tower);
 
-    // **THE LIGHT** (Crucial fix - make it bright and unlit)
-    const bulbGeo = new THREE.SphereGeometry(6, 16, 16);
-    const bulbMat = new THREE.MeshBasicMaterial({ color: 0xfff08a }); // Bright yellow unlit
+    // Glowing Lamp Center
+    const bulbGeo = new THREE.SphereGeometry(8, 16, 16);
+    const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffea00 });
     const bulb = new THREE.Mesh(bulbGeo, bulbMat);
-    bulb.position.y = 65; // At top
+    bulb.position.y = 75;
     beacon3d.add(bulb);
-    
-    // Gameplay point light
-    const pointLight = new THREE.PointLight(0xfff08a, 2, 200);
-    pointLight.position.y = 65;
-    beacon3d.add(pointLight);
+
+    const beaconLight = new THREE.PointLight(0xffea00, 3, 400);
+    beaconLight.position.y = 75;
+    beacon3d.add(beaconLight);
 
     scene3d.add(beacon3d);
 
-    // 5. Rocks to dodge
+    // 5. Rocks to Avoid
     rocks3d = new THREE.Group();
-    const rockMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
-    for(let i=0; i<30; i++) {
-        const height = 20 + Math.random() * 60;
-        const geo = new THREE.ConeGeometry(8 + Math.random()*5, height, 5);
-        const rock = new THREE.Mesh(geo, rockMat);
-        // Space them along the path
+    const rockMat = new THREE.MeshLambertMaterial({ color: 0x111827 });
+    for (let i = 0; i < 35; i++) {
+        const h = 25 + Math.random() * 50;
+        const rGeo = new THREE.ConeGeometry(6 + Math.random() * 6, h, 6);
+        const rock = new THREE.Mesh(rGeo, rockMat);
         rock.position.set(
-            (Math.random() - 0.5) * 60, 
-            height/2 - 5, // embed in water
-            -300 - (Math.random() * (GAME_LENGTH - 400))
+            (Math.random() - 0.5) * 70,
+            h / 2 - 4,
+            -200 - Math.random() * (GAME_LENGTH - 300)
         );
         rocks3d.add(rock);
     }
     scene3d.add(rocks3d);
 
-    // 6. 3D Rain
+    // 6. Rain System
     const rainGeo = new THREE.BufferGeometry();
-    const rainCount = 1500;
-    const vertices = new Float32Array(rainCount * 3);
+    const rainCount = 1200;
+    const rainPositions = new Float32Array(rainCount * 3);
     for (let i = 0; i < rainCount * 3; i += 3) {
-        vertices[i] = (Math.random() - 0.5) * 100;
-        vertices[i + 1] = Math.random() * 100;
-        vertices[i + 2] = (Math.random() - 0.5) * 200;
+        rainPositions[i] = (Math.random() - 0.5) * 120;
+        rainPositions[i + 1] = Math.random() * 80;
+        rainPositions[i + 2] = (Math.random() - 0.5) * 200;
     }
-    rainGeo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-    const rainMat = new THREE.PointsMaterial({ color: 0xaaaaaa, size: 0.3, transparent: true });
+    rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPositions, 3));
+    const rainMat = new THREE.PointsMaterial({ color: 0x93c5fd, size: 0.4, transparent: true, opacity: 0.75 });
     rainSystem3d = new THREE.Points(rainGeo, rainMat);
     scene3d.add(rainSystem3d);
 }
 
-// --- 3D Animation Logic ---
 function animate3D() {
     const time = Date.now() * 0.002;
 
-    // 1. Vertex Wave Animation (Ocean + Boat Physics)
+    // Ocean Waves
     const oceanCoords = ocean3d.geometry.attributes.position;
     for (let i = 0; i < oceanCoords.count; i++) {
         const x = oceanCoords.getX(i);
         const z = oceanCoords.getZ(i);
-        // Large chaotic waves
-        const y = Math.sin(x * 0.1 + time) * 3 + Math.cos(z * 0.05 + time * 1.5) * 4;
+        const y = Math.sin(x * 0.08 + time) * 2.5 + Math.cos(z * 0.04 + time * 1.4) * 3;
         oceanCoords.setY(i, y);
     }
     oceanCoords.needsUpdate = true;
 
-    // Get wave height under boat centre
-    const boatY = Math.sin(boat3d.position.x * 0.1 + time) * 3 + Math.cos(boat3d.position.z * 0.05 + time * 1.5) * 4;
-    boat3d.position.y = boatY;
-    boat3d.rotation.z = Math.sin(time) * 0.15; // Chaotic Roll
-    boat3d.rotation.x = Math.cos(time * 1.2) * 0.1; // Chaotic Pitch
+    // Boat Buoyancy
+    const waveY = Math.sin(boat3d.position.x * 0.08 + time) * 2.5 + Math.cos(boat3d.position.z * 0.04 + time * 1.4) * 3;
+    boat3d.position.y = waveY;
+    boat3d.rotation.z = Math.sin(time) * 0.12;
+    boat3d.rotation.x = Math.cos(time * 1.2) * 0.08;
 
-    // 2. Character Basic Animation (Chaotic idle)
-    moe3d.arms.rotation.x = Math.sin(time * 2) * 0.2;
-    mcCrack3d.arms.rotation.x = Math.sin(time * 2 + 1) * 0.2;
+    // Characters Idle Motion
+    moe3d.arms.rotation.x = Math.sin(time * 2) * 0.15;
+    mcCrack3d.arms.rotation.x = Math.sin(time * 2 + 1) * 0.15;
 
-    // 3. Rain particles follow camera Z
-    rainSystem3d.position.z = camera3d.position.z - 50;
-    const rainVertices = rainSystem3d.geometry.attributes.position.array;
-    for (let i = 1; i < rainVertices.length; i += 3) {
-        rainVertices[i] -= 2; // Fall speed
-        if (rainVertices[i] < 0) rainVertices[i] = 100; // Reset top
+    // Rain Movement
+    rainSystem3d.position.z = camera3d.position.z - 40;
+    const rainPos = rainSystem3d.geometry.attributes.position.array;
+    for (let i = 1; i < rainPos.length; i += 3) {
+        rainPos[i] -= 1.8;
+        if (rainPos[i] < 0) rainPos[i] = 80;
     }
     rainSystem3d.geometry.attributes.position.needsUpdate = true;
 
-    // 4. Cutscene / Gameplay Logic
+    // Cutscene Camera Directions
     if (gameState === 'CUTSCENE_3D') {
         const beat = script3D[currentScriptIndex];
-        
+
         if (beat.cameraMode === "TALK_McCRACK") {
-            // McCrack profile
-            camera3d.position.set(boat3d.position.x - 6, boat3d.position.y + 6, boat3d.position.z + 5);
+            camera3d.position.set(boat3d.position.x - 7, boat3d.position.y + 5, boat3d.position.z + 6);
+            camera3d.lookAt(boat3d.position.x, boat3d.position.y + 3.5, boat3d.position.z + 2.5);
+        } else if (beat.cameraMode === "TALK_MOE") {
+            camera3d.position.set(boat3d.position.x + 7, boat3d.position.y + 5, boat3d.position.z - 6);
+            camera3d.lookAt(boat3d.position.x, boat3d.position.y + 3.5, boat3d.position.z - 2.5);
+        } else if (beat.cameraMode === "SQUINT_MOE") {
+            camera3d.position.set(boat3d.position.x + 3, boat3d.position.y + 4.5, boat3d.position.z - 6.5);
+            camera3d.lookAt(boat3d.position.x, boat3d.position.y + 3.5, boat3d.position.z - 2.5);
+            moe3d.rotation.x = -0.25;
+        } else if (beat.cameraMode === "STAND_McCRACK") {
+            moe3d.rotation.x = 0;
+            mcCrack3d.position.y = 1.7 + Math.abs(Math.sin(time * 6) * 0.25);
+            mcCrack3d.rotation.x = -0.3;
+            camera3d.position.set(boat3d.position.x, boat3d.position.y + 6, boat3d.position.z + 8.5);
             camera3d.lookAt(boat3d.position.x, boat3d.position.y + 4, boat3d.position.z + 2);
-        } 
-        else if (beat.cameraMode === "TALK_MOE") {
-            // Moe profile
-            camera3d.position.set(boat3d.position.x + 6, boat3d.position.y + 6, boat3d.position.z - 5);
-            camera3d.lookAt(boat3d.position.x, boat3d.position.y + 4, boat3d.position.z - 2);
+        } else if (beat.cameraMode === "LOOK_AT_LIGHT") {
+            mcCrack3d.position.y = 1.5;
+            mcCrack3d.rotation.x = 0;
+            camera3d.position.set(boat3d.position.x, boat3d.position.y + 7, boat3d.position.z + 16);
+            camera3d.lookAt(0, 20, -GAME_LENGTH);
         }
-        else if (beat.cameraMode === "SQUINT_MOE") {
-            // **Fix scene 2**: Close up of Moe, seeing face/body, squinting, animated notice
-            camera3d.position.set(boat3d.position.x, boat3d.position.y + 5, boat3d.position.z - 6);
-            camera3d.lookAt(boat3d.position.x, boat3d.position.y + 4, boat3d.position.z - 2);
-            // Animation notice: Leans forward
-            moe3d.rotation.x = -0.3;
-        }
-        else if (beat.cameraMode === "STAND_McCRACK") {
-            moe3d.rotation.x = 0; // Moe resets
-            // animation stand up, slightly falling
-            mcCrack3d.position.y = 1.6 + Math.abs(Math.sin(time*5)*0.3); // Stumbling stand
-            mcCrack3d.rotation.x = -0.4; // leaning back
-            camera3d.position.set(boat3d.position.x, boat3d.position.y + 7, boat3d.position.z + 8);
-            camera3d.lookAt(boat3d.position.x, boat3d.position.y + 5, boat3d.position.z + 2);
-        }
-        else if (beat.cameraMode === "LOOK_AT_LIGHT") {
-            mcCrack3d.position.y = 1.5; mcCrack3d.rotation.x = 0; // McCrack sits
-            // **Fix scene 3**: Show boat and beacon far away in fog
-            camera3d.position.set(boat3d.position.x, boat3d.position.y + 8, boat3d.position.z + 20);
-            camera3d.lookAt(0, 10, -GAME_LENGTH);
-        }
-    } 
-    else if (gameState === 'GAMEPLAY_3D') {
-        // Longer journey mechanics
-        boatZ -= 1.0; // Forward speed (Increased)
-        
-        // Steering
-        if(inputs.left) boatX += 0.4;
-        if(inputs.right) boatX -= 0.4;
-        
-        // Clamp position
-        boatX = Math.max(-25, Math.min(25, boatX));
+    } else if (gameState === 'GAMEPLAY_3D') {
+        boatZ -= 1.1;
+
+        if (inputs.left) boatX += 0.45;
+        if (inputs.right) boatX -= 0.45;
+
+        boatX = Math.max(-28, Math.min(28, boatX));
 
         boat3d.position.z = boatZ;
         boat3d.position.x = boatX;
 
-        // Third person follow camera
         camera3d.position.set(boatX, boat3d.position.y + 8, boatZ + 18);
-        camera3d.lookAt(boatX, boat3d.position.y + 2, boatZ - 15);
+        camera3d.lookAt(boatX, boat3d.position.y + 2.5, boatZ - 15);
 
-        // Simple collision check with rocks
-        const boatBB = new THREE.Box3().setFromObject(boat3d);
+        // Rock Collision Detection
+        const boatBox = new THREE.Box3().setFromObject(boat3d);
         rocks3d.children.forEach(rock => {
-            const rockBB = new THREE.Box3().setFromObject(rock);
-            if(boatBB.intersectsBox(rockBB)) {
-                // Hti rock - Reset slightly back and center
-                boatZ += 50;
+            const rockBox = new THREE.Box3().setFromObject(rock);
+            if (boatBox.intersectsBox(rockBox)) {
+                boatZ += 40;
                 boatX = 0;
-                if(audioCtx) playAdvanceSound(); // rough sound placeholder
+                if (audioCtx) playAdvanceSound();
             }
         });
 
-        // Win Condition
-        if (boatZ < -GAME_LENGTH + 20) {
+        // Stage Clear Trigger
+        if (boatZ < -GAME_LENGTH + 30) {
             gameState = 'FINISH';
             fadeOverlay.style.opacity = '1';
             dialogueBox.classList.add('hidden');
             gameplayHud.classList.add('hidden');
-            setTimeout(() => { alert("Refuge Reached! Chapter I Complete."); }, 2000);
+            setTimeout(() => { alert("Refuge Reached! Chapter I Complete."); }, 1800);
         }
     }
 
@@ -841,18 +829,17 @@ function animate3D() {
 }
 
 // =========================================================================
-// --- COMBINED MAIN LOOP & INPUTS ---
+// --- GAME LOOP & EVENT HANDLERS ---
 // =========================================================================
 function loop() {
     frameCount++;
 
     if (gameState === 'TITLE' || gameState === 'INTRO_2D') {
-        ctx.clearRect(0,0,800,600); // Clear 2D stage
+        ctx.clearRect(0, 0, 800, 600);
         const sceneType = gameState === 'TITLE' ? "BURNING_VILLAGE" : activeScript[currentScriptIndex].scene;
         render2DScene(sceneType);
-    } 
-    else if (gameState === 'CUTSCENE_3D' || gameState === 'GAMEPLAY_3D') {
-        ctx.clearRect(0,0,800,600); // 2D canvas becomes pure UI overlay
+    } else if (gameState === 'CUTSCENE_3D' || gameState === 'GAMEPLAY_3D') {
+        ctx.clearRect(0, 0, 800, 600);
         animate3D();
     }
 
@@ -868,10 +855,11 @@ function triggerNextBeat() {
         dialogueBox.classList.remove('hidden');
         gameState = 'INTRO_2D';
         advanceScript();
-    } 
-    else if (gameState === 'INTRO_2D' || gameState === 'CUTSCENE_3D') {
+    } else if (gameState === 'INTRO_2D' || gameState === 'CUTSCENE_3D') {
         if (isTyping) {
-            clearInterval(typeTimer); speechEl.textContent = currentText; isTyping = false;
+            clearInterval(typeTimer);
+            speechEl.textContent = currentText;
+            isTyping = false;
         } else {
             playAdvanceSound();
             currentScriptIndex++;
@@ -886,10 +874,9 @@ function triggerNextBeat() {
 
 function handleSequenceEnd() {
     if (gameState === 'INTRO_2D') {
-        // Transition to 3D
         fadeOverlay.style.opacity = '1';
         dialogueBox.classList.add('hidden');
-        
+
         setTimeout(() => {
             init3DSequence();
             gameState = 'CUTSCENE_3D';
@@ -898,10 +885,8 @@ function handleSequenceEnd() {
             dialogueBox.classList.remove('hidden');
             fadeOverlay.style.opacity = '0';
             advanceScript();
-        }, 2000);
-    } 
-    else if (gameState === 'CUTSCENE_3D') {
-        // Enter Gameplay
+        }, 1500);
+    } else if (gameState === 'CUTSCENE_3D') {
         dialogueBox.classList.add('hidden');
         gameplayHud.classList.remove('hidden');
         fadeOverlay.style.opacity = '0';
@@ -915,14 +900,12 @@ function advanceScript() {
     typeWriter(beat.text);
 }
 
-// Input Listeners
 window.addEventListener('keydown', (e) => {
     if (e.code === 'Space' || e.code === 'Enter') {
-        if (gameState === 'GAMEPLAY_3D') return; // Space does nothing in gameplay
+        if (gameState === 'GAMEPLAY_3D') return;
         triggerNextBeat();
     }
-    
-    // Gameplay keys (Arrows + WASD)
+
     if (gameState === 'GAMEPLAY_3D') {
         if (e.code === 'ArrowLeft' || e.code === 'KeyA') inputs.left = true;
         if (e.code === 'ArrowRight' || e.code === 'KeyD') inputs.right = true;
@@ -940,7 +923,6 @@ document.getElementById('game-container').addEventListener('click', () => {
     if (gameState !== 'GAMEPLAY_3D' && gameState !== 'FINISH') triggerNextBeat();
 });
 
-// Start loop
 loop();
 </script>
 </body>
