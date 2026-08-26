@@ -1,575 +1,490 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Kawm: Far From Home</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background: #020204;
-      color: #fff;
-      font-family: 'Courier New', Courier, monospace;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      overflow: hidden;
-      user-select: none;
-    }
-    #game-container {
-      position: relative;
-      width: 800px;
-      height: 600px;
-      background: #000;
-      border: 4px solid #333;
-      box-shadow: 0 0 40px rgba(0, 0, 0, 0.9);
-      cursor: pointer;
-    }
-    canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-      image-rendering: pixelated;
-      image-rendering: crisp-edges;
-    }
-    /* PS1 CRT Scanline Overlay */
-    #scanlines {
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: linear-gradient(
-        rgba(18, 16, 16, 0) 50%, 
-        rgba(0, 0, 0, 0.35) 50%
-      );
-      background-size: 100% 4px;
-      pointer-events: none;
-      z-index: 20;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Far From Home</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Courier New', Courier, monospace;
+            color: #fff;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* UI Overlays */
+        .overlay {
+            position: absolute;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            transition: opacity 1s ease-in-out;
+        }
+
+        h1.title {
+            font-size: 4rem;
+            letter-spacing: 12px;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+        }
+
+        .tap-prompt {
+            font-size: 1.2rem;
+            letter-spacing: 4px;
+            animation: blink 1.5s infinite;
+            cursor: pointer;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+
+        /* Cinematic Text Box */
+        #cinematic-overlay {
+            display: none;
+            background: transparent;
+            padding: 20px;
+        }
+
+        .story-text {
+            font-size: 1.5rem;
+            line-height: 1.8;
+            max-width: 800px;
+            letter-spacing: 2px;
+            text-shadow: 0 0 8px #000, 0 0 15px #000;
+            margin-top: auto;
+            margin-bottom: 80px;
+            min-height: 100px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
 </head>
 <body>
 
-<div id="game-container">
-  <canvas id="gameCanvas" width="800" height="600"></canvas>
-  <div id="scanlines"></div>
-</div>
-
-<script>
-// --- AUDIO SYNTHESIZER ---
-const AudioEngine = {
-  ctx: null,
-  init() {
-    if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-  },
-  playBeep(pitch = 220) {
-    if (!this.ctx) return;
-    try {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(pitch, this.ctx.currentTime);
-      gain.gain.setValueAtTime(0.03, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.05);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start();
-      osc.stop(this.ctx.currentTime + 0.05);
-    } catch(e) {}
-  }
-};
-
-// --- GAME STATE ---
-const STATE = {
-  mode: 'MENU', // MENU, VILLAGE_FIRE, FOREST_RUN, BOAT_JUMP, OCEAN_DRIFT
-  fadeAlpha: 0,
-  fadeDirection: 0,
-  nextMode: null,
-  dialogueIndex: 0,
-  textCharIndex: 0,
-  textTimer: 0,
-  globalTime: 0,
-  lightningFlash: 0
-};
-
-// --- SCRIPT DATA ---
-const SCRIPT = [
-  { mode: 'VILLAGE_FIRE', speaker: 'Moe', expression: 'worried', text: "The village is completely overrun! The fires are reaching the timber roofs!" },
-  { mode: 'VILLAGE_FIRE', speaker: 'McCrack', expression: 'determined', text: "We can't stay here! Break through the forest edge toward the escape docks!" },
-  { mode: 'OCEAN_DRIFT', speaker: 'Moe', expression: 'worried', text: "We made it off shore... but everything we knew is ash now." },
-  { mode: 'OCEAN_DRIFT', speaker: 'McCrack', expression: 'squint', text: "Focus ahead, Moe. The storm is rough, but we have to keep rowing." },
-  { mode: 'OCEAN_DRIFT', speaker: 'Moe', expression: 'determined', text: "Wait... look past the breaking waves! That yellow beacon in the distance!" }
-];
-
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-ctx.imageSmoothingEnabled = false;
-
-// Dynamic Particles & Physics Setup
-const drips = Array.from({ length: 40 }, () => ({
-  x: Math.random() * 800, y: Math.random() * -300,
-  speed: Math.random() * 3 + 2, len: Math.random() * 20 + 10, width: Math.random() * 3 + 2
-}));
-
-const embers = Array.from({ length: 60 }, () => ({
-  x: Math.random() * 800, y: Math.random() * 600,
-  size: Math.random() * 3 + 1, speedY: Math.random() * 2 + 1, speedX: (Math.random() - 0.5) * 2,
-  alpha: Math.random()
-}));
-
-const rain = Array.from({ length: 180 }, () => ({
-  x: Math.random() * 900, y: Math.random() * 600,
-  speed: Math.random() * 14 + 12, len: Math.random() * 25 + 12
-}));
-
-let runX = -80;
-let jumpProgress = 0;
-
-// --- ADVANCED TEXT RENDERER ---
-function drawSpacedText(text, x, y, spacing = 2) {
-  let currentX = x;
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    ctx.fillText(char, currentX, y);
-    currentX += ctx.measureText(char).width + spacing;
-  }
-}
-
-function drawWrappedText(text, x, y, maxWidth, lineHeight, spacing = 2) {
-  const words = text.split(' ');
-  let line = '';
-  let currentY = y;
-
-  for (let i = 0; i < words.length; i++) {
-    const testLine = line + words[i] + ' ';
-    let testWidth = 0;
-    for (let j = 0; j < testLine.length; j++) testWidth += ctx.measureText(testLine[j]).width + spacing;
-
-    if (testWidth > maxWidth && i > 0) {
-      drawSpacedText(line.trim(), x, currentY, spacing);
-      line = words[i] + ' ';
-      currentY += lineHeight;
-    } else {
-      line = testLine;
-    }
-  }
-  drawSpacedText(line.trim(), x, currentY, spacing);
-}
-
-// --- PIXEL PORTRAIT ENGINE ---
-function drawKawmlingPortrait(x, y, speaker, expression) {
-  ctx.fillStyle = '#06060c';
-  ctx.fillRect(x, y, 105, 105);
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(x, y, 105, 105);
-
-  const cx = x + 52.5, cy = y + 55;
-
-  // Thick Head Contour
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.arc(cx, cy - 4, 25, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Face Features
-  ctx.fillStyle = '#ffffff';
-  ctx.lineWidth = 3;
-
-  if (expression === 'worried') {
-    ctx.beginPath();
-    ctx.moveTo(cx - 15, cy - 18); ctx.lineTo(cx - 4, cy - 12);
-    ctx.moveTo(cx + 15, cy - 18); ctx.lineTo(cx + 4, cy - 12);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(cx - 9, cy - 6, 4, 0, Math.PI * 2);
-    ctx.arc(cx + 9, cy - 6, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(cx - 12, cy + 12); ctx.quadraticCurveTo(cx, cy + 5, cx + 12, cy + 12);
-    ctx.stroke();
-  } else if (expression === 'determined') {
-    ctx.beginPath();
-    ctx.moveTo(cx - 16, cy - 10); ctx.lineTo(cx - 4, cy - 17);
-    ctx.moveTo(cx + 16, cy - 10); ctx.lineTo(cx + 4, cy - 17);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(cx - 9, cy - 4, 3, 0, Math.PI * 2);
-    ctx.arc(cx + 9, cy - 4, 3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(cx - 12, cy + 10); ctx.lineTo(cx + 12, cy + 10);
-    ctx.stroke();
-  } else if (expression === 'squint') {
-    ctx.beginPath();
-    ctx.moveTo(cx - 15, cy - 5); ctx.lineTo(cx - 3, cy - 5);
-    ctx.moveTo(cx + 3, cy - 5); ctx.lineTo(cx + 15, cy - 5);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(cx, cy + 9, 5, 0, Math.PI);
-    ctx.stroke();
-  }
-
-  // Accessories
-  if (speaker === 'Moe') {
-    ctx.fillStyle = '#0055ff';
-    ctx.beginPath();
-    ctx.arc(cx, cy - 4, 27, Math.PI * 0.82, Math.PI * 2.18);
-    ctx.fill();
-    ctx.fillRect(cx + 20, cy - 4, 14, 24);
-  } else if (speaker === 'McCrack') {
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.moveTo(cx - 30, cy - 24); ctx.lineTo(cx + 30, cy - 24);
-    ctx.lineTo(cx + 18, cy - 46); ctx.lineTo(cx, cy - 34); ctx.lineTo(cx - 18, cy - 46);
-    ctx.closePath();
-    ctx.fill();
-  }
-}
-
-// --- DIALOGUE HUD ---
-function drawDialogueBox() {
-  const current = SCRIPT[STATE.dialogueIndex];
-  if (!current || current.mode !== STATE.mode) return;
-
-  const boxX = 40, boxY = 425, boxW = 720, boxH = 155;
-
-  ctx.fillStyle = 'rgba(4, 4, 8, 0.94)';
-  ctx.fillRect(boxX, boxY, boxW, boxH);
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 4;
-  ctx.strokeRect(boxX, boxY, boxW, boxH);
-
-  drawKawmlingPortrait(boxX + 15, boxY + 25, current.speaker, current.expression);
-
-  ctx.fillStyle = current.speaker === 'Moe' ? '#00c3ff' : '#ffffff';
-  ctx.font = 'bold 16px "Courier New", monospace';
-  drawSpacedText(current.speaker.toUpperCase(), boxX + 135, boxY + 35, 3);
-
-  const fullText = current.text;
-  if (STATE.textCharIndex < fullText.length) {
-    STATE.textTimer++;
-    if (STATE.textTimer % 2 === 0) {
-      STATE.textCharIndex++;
-      AudioEngine.playBeep(current.speaker === 'Moe' ? 260 : 180);
-    }
-  }
-
-  const visibleText = fullText.substring(0, STATE.textCharIndex);
-
-  ctx.fillStyle = '#eeeeee';
-  ctx.font = '14px "Courier New", monospace';
-  drawWrappedText(visibleText, boxX + 135, boxY + 65, 550, 22, 2);
-
-  if (STATE.textCharIndex >= fullText.length) {
-    ctx.fillStyle = '#888888';
-    ctx.font = '11px "Courier New", monospace';
-    drawSpacedText('[PRESS SPACE / CLICK TO CONTINUE]', boxX + 460, boxY + 140, 1);
-  }
-}
-
-function triggerFadeTo(nextMode) {
-  STATE.fadeDirection = 1;
-  STATE.nextMode = nextMode;
-}
-
-function updateFade() {
-  if (STATE.fadeDirection === 1) {
-    STATE.fadeAlpha += 0.05;
-    if (STATE.fadeAlpha >= 1) {
-      STATE.fadeAlpha = 1;
-      STATE.mode = STATE.nextMode;
-      STATE.fadeDirection = -1;
-      if (STATE.mode === 'FOREST_RUN') runX = -80;
-      if (STATE.mode === 'BOAT_JUMP') jumpProgress = 0;
-    }
-  } else if (STATE.fadeDirection === -1) {
-    STATE.fadeAlpha -= 0.05;
-    if (STATE.fadeAlpha <= 0) {
-      STATE.fadeAlpha = 0;
-      STATE.fadeDirection = 0;
-    }
-  }
-
-  if (STATE.fadeAlpha > 0) {
-    ctx.fillStyle = `rgba(0, 0, 0, ${STATE.fadeAlpha})`;
-    ctx.fillRect(0, 0, 800, 600);
-  }
-}
-
-// --- RENDER SCENES ---
-
-// 1. MENU
-function renderMenu() {
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(0, 0, 800, 600);
-
-  // Dripping Liquid
-  ctx.fillStyle = '#ffffff';
-  drips.forEach(d => {
-    d.y += d.speed;
-    if (d.y > 600) { d.y = Math.random() * -100; d.x = Math.random() * 800; }
-    ctx.fillRect(d.x, d.y, d.width, d.len);
-    ctx.beginPath();
-    ctx.arc(d.x + d.width / 2, d.y + d.len, d.width, 0, Math.PI * 2);
-    ctx.fill();
-  });
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 36px "Courier New", monospace';
-  drawSpacedText('KAWM: FAR FROM HOME', 140, 260, 4);
-
-  const alpha = (Math.sin(STATE.globalTime * 3) + 1) / 2;
-  ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-  ctx.font = '16px "Courier New", monospace';
-  drawSpacedText('[ TAP ANYWHERE TO START ]', 240, 360, 2);
-}
-
-// 2. VILLAGE FIRE
-function renderVillageFire() {
-  // Fire Gradient Sky
-  let bgGrad = ctx.createLinearGradient(0, 0, 0, 600);
-  bgGrad.addColorStop(0, '#0a0202');
-  bgGrad.addColorStop(0.4, '#551100');
-  bgGrad.addColorStop(1, '#ff3300');
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, 800, 600);
-
-  // Parallax Silhouettes
-  ctx.fillStyle = '#140505';
-  ctx.fillRect(20, 260, 160, 340);
-  ctx.fillRect(220, 200, 200, 400);
-  ctx.fillRect(460, 240, 140, 360);
-  ctx.fillRect(630, 290, 150, 310);
-
-  // Animated Flames
-  ctx.fillStyle = '#ffaa00';
-  for (let i = 0; i < 800; i += 30) {
-    let flameH = Math.sin(STATE.globalTime * 8 + i) * 25 + 35;
-    ctx.fillRect(i, 320 - flameH, 18, flameH);
-  }
-
-  // Embers Particle Field
-  embers.forEach(e => {
-    e.y -= e.speedY; e.x += e.speedX;
-    if (e.y < 0) e.y = 600;
-    ctx.fillStyle = `rgba(255, 180, 0, ${e.alpha})`;
-    ctx.fillRect(e.x, e.y, e.size, e.size);
-  });
-
-  drawDialogueBox();
-}
-
-// 3. ANIMATED FOREST RUN
-function renderForestRun() {
-  ctx.fillStyle = '#020604';
-  ctx.fillRect(0, 0, 800, 600);
-
-  // Multi-layered Parallax Forest Trees
-  ctx.fillStyle = '#07140a';
-  for (let i = -100; i < 900; i += 70) {
-    let parallaxX = i - (runX * 0.3) % 70;
-    ctx.fillRect(parallaxX, 80, 25, 520);
-  }
-
-  ctx.fillStyle = '#0d2413';
-  for (let i = -100; i < 900; i += 110) {
-    let parallaxX = i - (runX * 0.7) % 110;
-    ctx.fillRect(parallaxX, 140, 45, 460);
-  }
-
-  ctx.fillStyle = '#040a05';
-  ctx.fillRect(0, 460, 800, 140);
-
-  runX += 4.5;
-
-  // Skeletal Animated Kawmlings
-  function drawRunner(x, y, isMoe) {
-    const legSwing = Math.sin(STATE.globalTime * 14) * 16;
-    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 6;
-
-    ctx.beginPath(); ctx.arc(x, y - 42, 14, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x, y - 28); ctx.lineTo(x, y); ctx.stroke();
-
-    // Legs
-    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - legSwing, y + 26); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + legSwing, y + 26); ctx.stroke();
-
-    if (isMoe) {
-      ctx.fillStyle = '#0055ff';
-      ctx.beginPath(); ctx.arc(x, y - 42, 15, Math.PI * 0.82, Math.PI * 2.18); ctx.fill();
-    } else {
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.moveTo(x - 18, y - 54); ctx.lineTo(x + 18, y - 54); ctx.lineTo(x, y - 66);
-      ctx.fill();
-    }
-  }
-
-  drawRunner(runX, 434, true);
-  drawRunner(runX - 50, 434, false);
-
-  if (runX > 880) triggerFadeTo('BOAT_JUMP');
-}
-
-// 4. ANIMATED BOAT JUMP
-function renderBoatJump() {
-  ctx.fillStyle = '#010308';
-  ctx.fillRect(0, 0, 800, 600);
-
-  // Timber Dock Platform
-  ctx.fillStyle = '#160b07';
-  ctx.fillRect(0, 400, 260, 200);
-
-  // Ocean Water Area
-  ctx.fillStyle = '#081c33';
-  ctx.fillRect(260, 450, 540, 150);
-
-  const boatY = 435 + Math.sin(STATE.globalTime * 3) * 5;
-  ctx.fillStyle = '#26140b';
-  ctx.fillRect(470, boatY, 190, 50);
-
-  jumpProgress += 0.016;
-
-  const startX = 200, targetX = 520;
-  const currentX = startX + (targetX - startX) * Math.min(jumpProgress, 1);
-  const currentY = 400 - Math.sin(jumpProgress * Math.PI) * 130;
-
-  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 6;
-
-  // Moe Jumping
-  ctx.beginPath(); ctx.arc(currentX, currentY - 30, 14, 0, Math.PI * 2); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(currentX, currentY - 16); ctx.lineTo(currentX, currentY + 10); ctx.stroke();
-  ctx.fillStyle = '#0055ff';
-  ctx.beginPath(); ctx.arc(currentX, currentY - 30, 15, Math.PI * 0.82, Math.PI * 2.18); ctx.fill();
-
-  // McCrack Jumping Behind
-  const mcX = currentX - 45, mcY = currentY + 15;
-  ctx.beginPath(); ctx.arc(mcX, mcY - 30, 14, 0, Math.PI * 2); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(mcX, mcY - 16); ctx.lineTo(mcX, mcY + 10); ctx.stroke();
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.moveTo(mcX - 16, mcY - 42); ctx.lineTo(mcX + 16, mcY - 42); ctx.lineTo(mcX, mcY - 54);
-  ctx.fill();
-
-  if (jumpProgress >= 1.1) triggerFadeTo('OCEAN_DRIFT');
-}
-
-// 5. OCEAN DRIFT
-function renderOceanDrift() {
-  // Lightning Flashes
-  if (Math.random() < 0.015) STATE.lightningFlash = 1.0;
-  if (STATE.lightningFlash > 0) STATE.lightningFlash -= 0.08;
-
-  let skyGrad = ctx.createLinearGradient(0, 0, 0, 600);
-  skyGrad.addColorStop(0, '#010206');
-  skyGrad.addColorStop(1, '#061020');
-  ctx.fillStyle = skyGrad;
-  ctx.fillRect(0, 0, 800, 600);
-
-  if (STATE.lightningFlash > 0) {
-    ctx.fillStyle = `rgba(255, 255, 255, ${STATE.lightningFlash * 0.4})`;
-    ctx.fillRect(0, 0, 800, 600);
-  }
-
-  // Faint Distant Yellow Beacon Light
-  ctx.fillStyle = 'rgba(255, 240, 150, 0.18)';
-  ctx.beginPath();
-  ctx.moveTo(680, 330); ctx.lineTo(0, 180); ctx.lineTo(0, 380);
-  ctx.fill();
-
-  // Multi-layered Waves
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath(); ctx.moveTo(0, 350);
-  for (let x = 0; x <= 800; x += 15) {
-    let y = Math.sin(x * 0.015 + STATE.globalTime * 2.5) * 14 + 350;
-    ctx.lineTo(x, y);
-  }
-  ctx.lineTo(800, 600); ctx.lineTo(0, 600); ctx.fill();
-
-  // Floating Rocking Boat
-  const boatRock = Math.sin(STATE.globalTime * 2) * 9;
-  const boatY = 335 + boatRock;
-
-  ctx.fillStyle = '#1c0f0a';
-  ctx.fillRect(300, boatY, 200, 50);
-
-  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 6;
-  ctx.beginPath(); ctx.arc(340, boatY - 15, 13, 0, Math.PI * 2); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(340, boatY - 2); ctx.lineTo(340, boatY + 20); ctx.stroke();
-  ctx.fillStyle = '#0055ff';
-  ctx.beginPath(); ctx.arc(340, boatY - 15, 14, Math.PI * 0.82, Math.PI * 2.18); ctx.fill();
-
-  ctx.beginPath(); ctx.arc(440, boatY - 15, 13, 0, Math.PI * 2); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(440, boatY - 2); ctx.lineTo(440, boatY + 20); ctx.stroke();
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.moveTo(424, boatY - 26); ctx.lineTo(456, boatY - 26); ctx.lineTo(440, boatY - 40);
-  ctx.fill();
-
-  // Storm Rain
-  ctx.strokeStyle = 'rgba(200, 230, 255, 0.5)';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  rain.forEach(r => {
-    r.y += r.speed; r.x -= 4;
-    if (r.y > 600) { r.y = -20; r.x = Math.random() * 900; }
-    ctx.moveTo(r.x, r.y); ctx.lineTo(r.x - 8, r.y + r.len);
-  });
-  ctx.stroke();
-
-  drawDialogueBox();
-}
-
-// GAME LOOP
-function gameLoop() {
-  STATE.globalTime += 0.03;
-  ctx.clearRect(0, 0, 800, 600);
-
-  switch (STATE.mode) {
-    case 'MENU': renderMenu(); break;
-    case 'VILLAGE_FIRE': renderVillageFire(); break;
-    case 'FOREST_RUN': renderForestRun(); break;
-    case 'BOAT_JUMP': renderBoatJump(); break;
-    case 'OCEAN_DRIFT': renderOceanDrift(); break;
-  }
-
-  updateFade();
-  requestAnimationFrame(gameLoop);
-}
-
-// INPUT CONTROLLER
-function handleAdvance() {
-  AudioEngine.init();
-
-  if (STATE.mode === 'MENU') {
-    triggerFadeTo('VILLAGE_FIRE');
-    return;
-  }
-
-  const current = SCRIPT[STATE.dialogueIndex];
-  if (!current || current.mode !== STATE.mode) return;
-
-  if (STATE.textCharIndex < current.text.length) {
-    STATE.textCharIndex = current.text.length;
-  } else {
-    STATE.dialogueIndex++;
-    STATE.textCharIndex = 0; STATE.textTimer = 0;
-    const nextScript = SCRIPT[STATE.dialogueIndex];
-    if (nextScript && nextScript.mode !== STATE.mode) {
-      if (STATE.mode === 'VILLAGE_FIRE') triggerFadeTo('FOREST_RUN');
-      else triggerFadeTo(nextScript.mode);
-    }
-  }
-}
-
-window.addEventListener('click', handleAdvance);
-window.addEventListener('keydown', (e) => {
-  if (e.code === 'Space' || e.code === 'Enter') handleAdvance();
-});
-
-gameLoop();
-</script>
+    <div id="game-container">
+        <!-- Canvas layer for pixelated visuals and animations -->
+        <canvas id="mainCanvas"></canvas>
+
+        <!-- Main Menu -->
+        <div id="menu-overlay" class="overlay">
+            <h1 class="title">Far From Home</h1>
+            <div class="tap-prompt">TAP ANYWHERE TO START</div>
+        </div>
+
+        <!-- Cinematic Overlay -->
+        <div id="cinematic-overlay" class="overlay">
+            <div id="story-text" class="story-text"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- CANVAS SETUP & PIXEL ART GRAPHICS ---
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Scene States: 'MENU', 'CINEMATIC_VILLAGE', 'CINEMATIC_WOODS', 'CINEMATIC_BOAT', 'END'
+        let currentScene = 'MENU';
+        let sceneAlpha = 1.0;
+        let fadeTarget = 1.0;
+        let fadeSpeed = 0.02;
+
+        // Rain effect state
+        const rainDrops = Array.from({ length: 150 }, () => ({
+            x: Math.random() * window.innerWidth,
+            y: Math.random() * window.innerHeight,
+            length: Math.random() * 20 + 10,
+            speed: Math.random() * 10 + 10
+        }));
+
+        // --- AUDIO SYNTHESIZER (No external files needed) ---
+        let audioCtx = null;
+        let rainNoiseNode = null;
+
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Generate Ambient Rain Noise
+            const bufferSize = audioCtx.sampleRate * 2;
+            const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
+
+            rainNoiseNode = audioCtx.createBufferSource();
+            rainNoiseNode.buffer = noiseBuffer;
+            rainNoiseNode.loop = true;
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 800;
+
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0.08;
+
+            rainNoiseNode.connect(filter);
+            filter.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            rainNoiseNode.start();
+        }
+
+        function playTextClickSound() {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(400 + Math.random() * 200, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.05);
+        }
+
+        function playDroneSound() {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(60, audioCtx.currentTime);
+            
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 200;
+
+            gain.gain.setValueAtTime(0.01, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.05, audioCtx.currentTime + 2);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+        }
+
+        // --- DRAWING FUNCTIONS ---
+        function drawRain() {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            rainDrops.forEach(drop => {
+                ctx.moveTo(drop.x, drop.y);
+                ctx.lineTo(drop.x - 2, drop.y + drop.length);
+                drop.y += drop.speed;
+                drop.x -= 1;
+                if (drop.y > canvas.height) {
+                    drop.y = -20;
+                    drop.x = Math.random() * canvas.width;
+                }
+            });
+            ctx.stroke();
+        }
+
+        // Kawmling Stickman Renderer (Thicker, distinct style)
+        function drawKawmling(x, y, scale, headAccessory) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.fillStyle = '#FFFFFF';
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+
+            // Head
+            ctx.beginPath();
+            ctx.arc(0, -40, 16, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Accessories
+            if (headAccessory === 'durag') { // Moe
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.arc(0, -42, 18, Math.PI, 0);
+                ctx.fill();
+                // Durag tails
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(-12, -40);
+                ctx.lineTo(-24, -25);
+                ctx.moveTo(-12, -40);
+                ctx.lineTo(-20, -18);
+                ctx.stroke();
+                ctx.lineWidth = 6;
+            } else if (headAccessory === 'paperboat') { // McCrack
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.moveTo(-22, -52);
+                ctx.lineTo(0, -70);
+                ctx.lineTo(22, -52);
+                ctx.lineTo(12, -52);
+                ctx.lineTo(0, -60);
+                ctx.lineTo(-12, -52);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // Body
+            ctx.beginPath();
+            ctx.moveTo(0, -24);
+            ctx.lineTo(0, 20);
+            ctx.stroke();
+
+            // Arms
+            ctx.beginPath();
+            ctx.moveTo(0, -10);
+            ctx.lineTo(-18, 5);
+            ctx.moveTo(0, -10);
+            ctx.lineTo(18, 5);
+            ctx.stroke();
+
+            // Legs
+            ctx.beginPath();
+            ctx.moveTo(0, 20);
+            ctx.lineTo(-14, 50);
+            ctx.moveTo(0, 20);
+            ctx.lineTo(14, 50);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // Background visual scenes
+        function drawVillageScene() {
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            // Silhouetted Destroyed Village / Flames
+            ctx.fillStyle = '#111';
+            ctx.fillRect(cx - 200, cy - 100, 400, 200);
+
+            // Fire Effect (Pixelated particles)
+            for (let i = 0; i < 40; i++) {
+                let fx = cx - 180 + Math.random() * 360;
+                let fy = cy + 50 - Math.random() * 120;
+                let size = Math.random() * 12 + 4;
+                ctx.fillStyle = Math.random() > 0.5 ? '#FFFFFF' : '#888888';
+                ctx.fillRect(fx, fy, size, size);
+            }
+
+            // House Silhouettes
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.moveTo(cx - 150, cy + 50);
+            ctx.lineTo(cx - 100, cy - 30);
+            ctx.lineTo(cx - 50, cy + 50);
+            ctx.moveTo(cx + 20, cy + 50);
+            ctx.lineTo(cx + 80, cy - 50);
+            ctx.lineTo(cx + 140, cy + 50);
+            ctx.fill();
+        }
+
+        function drawWoodsScene() {
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            // Forest background silhouettes
+            ctx.fillStyle = '#1a1a1a';
+            for (let i = -4; i <= 4; i++) {
+                let tx = cx + i * 70;
+                ctx.beginPath();
+                ctx.moveTo(tx - 30, cy + 100);
+                ctx.lineTo(tx, cy - 80);
+                ctx.lineTo(tx + 30, cy + 100);
+                ctx.fill();
+            }
+
+            // Running Kawmlings
+            drawKawmling(cx - 60, cy + 40, 0.9, 'durag');
+            drawKawmling(cx + 40, cy + 40, 0.9, 'paperboat');
+        }
+
+        function drawBoatScene() {
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            // White Kawm Ocean
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, cy + 40, canvas.width, canvas.height - (cy + 40));
+
+            // Waves
+            ctx.strokeStyle = '#CCCCCC';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            let time = Date.now() * 0.003;
+            for (let x = 0; x < canvas.width; x += 20) {
+                ctx.lineTo(x, cy + 40 + Math.sin(x * 0.02 + time) * 5);
+            }
+            ctx.stroke();
+
+            // Simple Dark Boat
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.moveTo(cx - 80, cy + 20);
+            ctx.lineTo(cx + 80, cy + 20);
+            ctx.lineTo(cx + 50, cy + 60);
+            ctx.lineTo(cx - 50, cy + 60);
+            ctx.closePath();
+            ctx.fill();
+
+            // Friends in Boat
+            drawKawmling(cx - 20, cy + 5, 0.6, 'durag');
+            drawKawmling(cx + 20, cy + 5, 0.6, 'paperboat');
+        }
+
+        // --- MAIN RENDER LOOP ---
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Smooth scene transitions
+            if (sceneAlpha < fadeTarget) sceneAlpha = Math.min(1, sceneAlpha + fadeSpeed);
+            if (sceneAlpha > fadeTarget) sceneAlpha = Math.max(0, sceneAlpha - fadeSpeed);
+
+            ctx.save();
+            ctx.globalAlpha = sceneAlpha;
+
+            // Draw current active visual background
+            if (currentScene === 'CINEMATIC_VILLAGE') drawVillageScene();
+            else if (currentScene === 'CINEMATIC_WOODS') drawWoodsScene();
+            else if (currentScene === 'CINEMATIC_BOAT') drawBoatScene();
+
+            ctx.restore();
+
+            // Ambient rain always renders in background
+            drawRain();
+
+            requestAnimationFrame(render);
+        }
+
+        // --- CINEMATIC SCRIPT & STORY SYSTEM ---
+        const storyScript = [
+            {
+                scene: 'CINEMATIC_VILLAGE',
+                text: "Our home... the village. It was destroyed in an instant by sudden terror attacks. Everything burned to ashes."
+            },
+            {
+                scene: 'CINEMATIC_WOODS',
+                text: "Two friends—Moe, wearing his classic durag, and McCrack, with his paperboat hat—managed to escape into the dark woods."
+            },
+            {
+                scene: 'CINEMATIC_BOAT',
+                text: "Reaching the edge of the land, they set sail onto the white waters of the Kawm Ocean, searching desperately for a new place to call home..."
+            }
+        ];
+
+        let scriptIndex = 0;
+        let isTyping = false;
+
+        function typeWriter(text, element, speed = 40) {
+            element.innerHTML = "";
+            isTyping = true;
+            let i = 0;
+
+            function type() {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i);
+                    if (i % 2 === 0) playTextClickSound();
+                    i++;
+                    setTimeout(type, speed);
+                } else {
+                    isTyping = false;
+                }
+            }
+            type();
+        }
+
+        function advanceCinematic() {
+            if (isTyping) return; // Prevent skipping while writing text
+
+            if (scriptIndex < storyScript.length) {
+                const step = storyScript[scriptIndex];
+
+                // Trigger fade transition if scene changes
+                if (currentScene !== step.scene) {
+                    fadeTarget = 0;
+                    setTimeout(() => {
+                        currentScene = step.scene;
+                        fadeTarget = 1;
+                    }, 500);
+                }
+
+                typeWriter(step.text, document.getElementById('story-text'));
+                scriptIndex++;
+            } else {
+                // End Cinematic Sequence
+                fadeTarget = 0;
+                document.getElementById('cinematic-overlay').classList.add('hidden');
+                setTimeout(() => {
+                    currentScene = 'END';
+                    alert("To be continued... (Game Demo Ends Here)");
+                }, 1000);
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+        const menuOverlay = document.getElementById('menu-overlay');
+        const cinematicOverlay = document.getElementById('cinematic-overlay');
+
+        document.body.addEventListener('click', () => {
+            initAudio();
+
+            if (currentScene === 'MENU') {
+                menuOverlay.classList.add('hidden');
+                cinematicOverlay.style.display = 'flex';
+                playDroneSound();
+                advanceCinematic();
+            } else if (currentScene.startsWith('CINEMATIC')) {
+                advanceCinematic();
+            }
+        });
+
+        // Initialize Loop
+        render();
+    </script>
 </body>
 </html>
