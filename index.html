@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PS1 3D Platformer</title>
+    <title>PS1 3D Platformer - Fullscreen Edition</title>
     <style>
         * {
             margin: 0;
@@ -13,31 +13,37 @@
         }
 
         body {
-            background-color: #030305;
+            background-color: #000;
             color: #fff;
             font-family: 'Courier New', Courier, monospace;
             overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
+            width: 100vw;
             height: 100vh;
         }
 
+        /* Responsive Viewport */
         #viewport {
             position: relative;
-            width: 800px;
-            height: 600px;
-            box-shadow: 0 0 50px rgba(0, 240, 255, 0.15);
-            border: 2px solid #222;
+            width: 100vw;
+            height: 100vh;
             background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
         }
 
+        /* Low-res pixelated scale canvas */
         canvas {
-            width: 100%;
-            height: 100%;
+            width: 100% !important;
+            height: 100% !important;
             image-rendering: pixelated;
             image-rendering: crisp-edges;
             display: block;
+            object-fit: contain;
         }
 
         .hud {
@@ -45,11 +51,11 @@
             top: 0;
             left: 0;
             width: 100%;
-            padding: 20px;
+            padding: 24px;
             display: flex;
             justify-content: space-between;
             pointer-events: none;
-            font-size: 16px;
+            font-size: 20px;
             font-weight: bold;
             color: #00f0ff;
             text-shadow: 2px 2px #ff0055;
@@ -62,7 +68,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(5, 5, 10, 0.88);
+            background: rgba(5, 5, 10, 0.92);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -73,36 +79,36 @@
         }
 
         h1 {
-            font-size: 40px;
-            letter-spacing: 3px;
+            font-size: 48px;
+            letter-spacing: 4px;
             color: #00f0ff;
-            margin-bottom: 12px;
-            text-shadow: 3px 3px #ff0055;
+            margin-bottom: 16px;
+            text-shadow: 4px 4px #ff0055;
         }
 
         p {
             color: #8a8aa0;
-            margin-bottom: 24px;
-            line-height: 1.6;
-            font-size: 14px;
+            margin-bottom: 28px;
+            line-height: 1.8;
+            font-size: 16px;
         }
 
         button {
             background: #00f0ff;
             border: none;
             color: #000;
-            padding: 14px 32px;
-            font-size: 16px;
+            padding: 16px 40px;
+            font-size: 18px;
             font-family: 'Courier New', Courier, monospace;
             font-weight: bold;
             cursor: pointer;
-            box-shadow: 4px 4px 0px #ff0055;
+            box-shadow: 5px 5px 0px #ff0055;
             transition: transform 0.1s;
         }
 
         button:hover {
             transform: translate(-2px, -2px);
-            box-shadow: 6px 6px 0px #ff0055;
+            box-shadow: 7px 7px 0px #ff0055;
         }
 
         .hidden {
@@ -115,10 +121,24 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.35) 50%);
             background-size: 100% 4px;
             pointer-events: none;
             z-index: 5;
+        }
+
+        .lock-notice {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            padding: 8px 16px;
+            border: 1px solid #00f0ff;
+            color: #00f0ff;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 10;
         }
     </style>
 
@@ -135,21 +155,23 @@
         <div>LIVES: <span id="lives">3</span></div>
     </div>
 
+    <div id="lock-notice" class="lock-notice hidden">CLICK SCREEN TO RE-LOCK MOUSE</div>
+
     <div id="start-screen" class="overlay">
         <h1>NEO_HOPPER 64</h1>
-        <p>PS1-Style 3D Platformer<br>WASD: Walk | SPACE: Jump (Hold for higher hop)<br>MOUSE: Orbit Camera</p>
-        <button id="start-btn">START GAME</button>
+        <p>PS1-Style 3D Platformer<br>WASD: Walk | SPACE: Jump<br><b>MOUSE: Free 360° Camera Look</b></p>
+        <button id="start-btn">ENTER FULLSCREEN & PLAY</button>
     </div>
 
     <div id="game-over" class="overlay hidden">
-        <h1 id="end-title" style="color: #ff0055; text-shadow: 3px 3px #00f0ff;">SYSTEM VOID</h1>
+        <h1 id="end-title" style="color: #ff0055; text-shadow: 4px 4px #00f0ff;">SYSTEM VOID</h1>
         <p id="end-msg">You fell into the abyss.</p>
         <button id="restart-btn">RETRY LEVEL</button>
     </div>
 </div>
 
 <script>
-// --- Game Setup ---
+// --- Game Engine Variables ---
 let scene, camera, renderer;
 let player, playerBox;
 let platforms = [];
@@ -164,13 +186,13 @@ const velocity = new THREE.Vector3();
 let isGrounded = false;
 const GRAVITY = -0.015;
 const JUMP_FORCE = 0.32;
-const SPEED = 0.12;
+const SPEED = 0.13;
 
-// Controls
+// Mouse Look / Pointer Lock Controls
+let isLocked = false;
+let cameraYaw = 0;
+let cameraPitch = 0.3; // Slight default look-down angle
 const keys = { KeyW: false, KeyS: false, KeyA: false, KeyD: false, Space: false };
-let cameraAngle = 0;
-let isMouseDown = false;
-let previousMouseX = 0;
 
 // UI Elements
 const gemsEl = document.getElementById('gems');
@@ -181,9 +203,10 @@ const endTitle = document.getElementById('end-title');
 const endMsg = document.getElementById('end-msg');
 const startBtn = document.getElementById('start-btn');
 const restartBtn = document.getElementById('restart-btn');
+const lockNotice = document.getElementById('lock-notice');
 const viewport = document.getElementById('viewport');
 
-// Low PS1 Render Resolution
+// Low PS1 Native Resolution (Stretched to screen via canvas CSS)
 const RENDER_W = 320;
 const RENDER_H = 240;
 
@@ -195,7 +218,7 @@ function initEngine() {
     camera = new THREE.PerspectiveCamera(65, RENDER_W / RENDER_H, 0.1, 100);
 
     renderer = new THREE.WebGLRenderer({ antialias: false });
-    renderer.setSize(RENDER_W, RENDER_H);
+    renderer.setSize(RENDER_W, RENDER_H, false);
     viewport.appendChild(renderer.domElement);
 
     // Retro Lighting Setup
@@ -212,7 +235,6 @@ function initEngine() {
 }
 
 function createPlayer() {
-    // Low-poly character (PS1 style mascot build)
     const group = new THREE.Group();
 
     // Body
@@ -246,20 +268,18 @@ function createPlayer() {
 }
 
 function buildLevel() {
-    // Clear old elements
     platforms.forEach(p => scene.remove(p));
     gems.forEach(g => scene.remove(g));
     platforms = [];
     gems = [];
 
-    // Platform layout configuration [x, y, z, width, depth]
     const platformData = [
         [0, 0, 0, 6, 6],           // Spawn platform
         [0, 1, -8, 4, 4],          // Step 1
         [6, 2.5, -12, 4, 4],       // Step 2
         [12, 4, -8, 5, 5],         // Middle hub
         [12, 6, 0, 4, 4],          // High platform
-        [5, 7.5, 4, 4, 4],         // Peak path 1
+        [5, 7.5, 4, 4, 4],         // Peak path
         [-2, 9, 0, 5, 5],          // Peak hub
         [-10, 11, -5, 6, 6]        // Goal island
     ];
@@ -270,13 +290,11 @@ function buildLevel() {
     platformData.forEach(([x, y, z, w, d]) => {
         const platGroup = new THREE.Group();
 
-        // Base block
         const geo = new THREE.BoxGeometry(w, 2, d);
         const mesh = new THREE.Mesh(geo, platMat);
         mesh.position.y = -1;
         platGroup.add(mesh);
 
-        // Top surface trim
         const topGeo = new THREE.BoxGeometry(w, 0.1, d);
         const topMesh = new THREE.Mesh(topGeo, topMat);
         topMesh.position.y = 0.05;
@@ -289,13 +307,12 @@ function buildLevel() {
         scene.add(platGroup);
     });
 
-    // Gem positions
     const gemData = [
         [0, 2, -8],
         [6, 3.5, -12],
         [12, 7.5, 0],
         [-2, 10.5, 0],
-        [-10, 12.5, -5] // Final gem
+        [-10, 12.5, -5]
     ];
 
     const gemGeo = new THREE.OctahedronGeometry(0.5, 0);
@@ -310,29 +327,52 @@ function buildLevel() {
 }
 
 function setupControls() {
-    window.addEventListener('keydown', (e) => {
-        if (e.code in keys) keys[e.code] = true;
-    });
+    window.addEventListener('keydown', (e) => { if (e.code in keys) keys[e.code] = true; });
+    window.addEventListener('keyup', (e) => { if (e.code in keys) keys[e.code] = false; });
 
-    window.addEventListener('keyup', (e) => {
-        if (e.code in keys) keys[e.code] = false;
-    });
-
-    // Mouse Orbit Controls for Camera
-    viewport.addEventListener('mousedown', (e) => {
-        isMouseDown = true;
-        previousMouseX = e.clientX;
-    });
-
-    window.addEventListener('mouseup', () => { isMouseDown = false; });
-
-    window.addEventListener('mousemove', (e) => {
-        if (isMouseDown) {
-            const delta = e.clientX - previousMouseX;
-            cameraAngle -= delta * 0.008;
-            previousMouseX = e.clientX;
+    // Pointer Lock & Fullscreen Handler
+    viewport.addEventListener('click', () => {
+        if (isRunning && !isLocked) {
+            requestPointerLockAndFullscreen();
         }
     });
+
+    document.addEventListener('pointerlockchange', () => {
+        isLocked = document.pointerLockElement === viewport || document.pointerLockElement === document.body;
+        if (isLocked) {
+            lockNotice.classList.add('hidden');
+        } else if (isRunning) {
+            lockNotice.classList.remove('hidden');
+        }
+    });
+
+    // FPS / Third-Person Locked Mouse Movement
+    document.addEventListener('mousemove', (e) => {
+        if (!isLocked || !isRunning) return;
+
+        const sensitivity = 0.003;
+        cameraYaw -= e.movementX * sensitivity;
+        cameraPitch += e.movementY * sensitivity;
+
+        // Clamp vertical camera pitch so it doesn't flip upside down
+        cameraPitch = Math.max(-0.2, Math.min(1.2, cameraPitch));
+    });
+}
+
+function requestPointerLockAndFullscreen() {
+    // Attempt Fullscreen
+    const element = document.documentElement;
+    if (element.requestFullscreen) {
+        element.requestFullscreen().catch(() => {});
+    } else if (element.webkitRequestFullscreen) {
+        element.webkitRequestFullscreen();
+    }
+
+    // Attempt Pointer Lock
+    viewport.requestPointerLock = viewport.requestPointerLock || viewport.webkitRequestPointerLock;
+    if (viewport.requestPointerLock) {
+        viewport.requestPointerLock();
+    }
 }
 
 function createParticles(pos, color = 0xff0055) {
@@ -359,7 +399,7 @@ function createParticles(pos, color = 0xff0055) {
 function updatePhysics() {
     if (!isRunning) return;
 
-    // Movement relative to camera perspective
+    // Movement relative to locked mouse camera direction
     const inputDir = new THREE.Vector3();
     if (keys.KeyW) inputDir.z -= 1;
     if (keys.KeyS) inputDir.z += 1;
@@ -368,46 +408,43 @@ function updatePhysics() {
 
     inputDir.normalize();
 
-    // Rotate input vector relative to orbit camera angle
-    const moveDir = inputDir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraAngle);
+    // Orient movement based on locked Camera Yaw
+    const moveDir = inputDir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraYaw);
 
     velocity.x = moveDir.x * SPEED;
     velocity.z = moveDir.z * SPEED;
 
-    // Jumping
+    // Jump
     if (keys.Space && isGrounded) {
         velocity.y = JUMP_FORCE;
         isGrounded = false;
         createParticles(player.position, 0x00f0ff);
     }
 
-    // Apply gravity
+    // Gravity
     velocity.y += GRAVITY;
 
-    // Move player
+    // Apply Velocity
     player.position.x += velocity.x;
     player.position.y += velocity.y;
     player.position.z += velocity.z;
 
-    // Rotate player mesh toward move direction
+    // Face player model in movement direction
     if (inputDir.length() > 0) {
         const targetRot = Math.atan2(moveDir.x, moveDir.z);
         player.rotation.y = targetRot;
     }
 
-    // Ground & Platform Collision
+    // Platform Collisions
     playerBox.setFromObject(player);
     isGrounded = false;
 
     platforms.forEach(plat => {
         const box = plat.userData.bounds;
-        
-        // Simple bounding box platform detection
         if (player.position.x >= box.min.x && player.position.x <= box.max.x &&
             player.position.z >= box.min.z && player.position.z <= box.max.z) {
             
             const platTop = box.max.y;
-            // Landing check
             if (player.position.y <= platTop && player.position.y >= platTop - 0.4 && velocity.y <= 0) {
                 player.position.y = platTop;
                 velocity.y = 0;
@@ -416,7 +453,7 @@ function updatePhysics() {
         }
     });
 
-    // Collect Gem Collision
+    // Gem Pickup Check
     for (let i = gems.length - 1; i >= 0; i--) {
         const gem = gems[i];
         gem.rotation.y += 0.05;
@@ -428,13 +465,11 @@ function updatePhysics() {
             gemCount++;
             gemsEl.textContent = gemCount;
 
-            if (gemCount >= 5) {
-                victory();
-            }
+            if (gemCount >= 5) victory();
         }
     }
 
-    // Particle Updates
+    // Particles
     for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.position.add(p.userData.vel);
@@ -445,17 +480,20 @@ function updatePhysics() {
         }
     }
 
-    // Abyss Fall Check
+    // Abyss Fall
     if (player.position.y < -12) {
         respawnPlayer();
     }
 
-    // Orbit Camera Position
+    // 3D Locked Camera Rig
     const camDist = 9;
-    const camHeight = 4.5;
-    camera.position.x = player.position.x + Math.sin(cameraAngle) * camDist;
-    camera.position.z = player.position.z + Math.cos(cameraAngle) * camDist;
-    camera.position.y = player.position.y + camHeight;
+    const camHeight = Math.sin(cameraPitch) * camDist;
+    const horizontalDist = Math.cos(cameraPitch) * camDist;
+
+    camera.position.x = player.position.x + Math.sin(cameraYaw) * horizontalDist;
+    camera.position.z = player.position.z + Math.cos(cameraYaw) * horizontalDist;
+    camera.position.y = player.position.y + Math.max(1.5, camHeight + 1.5);
+
     camera.lookAt(player.position.x, player.position.y + 0.8, player.position.z);
 }
 
@@ -474,6 +512,7 @@ function respawnPlayer() {
 
 function endGame(won) {
     isRunning = false;
+    document.exitPointerLock?.();
     if (won) {
         endTitle.textContent = "LEVEL CLEARED!";
         endTitle.style.color = "#00f0ff";
@@ -504,13 +543,16 @@ function startGame() {
 
     player.position.set(0, 2, 0);
     velocity.set(0, 0, 0);
-    cameraAngle = 0;
+    cameraYaw = 0;
+    cameraPitch = 0.3;
 
     buildLevel();
 
     isRunning = true;
     startScreen.classList.add('hidden');
     gameOverScreen.classList.add('hidden');
+
+    requestPointerLockAndFullscreen();
 }
 
 // System Launch
